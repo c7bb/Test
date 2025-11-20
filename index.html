@@ -798,26 +798,56 @@
                                     <div v-for="(video, index) in selectedEpisode.EpisodeVideosIDs" 
                                         :key="video.VideoID" 
                                         class="relative flex flex-col gap-4">
-                                        <button
-                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                            @click="sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime)"
-                                            class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed">
-                                            <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                            <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                            <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                        </button>
-                                        <img 
-                                            v-if="video.status === 'success'" 
-                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                            class="absolute right-0 top-0 w-6 h-6 ml-2"
-                                        />
-                                        <img 
-                                            v-if="video.status === 'error'" 
-                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                            class="absolute right-0 top-0 w-6 h-6 ml-2"
-                                        />
-                                        <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded">
-                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                        
+                                        <div class="relative">
+                                            <fieldset 
+                                                class="rounded relative"
+                                                :class="{ 'border p-3': video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered }">
+                                                
+                                                <legend 
+                                                    v-if="video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered"
+                                                    class="px-2 text-sm">
+                                                    <span v-if="video.EpisodeCategory">
+                                                        {{ video.EpisodeCategory === 'S' ? 'مترجم' : (video.EpisodeCategory === 'D' ? 'مدبلج' : video.EpisodeCategory) }}
+                                                    </span>
+                                                    <span v-if="video.EpisodeTranslator">
+                                                        <span v-if="video.EpisodeCategory"> - </span>{{ video.EpisodeTranslator }}
+                                                    </span>
+                                                    <span v-if="video.EpisodeRemastered">
+                                                        <span v-if="video.EpisodeCategory || video.EpisodeTranslator"> - </span>
+                                                        {{ video.EpisodeRemastered === 'T' ? 'محسنة' : (video.EpisodeRemastered === 'F' ? 'غير محسنة' : video.EpisodeRemastered) }}
+                                                    </span>
+                                                </legend>
+                                                
+                                                <div class="relative w-full">
+                                                    <!-- Status Icons -->
+                                                    <img 
+                                                        v-if="video.status === 'success'" 
+                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                        class="absolute right-0 -top-3 w-6 h-6 z-10 pointer-events-none"
+                                                    />
+                                                    <img 
+                                                        v-else-if="video.status === 'error'" 
+                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                        class="absolute right-0 -top-3 w-6 h-6 z-10 pointer-events-none"
+                                                    />
+                                                    
+                                                    <!-- Main Button -->
+                                                    <button
+                                                        :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                        @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
+                                                        class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                        <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                        <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                        <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                    </button>
+
+                                                    <!-- Sending Overlay -->
+                                                    <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                    </div>
+                                                </div>
+                                            </fieldset>
                                         </div>
                                     </div>
                                 </div>
@@ -6102,12 +6132,12 @@
                                                         <img 
                                                             v-if="video.status === 'success'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none m-1"
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
                                                         />
                                                         <img 
                                                             v-else-if="video.status === 'error'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none m-1"
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
                                                         />
 
                                                         <!-- 3. Sending Overlay (Centered over the Button only) -->
