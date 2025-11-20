@@ -5571,6 +5571,22 @@
                             </div>
                         </div>
 
+                        <!-- Next Episode Countdown Box -->
+                        <div class="relative w-full max-w-2xl p-4 mt-4 bg-black bg-opacity-85 rounded-lg shadow-lg border border-blue-500">
+                            <p class="text-white text-center text-lg mb-2">موعد الحلقة القادمة</p>
+                            <p class="text-white text-center text-sm">
+                                <span @click="toggleNextEpisodeTimeFormat" class="cursor-pointer hover:text-blue-300 transition-colors">
+                                    {{ showNextEpisodeEnglishTime ? nextEpisodeCountdownEnglish : nextEpisodeCountdownArabic }}
+                                </span>
+                                <span v-if="nextEpisodeNumber" 
+                                      @click="openEpisodeByNumber(nextEpisodeNumber)"
+                                      class="text-yellow-300 font-bold transition-all duration-100 active:scale-90 cursor-pointer mr-1">
+                                    {{ nextEpisodeNumber }}
+                                </span>
+                                <span v-else class="text-yellow-300 font-bold mr-1">-</span>
+                            </p>
+                        </div>
+
                         <!-- Centered Description Box for Colors and Their Names with "معاني الألوان" Legend -->
                         <fieldset class="my-4 w-full font-bold p-4 rounded border relative">
                             <legend class="px-2 font-bold text-white-600">معاني الألوان</legend>
@@ -6382,6 +6398,13 @@
                     countdownInterval: null,
                     countdownArabic: '',
                     countdownEnglish: '',
+                    
+                    // Next episode countdown properties
+                    nextEpisodeCountdownEnglish: 'جاري التحميل...',
+                    nextEpisodeCountdownArabic: 'جاري التحميل...',
+                    nextEpisodeNumber: null,
+                    nextEpisodeDate: null,
+                    showNextEpisodeEnglishTime: false,
                     showEnglishCountdown: false,
                     hasCountdown: false,
                     filterGentaKojimaSceneEpisodes: false,
@@ -13687,6 +13710,105 @@
                     this.showEnglishCountdown = !this.showEnglishCountdown;
                 },
                 
+                toggleNextEpisodeTimeFormat() {
+                    this.showNextEpisodeEnglishTime = !this.showNextEpisodeEnglishTime;
+                },
+                
+                openEpisodeByNumber(episodeNumber) {
+                    if (!episodeNumber) return;
+                    
+                    // Find the episode with the matching number
+                    const episode = this.episodes.find(ep => 
+                        ep.EpisodeNumber === episodeNumber.toString() || 
+                        ep.EpisodeNumber === `الحلقة ${episodeNumber}`
+                    );
+                    
+                    if (episode) {
+                        this.openModal(episode);
+                    }
+                },
+                
+                updateNextEpisodeCountdown() {
+                    try {
+                        const now = new Date();
+                        // Find the next upcoming episode
+                        const upcomingEpisodes = this.episodes
+                            .filter(ep => {
+                                if (!ep.EpisodeBCDate) return false;
+                                const epDate = new Date(ep.EpisodeBCDate);
+                                epDate.setHours(12, 0, 0, 0); // Set to 12:00 PM
+                                return epDate > now;
+                            })
+                            .sort((a, b) => new Date(a.EpisodeBCDate) - new Date(b.EpisodeBCDate));
+                        
+                        if (upcomingEpisodes.length > 0) {
+                            const nextEpisode = upcomingEpisodes[0];
+                            const bcDate = new Date(nextEpisode.EpisodeBCDate);
+                            bcDate.setHours(12, 0, 0, 0); // Set to 12:00 PM
+                            
+                            this.nextEpisodeNumber = nextEpisode.EpisodeNumber.replace('الحلقة ', '');
+                            this.nextEpisodeDate = bcDate;
+                            
+                            this.calculateNextEpisodeCountdown();
+                        } else {
+                            this.nextEpisodeCountdownArabic = 'لا توجد حلقات قادمة';
+                            this.nextEpisodeCountdownEnglish = 'No upcoming episodes';
+                            this.nextEpisodeNumber = null;
+                            this.nextEpisodeDate = null;
+                        }
+                    } catch (error) {
+                        console.error('Error updating next episode countdown:', error);
+                        this.nextEpisodeCountdownArabic = 'خطأ في تحميل العد التنازلي';
+                        this.nextEpisodeCountdownEnglish = 'Error loading countdown';
+                    }
+                },
+                
+                calculateNextEpisodeCountdown() {
+                    if (!this.nextEpisodeDate) return;
+                    
+                    const now = new Date();
+                    const diff = this.nextEpisodeDate.getTime() - now.getTime();
+                    
+                    if (diff <= 0) {
+                        this.nextEpisodeCountdownArabic = 'الحلقة متاحة الآن';
+                        this.nextEpisodeCountdownEnglish = 'Episode available now';
+                        return;
+                    }
+                    
+                    // Calculate time components
+                    const seconds = Math.floor(diff / 1000);
+                    const minutes = Math.floor(seconds / 60);
+                    const hours = Math.floor(minutes / 60);
+                    const days = Math.floor(hours / 24);
+                    
+                    const remainingHours = hours % 24;
+                    const remainingMinutes = minutes % 60;
+                    const remainingSeconds = seconds % 60;
+                    
+                    // English format: years y, months m, weeks w, days d, hours h, minutes min
+                    const parts = [];
+                    if (days > 0) parts.push(`${days}d`);
+                    if (remainingHours > 0) parts.push(`${remainingHours}h`);
+                    if (remainingMinutes > 0) parts.push(`${remainingMinutes}min`);
+                    this.nextEpisodeCountdownEnglish = parts.join(' ');
+                    
+                    // Arabic format
+                    const diffDaysDecimal = diff / (1000 * 60 * 60 * 24);
+                    const diffDays = Math.floor(diffDaysDecimal);
+                    
+                    if (diffDaysDecimal < 1) {
+                        this.nextEpisodeCountdownArabic = 'متبقي أقل من يوم';
+                    } else if (diffDaysDecimal >= 1 && diffDaysDecimal < 2) {
+                        this.nextEpisodeCountdownArabic = 'متبقي يوم واحد';
+                    } else if (diffDaysDecimal >= 2 && diffDaysDecimal < 3) {
+                        this.nextEpisodeCountdownArabic = 'متبقي يومان';
+                    } else if (diffDaysDecimal >= 3 && diffDaysDecimal < 11) {
+                        this.nextEpisodeCountdownArabic = `متبقي ${diffDays} أيام`;
+                    } else {
+                        this.nextEpisodeCountdownArabic = `متبقي ${diffDays} يومًا`;
+                    }
+                },
+                
                 shuffleZikr() {
                     // If all zikrs have been shown, refill the pool
                     if (this.remainingAdhkar.length === 0) {
@@ -17066,6 +17188,26 @@
                     this.calculateCountdown();
                 }, 60000); // Update every minute
                 if (enableDebug) console.log('mounted - Countdown timer set up complete');
+                
+                // Initialize next episode countdown
+                if (this.episodes && this.episodes.length > 0) {
+                    this.updateNextEpisodeCountdown();
+                } else {
+                    // If episodes aren't loaded yet, watch for changes
+                    this.$watch('episodes', (newEpisodes) => {
+                        if (newEpisodes && newEpisodes.length > 0) {
+                            if (enableDebug) console.log('Episodes loaded, updating next episode countdown');
+                            this.updateNextEpisodeCountdown();
+                        }
+                    });
+                }
+                
+                // Set up interval to update next episode countdown every minute
+                this.nextEpisodeCountdownInterval = setInterval(() => {
+                    if (enableDebug) console.log('Timer tick - updating next episode countdown');
+                    this.updateNextEpisodeCountdown();
+                }, 60000); // Update every minute
+                if (enableDebug) console.log('mounted - Next episode countdown timer set up complete');
             },
 
             unmounted() {
@@ -17076,6 +17218,7 @@
                 if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
                 if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
                 if (this.countdownInterval) clearInterval(this.countdownInterval);
+                if (this.nextEpisodeCountdownInterval) clearInterval(this.nextEpisodeCountdownInterval);
                 if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
                 if (this.timeoutId) clearTimeout(this.timeoutId);
 
