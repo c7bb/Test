@@ -6178,6 +6178,8 @@
                     "ش": ["س","ش"],
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
+                    episodeNotesDebug: false,  // Enable for debugging episode notes processing
+                    episodeLinkClickHandler: null,
                     episodeTypeFilter: 'All',
                     episodes: [],
                     selectedMovie: null, // Track the selected movie for resolution/size view
@@ -16223,10 +16225,15 @@
                     }
                 },
 
-                episodeLinkClickHandler: null,
-
                 processEpisodeNotes(notes) {
-                    console.log('processEpisodeNotes called with notes:', notes);
+                    if (this.episodeNotesDebug) console.log('processEpisodeNotes called with notes:', notes);
+                    
+                    // Skip processing for 'ماجيك كايتو2'
+                    if (notes && notes.includes('ماجيك كايتو2')) {
+                        if (this.episodeNotesDebug) console.log('Skipping processing for ماجيك كايتو2');
+                        return notes;
+                    }
+                    
                     if (!notes) {
                         console.log('No notes provided, returning empty string');
                         return '';
@@ -16234,14 +16241,14 @@
                     
                     // First, handle 'بالفيلم n' patterns (with ب prefix)
                     let processed = notes.replace(/(ب)?(الفيلم\s+\d+(?:\.\d+)?)/g, (match, hasBa, filmPart) => {
-                        console.log('Processing film pattern:', { match, hasBa, filmPart });
+                        if (this.episodeNotesDebug) console.log('Processing film pattern:', { match, hasBa, filmPart });
                         const number = filmPart.match(/\d+(?:\.\d+)?/)[0];
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
-                        console.log('Generated film link:', { number, isDisabled });
+                        if (this.episodeNotesDebug) console.log('Generated film link:', { number, isDisabled });
                         const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
                             data-episode-type="film"
@@ -16254,13 +16261,13 @@
                     
                     // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
                     processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<!ب?الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
-                        console.log('Processing standalone number:', match);
+                        if (this.episodeNotesDebug) console.log('Processing standalone number:', match);
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
-                        console.log('Generated number link:', { number: match, isDisabled });
+                        if (this.episodeNotesDebug) console.log('Generated number link:', { number: match, isDisabled });
                         const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
                             data-episode-type="number"
@@ -16273,7 +16280,7 @@
                     
                     // Add event delegation in the next tick after the DOM is updated
                     this.$nextTick(() => {
-                        console.log('Setting up event delegation for episode links');
+                        if (this.episodeNotesDebug) console.log('Setting up event delegation for episode links');
                         
                         // Clean up any existing event listeners
                         if (this.episodeLinkClickHandler) {
@@ -16291,10 +16298,14 @@
                             
                             const type = link.dataset.episodeType;
                             const number = link.dataset.episodeNumber;
-                            console.log('Episode link clicked:', { type, number });
+                            if (this.episodeNotesDebug) {
+                                console.log('Episode link clicked:', { type, number });
+                                console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
+                                    type === 'film' ? `الفيلم ${number}` : number);
+                            }
                             
                             const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
-                            console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', episodeNumber);
+                            console.log('Episode link clicked:', { type, number });
                             
                             this.resetStatusForEpisodeManga();
                             this.openEpisodeModal(episodeNumber);
