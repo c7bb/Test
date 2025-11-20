@@ -6068,28 +6068,30 @@
                                                         </span>
                                                     </legend>
                                                     
-                                                    <!-- Status Icons -->
-                                                    <div class="absolute -top-3 right-2 z-10">
+                                                    <!-- WRAPPER DIV: Controls positioning relative to the button -->
+                                                    <div class="relative w-full">
+                                                        <button
+                                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                            @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
+                                                            class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed">
+                                                            <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                            <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                            <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                        </button>
+
+                                                        <!-- Status Icons: Now absolute relative to the button wrapper -->
                                                         <img 
                                                             v-if="video.status === 'success'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                            class="w-6 h-6"
+                                                            class="absolute right-0 top-0 w-6 h-6 m-2 pointer-events-none"
                                                         />
                                                         <img 
                                                             v-else-if="video.status === 'error'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                            class="w-6 h-6"
+                                                            class="absolute right-0 top-0 w-6 h-6 m-2 pointer-events-none"
                                                         />
                                                     </div>
-                                                    
-                                                    <button
-                                                        :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                        @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                        class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed">
-                                                        <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                        <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                                        <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                    </button>
+
                                                 </fieldset>
                                                 
                                                 <!-- Sending Overlay -->
