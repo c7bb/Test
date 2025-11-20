@@ -846,14 +846,14 @@
                                                     <img 
                                                         v-if="video.status === 'success'" 
                                                         src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none m-1"
+                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none"
                                                     />
 
                                                     <!-- Error Icon (Overlaid Top-Right) -->
                                                     <img 
                                                         v-if="video.status === 'error'" 
                                                         src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none m-1"
+                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none"
                                                     />
 
                                                     <!-- Loading Overlay (Centered over button) -->
@@ -890,6 +890,8 @@
                                         <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="رجوع" class="h-6 w-6" />
                                     </button>
                                 </legend>
+                                
+                                <!-- GRID VIEW: Movie Selection -->
                                 <div v-if="!selectedEpisode" class="grid grid-cols-3 gap-2" dir="ltr">
                                     <button 
                                         v-for="movie in groupedMovies[activeTab.movies]?.items" 
@@ -899,7 +901,11 @@
                                         {{ movie.EpisodeNumber.replace('الفيلم ', '') }}
                                     </button>                                
                                 </div>
+                                
+                                <!-- LIST VIEW: Videos in Selected Movie -->
                                 <div v-else class="flex flex-col justify-center gap-4">
+                                    
+                                    <!-- Navigation Controls -->
                                     <div class="flex items-center px-4">
                                         <div class="w-8 flex justify-start">
                                             <button v-if="showNextMovieGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToNextMovieGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
@@ -927,31 +933,71 @@
                                             </button>
                                         </div>
                                     </div>
+                                    
+                                    <!-- START: UPDATED MOVIE LIST LOOP -->
                                     <div v-for="(video, index) in selectedEpisode.EpisodeVideosIDs" 
                                         :key="video.VideoID" 
-                                        class="relative flex flex-col gap-4">
-                                        <button
-                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                            @click="sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime)"
-                                            class="bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed">
-                                            <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                            <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                            <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                        </button>
-                                        <img 
-                                            v-if="video.status === 'success'" 
-                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                            class="absolute right-0 top-0 w-6 h-6 ml-2"
-                                        />
-                                        <img 
-                                            v-if="video.status === 'error'" 
-                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                            class="absolute right-0 top-0 w-6 h-6 ml-2"
-                                        />
-                                        <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded">
-                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                        class="relative flex flex-col">
+                                        
+                                        <div class="relative">
+                                            
+                                            <!-- Conditional Fieldset (Movie Version) -->
+                                            <fieldset 
+                                                class="rounded relative"
+                                                :class="{ 'border p-3': video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered }">
+                                                
+                                                <!-- Conditional Legend -->
+                                                <legend 
+                                                    v-if="video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered"
+                                                    class="px-2 text-sm">
+                                                    <span v-if="video.EpisodeCategory">
+                                                        {{ video.EpisodeCategory === 'S' ? 'مترجم' : (video.EpisodeCategory === 'D' ? 'مدبلج' : video.EpisodeCategory) }}
+                                                    </span>
+                                                    <span v-if="video.EpisodeTranslator">
+                                                        <span v-if="video.EpisodeCategory"> - </span>{{ video.EpisodeTranslator }}
+                                                    </span>
+                                                    <span v-if="video.EpisodeRemastered">
+                                                        <span v-if="video.EpisodeCategory || video.EpisodeTranslator"> - </span>
+                                                        {{ video.EpisodeRemastered === 'T' ? 'محسنة' : (video.EpisodeRemastered === 'F' ? 'غير محسنة' : video.EpisodeRemastered) }}
+                                                    </span>
+                                                </legend>
+                                                
+                                                <!-- Main Wrapper for Button/Icons -->
+                                                <div class="relative w-full">
+                                                    
+                                                    <!-- Button (Maintains amber-700) -->
+                                                    <button
+                                                        :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                        @click="sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime)"
+                                                        class="w-full bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                        <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                        <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                        <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                    </button>
+                                                    
+                                                    <!-- Status Images (Overlaid Top-Right) -->
+                                                    <img 
+                                                        v-if="video.status === 'success'" 
+                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none"
+                                                    />
+                                                    <img 
+                                                        v-if="video.status === 'error'" 
+                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none"
+                                                    />
+                                                    
+                                                    <!-- Centered Loading Overlay -->
+                                                    <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                    </div>
+
+                                                </div>
+                                            </fieldset>
                                         </div>
                                     </div>
+                                    <!-- END: UPDATED MOVIE LIST LOOP -->
+                                    
                                 </div>
                             </fieldset>
                         </div>
