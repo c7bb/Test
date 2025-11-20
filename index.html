@@ -16235,7 +16235,7 @@
                     }
                     
                     if (!notes) {
-                        console.log('No notes provided, returning empty string');
+                        if (this.episodeNotesDebug) console.log('No notes provided, returning empty string');
                         return '';
                     }
                     
@@ -16249,12 +16249,11 @@
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
                         if (this.episodeNotesDebug) console.log('Generated film link:', { number, isDisabled });
-                        const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
                             data-episode-type="film"
                             data-episode-number="${number}"
-                            ${isDisabledAttr}
-                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            ${isDisabled ? 'disabled' : ''}
+                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
                             style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
                         >${match}</span>`;
                     });
@@ -16268,12 +16267,11 @@
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
                         if (this.episodeNotesDebug) console.log('Generated number link:', { number: match, isDisabled });
-                        const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
                             data-episode-type="number"
                             data-episode-number="${match}"
-                            ${isDisabledAttr}
-                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            ${isDisabled ? 'disabled' : ''}
+                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
                             style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
                         >${match}</span>`;
                     });
@@ -16299,13 +16297,13 @@
                             const type = link.dataset.episodeType;
                             const number = link.dataset.episodeNumber;
                             if (this.episodeNotesDebug) {
-                                console.log('Episode link clicked:', { type, number });
-                                console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
+                                if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
+                                if (this.episodeNotesDebug) console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
                                     type === 'film' ? `الفيلم ${number}` : number);
                             }
                             
                             const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
-                            console.log('Episode link clicked:', { type, number });
+                            if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
                             
                             this.resetStatusForEpisodeManga();
                             this.openEpisodeModal(episodeNumber);
@@ -16313,7 +16311,7 @@
                         
                         // Attach the event listener to the document
                         document.addEventListener('click', this.episodeLinkClickHandler);
-                        console.log('Event listener added to document');
+                        if (this.episodeNotesDebug) console.log('Event listener added to document');
                     });
                     
                     return processed;
