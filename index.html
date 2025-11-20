@@ -6054,8 +6054,25 @@
                                             class="relative flex flex-col">
                                             
                                             <div class="relative">
-                                                <fieldset class="border p-3 rounded relative">
-                                                    <legend class="px-2 text-sm">
+                                                
+                                                <!-- 
+                                                    Updated Fieldset: 
+                                                    1. We moved 'rounded relative' to the static class attribute.
+                                                    2. We bound 'border p-3' to the same condition as the legend. 
+                                                       If no info exists, the border disappears for a cleaner look.
+                                                -->
+                                                <fieldset 
+                                                    class="rounded relative"
+                                                    :class="{ 'border p-3': video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered }">
+                                                    
+                                                    <!-- 
+                                                        Updated Legend: 
+                                                        Added v-if to check if any of the 3 info variables exist.
+                                                        If all are null/empty, the legend is hidden.
+                                                    -->
+                                                    <legend 
+                                                        v-if="video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered"
+                                                        class="px-2 text-sm">
                                                         <span v-if="video.EpisodeCategory">
                                                             {{ video.EpisodeCategory === 'S' ? 'مترجم' : (video.EpisodeCategory === 'D' ? 'مدبلج' : video.EpisodeCategory) }}
                                                         </span>
@@ -6082,16 +6099,15 @@
                                                         </button>
 
                                                         <!-- 2. Status Images (Pinned to Top Right of the Button area) -->
-                                                        <!-- Added z-10 to ensure it sits on top of button text if needed -->
                                                         <img 
                                                             v-if="video.status === 'success'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none m-1"
                                                         />
                                                         <img 
                                                             v-else-if="video.status === 'error'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none m-1"
                                                         />
 
                                                         <!-- 3. Sending Overlay (Centered over the Button only) -->
