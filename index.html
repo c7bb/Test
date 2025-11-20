@@ -6038,9 +6038,11 @@
                                     <p class="text-lg text-center">{{ selectedEpisode.EpisodeNextHint }}</p>
                                 </fieldset>
 
-                                <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeNotes !== ''" class="border border-red-500 p-2 rounded mb-2">
+                                <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeNotes !== ''" class="border border-red-500 p-2 rounded mb-2 episode-notes-container">
                                     <legend class="font-bold text-lg">ملاحظة</legend>
-                                    <p class="text-lg" v-html="processEpisodeNotes(selectedEpisode.EpisodeNotes)"></p>
+                                    <div class="episode-notes-container">
+                                        <p class="text-lg" v-html="processEpisodeNotes(selectedEpisode.EpisodeNotes)"></p>
+                                    </div>
                                 </fieldset>
 
                                 <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeVideosIDs !== null" class="border p-2 rounded mb-2">
@@ -16232,11 +16234,13 @@
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
-                        // Keep the original match text in the display, but use normalized 'الفيلم n' in the click handler
+                        // Use data attributes to store the episode number and type
+                        const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
-                            :disabled="${isDisabled}"
-                            @click="resetStatusForEpisodeManga(); openEpisodeModal('الفيلم ${number}')"
-                            class="text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            data-episode-type="film"
+                            data-episode-number="${number}"
+                            ${isDisabledAttr}
+                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                         >${match}</span>`;
                     });
                     
@@ -16248,11 +16252,31 @@
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
+                        const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
-                            :disabled="${isDisabled}"
-                            @click="resetStatusForEpisodeManga(); openEpisodeModal('${match}')"
-                            class="text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            data-episode-type="number"
+                            data-episode-number="${match}"
+                            ${isDisabledAttr}
+                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                         >${match}</span>`;
+                    });
+                    
+                    // Add event delegation in the next tick after the DOM is updated
+                    this.$nextTick(() => {
+                        const container = this.$el.querySelector('.episode-notes-container');
+                        if (container) {
+                            container.addEventListener('click', (e) => {
+                                const link = e.target.closest('.episode-link:not([disabled])');
+                                if (link) {
+                                    e.preventDefault();
+                                    const type = link.dataset.episodeType;
+                                    const number = link.dataset.episodeNumber;
+                                    const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
+                                    this.resetStatusForEpisodeManga();
+                                    this.openEpisodeModal(episodeNumber);
+                                }
+                            });
+                        }
                     });
                     
                     return processed;
@@ -16952,5 +16976,3 @@
     </style>
 </body>
 </html>
-
-
