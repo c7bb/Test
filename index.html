@@ -6054,21 +6054,7 @@
                                             class="relative flex flex-col">
                                             
                                             <div class="relative">
-                                                <!-- Status Icons -->
-                                                <div class="absolute -top-3 right-2 z-10">
-                                                    <img 
-                                                        v-if="video.status === 'success'" 
-                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                        class="w-6 h-6"
-                                                    />
-                                                    <img 
-                                                        v-else-if="video.status === 'error'" 
-                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                        class="w-6 h-6"
-                                                    />
-                                                </div>
-                                                
-                                                <fieldset class="border p-3 rounded">
+                                                <fieldset class="border p-3 rounded relative">
                                                     <legend class="px-2 text-sm">
                                                         <span v-if="video.EpisodeCategory">
                                                             {{ video.EpisodeCategory === 'S' ? 'مترجم' : (video.EpisodeCategory === 'D' ? 'مدبلج' : video.EpisodeCategory) }}
@@ -6081,6 +6067,20 @@
                                                             {{ video.EpisodeRemastered === 'T' ? 'محسنة' : (video.EpisodeRemastered === 'F' ? 'غير محسنة' : video.EpisodeRemastered) }}
                                                         </span>
                                                     </legend>
+                                                    
+                                                    <!-- Status Icons -->
+                                                    <div class="absolute -top-3 right-2 z-10">
+                                                        <img 
+                                                            v-if="video.status === 'success'" 
+                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                            class="w-6 h-6"
+                                                        />
+                                                        <img 
+                                                            v-else-if="video.status === 'error'" 
+                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                            class="w-6 h-6"
+                                                        />
+                                                    </div>
                                                     
                                                     <button
                                                         :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
