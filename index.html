@@ -16224,58 +16224,82 @@
                 },
 
                 processEpisodeNotes(notes) {
-                    if (!notes) return '';
+                    console.log('processEpisodeNotes called with notes:', notes);
+                    if (!notes) {
+                        console.log('No notes provided, returning empty string');
+                        return '';
+                    }
                     
                     // First, handle 'بالفيلم n' patterns (with ب prefix)
                     let processed = notes.replace(/(ب)?(الفيلم\s+\d+(?:\.\d+)?)/g, (match, hasBa, filmPart) => {
+                        console.log('Processing film pattern:', { match, hasBa, filmPart });
                         const number = filmPart.match(/\d+(?:\.\d+)?/)[0];
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
-                        // Use data attributes to store the episode number and type
+                        console.log('Generated film link:', { number, isDisabled });
                         const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
                             data-episode-type="film"
                             data-episode-number="${number}"
                             ${isDisabledAttr}
                             class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
                         >${match}</span>`;
                     });
                     
                     // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
                     // but only if they're not already part of a link
                     processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<!ب?الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
+                        console.log('Processing standalone number:', match);
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
+                        console.log('Generated number link:', { number: match, isDisabled });
                         const isDisabledAttr = isDisabled ? 'disabled' : '';
                         return `<span 
                             data-episode-type="number"
                             data-episode-number="${match}"
                             ${isDisabledAttr}
                             class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
                         >${match}</span>`;
                     });
                     
                     // Add event delegation in the next tick after the DOM is updated
                     this.$nextTick(() => {
+                        console.log('Setting up event delegation for episode links');
                         const container = this.$el.querySelector('.episode-notes-container');
+                        console.log('Container element:', container);
+                        
                         if (container) {
-                            container.addEventListener('click', (e) => {
+                            // Remove any existing event listeners to prevent duplicates
+                            container.removeEventListener('click', this.handleEpisodeLinkClick);
+                            this.handleEpisodeLinkClick = (e) => {
                                 const link = e.target.closest('.episode-link:not([disabled])');
+                                console.log('Link clicked:', link);
                                 if (link) {
                                     e.preventDefault();
+                                    e.stopPropagation();
                                     const type = link.dataset.episodeType;
                                     const number = link.dataset.episodeNumber;
+                                    console.log('Episode link clicked:', { type, number });
+                                    
                                     const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
+                                    console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', episodeNumber);
+                                    
                                     this.resetStatusForEpisodeManga();
                                     this.openEpisodeModal(episodeNumber);
                                 }
-                            });
+                            };
+                            container.addEventListener('click', this.handleEpisodeLinkClick);
+                            console.log('Event listener added to container');
+                        } else {
+                            console.error('Could not find .episode-notes-container element');
                         }
                     });
                     
