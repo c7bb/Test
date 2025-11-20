@@ -6068,36 +6068,39 @@
                                                         </span>
                                                     </legend>
                                                     
-                                                    <!-- WRAPPER DIV: Controls positioning relative to the button -->
+                                                    <!-- MAIN WRAPPER: Defines the boundaries for the button, images, and loading overlay -->
                                                     <div class="relative w-full">
+                                                        
+                                                        <!-- 1. The Button -->
                                                         <button
                                                             :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
                                                             @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                            class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed">
+                                                            class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
                                                             <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
                                                             <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
                                                             <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
                                                         </button>
 
-                                                        <!-- Status Icons: Now absolute relative to the button wrapper -->
+                                                        <!-- 2. Status Images (Pinned to Top Right of the Button area) -->
+                                                        <!-- Added z-10 to ensure it sits on top of button text if needed -->
                                                         <img 
                                                             v-if="video.status === 'success'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 m-2 pointer-events-none"
+                                                            class="absolute right-0 top-0 w-6 h-6 m-1 z-10 pointer-events-none"
                                                         />
                                                         <img 
                                                             v-else-if="video.status === 'error'" 
                                                             src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 m-2 pointer-events-none"
+                                                            class="absolute right-0 top-0 w-6 h-6 m-1 z-10 pointer-events-none"
                                                         />
-                                                    </div>
 
+                                                        <!-- 3. Sending Overlay (Centered over the Button only) -->
+                                                        <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                        </div>
+
+                                                    </div>
                                                 </fieldset>
-                                                
-                                                <!-- Sending Overlay -->
-                                                <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded">
-                                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
