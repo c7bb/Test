@@ -6045,29 +6045,29 @@
                                     </div>
                                 </fieldset>
 
-                                <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeVideosIDs !== null" class="border p-4 rounded mb-4">
+                                <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeVideosIDs !== null" class="border p-2 rounded mb-4">
                                     <legend class="font-bold text-lg px-2">مشاهدة (عبر البوت)</legend>
-                                    <div class="grid grid-cols-1 gap-4">
+                                    <div class="flex flex-col gap-4">
                                         <div 
                                             v-for="(video, index) in selectedEpisode.EpisodeVideosIDs" 
                                             :key="video.VideoID" 
-                                            class="relative">
-                                            
-                                            <!-- Status Icons -->
-                                            <div class="flex justify-center mb-1">
-                                                <img 
-                                                    v-if="video.status === 'success'" 
-                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                    class="w-6 h-6"
-                                                />
-                                                <img 
-                                                    v-else-if="video.status === 'error'" 
-                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                    class="w-6 h-6"
-                                                />
-                                            </div>
+                                            class="relative flex flex-col">
                                             
                                             <div class="relative">
+                                                <!-- Status Icons -->
+                                                <div class="absolute -top-3 right-2 z-10">
+                                                    <img 
+                                                        v-if="video.status === 'success'" 
+                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                        class="w-6 h-6"
+                                                    />
+                                                    <img 
+                                                        v-else-if="video.status === 'error'" 
+                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                        class="w-6 h-6"
+                                                    />
+                                                </div>
+                                                
                                                 <fieldset class="border p-3 rounded">
                                                     <legend class="px-2 text-sm">
                                                         <span v-if="video.EpisodeCategory">
