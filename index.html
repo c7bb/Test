@@ -16224,7 +16224,7 @@
                 processEpisodeNotes(notes) {
                     if (!notes) return '';
                     
-                    // Replace 'الفيلم n' patterns
+                    // First, handle 'الفيلم n' patterns
                     let processed = notes.replace(/(الفيلم\s+\d+(?:\.\d+)?)/g, (match) => {
                         const number = match.match(/\d+(?:\.\d+)?/)[0];
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
@@ -16234,13 +16234,14 @@
                         
                         return `<span 
                             :disabled="${isDisabled}"
-                            @click="resetStatusForEpisodeManga(); openEpisodeModal('${number}')"
+                            @click="resetStatusForEpisodeManga(); openEpisodeModal('الفيلم ${number}')"
                             class="text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                         >${match}</span>`;
                     });
                     
-                    // Replace standalone numbers that weren't part of 'الفيلم n'
-                    processed = processed.replace(/(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
+                    // Then handle standalone numbers that weren't part of 'الفيلم n'
+                    // but only if they're not already part of a link
+                    processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
@@ -16950,3 +16951,4 @@
     </style>
 </body>
 </html>
+
