@@ -16224,14 +16224,15 @@
                 processEpisodeNotes(notes) {
                     if (!notes) return '';
                     
-                    // First, handle 'الفيلم n' patterns
-                    let processed = notes.replace(/(الفيلم\s+\d+(?:\.\d+)?)/g, (match) => {
-                        const number = match.match(/\d+(?:\.\d+)?/)[0];
+                    // First, handle 'بالفيلم n' patterns (with ب prefix)
+                    let processed = notes.replace(/(ب)?(الفيلم\s+\d+(?:\.\d+)?)/g, (match, hasBa, filmPart) => {
+                        const number = filmPart.match(/\d+(?:\.\d+)?/)[0];
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
+                        // Keep the original match text in the display, but use normalized 'الفيلم n' in the click handler
                         return `<span 
                             :disabled="${isDisabled}"
                             @click="resetStatusForEpisodeManga(); openEpisodeModal('الفيلم ${number}')"
@@ -16239,9 +16240,9 @@
                         >${match}</span>`;
                     });
                     
-                    // Then handle standalone numbers that weren't part of 'الفيلم n'
+                    // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
                     // but only if they're not already part of a link
-                    processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
+                    processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<!ب?الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
@@ -16951,4 +16952,5 @@
     </style>
 </body>
 </html>
+
 
