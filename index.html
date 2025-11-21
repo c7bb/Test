@@ -5613,9 +5613,20 @@
                                     }}
                                     </span>
                                     <span>للحلقة</span>
-                                    <span class="text-yellow-300 transition-all duration-100 active:scale-90">
-                                    {{ nextEpisodeInfo.number }}.
+                                    <span
+                                    v-if="nextEpisodeHasRecord"
+                                    class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+                                    @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+                                    >
+                                    {{ nextEpisodeInfo.number }}
                                     </span>
+                                    <span
+                                    v-else
+                                    class="text-yellow-300 transition-all duration-100 active:scale-90"
+                                    >
+                                    {{ nextEpisodeInfo.number }}
+                                    </span>
+                                    .
                                 </p>
 
                                 <p
@@ -5627,7 +5638,7 @@
                                     class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
                                     @click="openEpisodeModal(String(nextEpisodeInfo.number))"
                                     >
-                                    {{ nextEpisodeInfo.number }}.
+                                    {{ nextEpisodeInfo.number }}
                                     </span>
                                     <span> قيد الترجمة من قبل المترجمين.</span>
                                 </p>
@@ -5654,8 +5665,9 @@
                                     </span>
                                     <span>للفصل</span>
                                     <span class="text-yellow-300 transition-all duration-100 active:scale-90">
-                                    {{ nextMangaInfo.number }}.
+                                    {{ nextMangaInfo.number }}
                                     </span>
+                                    .
                                 </p>
 
                                 <p
@@ -5667,7 +5679,7 @@
                                     class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
                                     @click="openMangaModal(String(nextMangaInfo.number))"
                                     >
-                                    {{ nextMangaInfo.number }}.
+                                    {{ nextMangaInfo.number }}
                                     </span>
                                     <span> قيد الترجمة من قبل المترجمين.</span>
                                 </p>
@@ -6503,6 +6515,7 @@
                     nextEpisodeCountdownEnglishSentence: '',
                     showEnglishNextEpisodeCountdown: false,
                     nextEpisodeExistsInEpisodes: false,
+                    nextEpisodeHasRecord: false,
                     nextEpisodeIntervalId: null,
 
                     nextMangaInfo: null,
@@ -13939,6 +13952,8 @@
                                 String(this.nextEpisodeInfo.number)
                         );
                     }
+
+                    this.nextEpisodeHasRecord = Boolean(matchingEpisode);
 
                     const hasReadyVideos = Array.isArray(matchingEpisode?.EpisodeVideosIDs)
                         ? matchingEpisode.EpisodeVideosIDs.length > 0
