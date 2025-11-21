@@ -5625,8 +5625,7 @@
                                     class="text-yellow-300 transition-all duration-100 active:scale-90"
                                     >
                                     {{ nextEpisodeInfo.number }}
-                                    </span>
-                                    .
+                                    </span>.
                                 </p>
 
                                 <p
@@ -5666,8 +5665,7 @@
                                     <span>للفصل</span>
                                     <span class="text-yellow-300 transition-all duration-100 active:scale-90">
                                     {{ nextMangaInfo.number }}
-                                    </span>
-                                    .
+                                    </span>.
                                 </p>
 
                                 <p
@@ -13977,13 +13975,8 @@
                     if (now < releaseDate) {
                         this.nextEpisodeStatus = 'countdown';
                         this.computeNextEpisodeCountdown(now, releaseDate);
-                    } else if (isSameDay) {
-                        this.nextEpisodeStatus = 'translation';
-                        this.nextEpisodeCountdownArabicDynamic = '';
-                        this.nextEpisodeCountdownEnglishValue = '';
-                        this.showEnglishNextEpisodeCountdown = false;
                     } else {
-                        this.nextEpisodeStatus = '';
+                        this.nextEpisodeStatus = 'translation';
                         this.nextEpisodeCountdownArabicDynamic = '';
                         this.nextEpisodeCountdownEnglishValue = '';
                         this.showEnglishNextEpisodeCountdown = false;
