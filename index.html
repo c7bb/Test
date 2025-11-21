@@ -13931,13 +13931,20 @@
                     this.nextEpisodeReleaseDate = releaseDate;
                     const now = new Date();
 
-                    this.nextEpisodeExistsInEpisodes = Array.isArray(this.episodes)
-                        ? this.episodes.some(
+                    let matchingEpisode = null;
+                    if (Array.isArray(this.episodes) && this.episodes.length > 0) {
+                        matchingEpisode = this.episodes.find(
                             (episode) =>
                                 String(episode.EpisodeNumber) ===
                                 String(this.nextEpisodeInfo.number)
-                        )
+                        );
+                    }
+
+                    const hasReadyVideos = Array.isArray(matchingEpisode?.EpisodeVideosIDs)
+                        ? matchingEpisode.EpisodeVideosIDs.length > 0
                         : false;
+
+                    this.nextEpisodeExistsInEpisodes = Boolean(matchingEpisode && hasReadyVideos);
 
                     if (this.nextEpisodeExistsInEpisodes) {
                         this.nextEpisodeStatus = 'available';
