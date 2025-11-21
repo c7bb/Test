@@ -5599,7 +5599,7 @@
                                 >
                                 <p
                                     v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicDynamic"
-                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
+                                    class="text-white transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
                                 >
                                     <span>متبقي</span>
                                     <span
@@ -5614,20 +5614,20 @@
                                     </span>
                                     <span>للحلقة</span>
                                     <span class="text-yellow-300 transition-all duration-100 active:scale-90">
-                                    {{ nextEpisodeInfo.number }}
+                                    {{ nextEpisodeInfo.number }}.
                                     </span>
                                 </p>
 
                                 <p
                                     v-else-if="nextEpisodeStatus === 'translation'"
-                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base"
+                                    class="text-white transition-all duration-100 active:scale-90 text-base"
                                 >
                                     <span>الحلقة </span>
                                     <span
                                     class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
                                     @click="openEpisodeModal(String(nextEpisodeInfo.number))"
                                     >
-                                    {{ nextEpisodeInfo.number }}
+                                    {{ nextEpisodeInfo.number }}.
                                     </span>
                                     <span> قيد الترجمة من قبل المترجمين.</span>
                                 </p>
@@ -5639,7 +5639,7 @@
                                 >
                                 <p
                                     v-if="nextMangaStatus === 'countdown' && nextMangaCountdownArabicDynamic"
-                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
+                                    class="text-white transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
                                 >
                                     <span>متبقي</span>
                                     <span
@@ -5654,20 +5654,20 @@
                                     </span>
                                     <span>للفصل</span>
                                     <span class="text-yellow-300 transition-all duration-100 active:scale-90">
-                                    {{ nextMangaInfo.number }}
+                                    {{ nextMangaInfo.number }}.
                                     </span>
                                 </p>
 
                                 <p
                                     v-else-if="nextMangaStatus === 'translation'"
-                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base"
+                                    class="text-white transition-all duration-100 active:scale-90 text-base"
                                 >
                                     <span>الفصل </span>
                                     <span
                                     class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
                                     @click="openMangaModal(String(nextMangaInfo.number))"
                                     >
-                                    {{ nextMangaInfo.number }}
+                                    {{ nextMangaInfo.number }}.
                                     </span>
                                     <span> قيد الترجمة من قبل المترجمين.</span>
                                 </p>
