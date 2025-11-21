@@ -7144,10 +7144,18 @@
                 },
 
                 groupedMangas() {
+                    const mangaSources = Array.isArray(this.mangas) ? this.mangas : [];
+                    const episodeSources = Array.isArray(this.episodes) ? this.episodes : [];
+
                     const allMangas = [
-                        ...this.mangas.flatMap(m => m.MangasIDs),
-                        ...this.episodes.flatMap(e => e.EpisodeMangasIDs || [])
-                    ].sort((a, b) => a.MangaNumber - b.MangaNumber);
+                        ...mangaSources.flatMap(m => Array.isArray(m.MangasIDs) ? m.MangasIDs : []),
+                        ...episodeSources.flatMap(e => Array.isArray(e.EpisodeMangasIDs) ? e.EpisodeMangasIDs : [])
+                    ].filter(manga => manga && manga.MangaNumber)
+                     .sort((a, b) => Number(a.MangaNumber) - Number(b.MangaNumber));
+
+                    if (!allMangas.length) {
+                        return [];
+                    }
 
                     // Remove duplicates by MangaNumber
                     const uniqueMangas = Array.from(new Set(allMangas.map(m => m.MangaNumber)))
@@ -7156,13 +7164,13 @@
                     const chunkSize = 100;
                     return uniqueMangas.reduce((acc, _, i, arr) => {
                         if (i % chunkSize === 0) {
-                        return [
-                            ...acc,
-                            {
-                            range: `${arr[i].MangaNumber}-${arr[Math.min(i + chunkSize - 1, arr.length - 1)].MangaNumber}`,
-                            items: arr.slice(i, i + chunkSize)
-                            }
-                        ];
+                            return [
+                                ...acc,
+                                {
+                                    range: `${arr[i].MangaNumber}-${arr[Math.min(i + chunkSize - 1, arr.length - 1)].MangaNumber}`,
+                                    items: arr.slice(i, i + chunkSize)
+                                }
+                            ];
                         }
                         return acc;
                     }, []);
