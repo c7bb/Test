@@ -1,11 +1,12 @@
 {
   "nextEpisode": {
     "number": "1183",
-    "date": "2025-11-22-12:00",
-    "Enable": false
+    "date": "2025-11-29-12:00",
+    "Enable": true
   },
   "nextManga": {
-    "number": "1130",
-    "date": "2025-12-12-18:00"
+    "number": "1154",
+    "date": "2025-12-02-12:00",
+    "Enable": true
   }
 }
