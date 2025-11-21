@@ -5591,6 +5591,38 @@
 
                             </div>
                             <p class="text-white text-lg text-center font-bold mt-4">الأحداث القادمة</p>
+                            <!-- Upcoming Episode Notice -->
+<div
+  v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
+  class="mt-2 text-center"
+>
+  <p
+    v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicSentence"
+    @click="toggleNextEpisodeCountdownLanguage"
+    class="text-yellow-300 transition-all duration-100 active:scale-90 cursor-pointer"
+  >
+    {{
+      showEnglishNextEpisodeCountdown
+        ? nextEpisodeCountdownEnglishSentence
+        : nextEpisodeCountdownArabicSentence
+    }}
+  </p>
+
+  <p
+    v-else-if="nextEpisodeStatus === 'translation'"
+    class="text-yellow-300 transition-all duration-100 active:scale-90"
+  >
+    الحلقة {{ nextEpisodeInfo.number }} قيد الترجمة من قبل المترجمين.
+  </p>
+
+  <p
+    v-else-if="nextEpisodeStatus === 'available'"
+    class="text-yellow-300 transition-all duration-100 active:scale-90 underline cursor-pointer"
+    @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+  >
+    الحلقة {{ nextEpisodeInfo.number }} جاهزة — اضغط للعرض.
+  </p>
+</div>
                         </div>
 
                         <!-- Centered Description Box for Colors and Their Names with "معاني الألوان" Legend -->
@@ -6414,6 +6446,15 @@
                     showEnglishMovieTimeFormat: false,
                     movieHasUpcomingRelease: false,
                     movieTimingInterval: null,
+
+                    nextEpisodeInfo: null,
+nextEpisodeReleaseDate: null,
+nextEpisodeStatus: '',
+nextEpisodeCountdownArabicSentence: '',
+nextEpisodeCountdownEnglishSentence: '',
+showEnglishNextEpisodeCountdown: false,
+nextEpisodeExistsInEpisodes: false,
+nextEpisodeIntervalId: null,
 
                     filterGentaKojimaSceneEpisodes: false,
                     filterGentaKojimaBackgroundEpisodes: false,
@@ -13617,6 +13658,155 @@
                 },
             },
             methods: {
+
+                async loadNextEpisodeInfo() {
+    try {
+        const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
+        const payload = await response.json();
+        this.nextEpisodeInfo = payload?.nextEpisode
+            ? { ...payload.nextEpisode }
+            : null;
+        this.refreshNextEpisodeState();
+    } catch (error) {
+        console.error('Error loading next episode info:', error);
+        this.nextEpisodeInfo = null;
+    }
+},
+parseNextEpisodeDate(dateStr) {
+    if (!dateStr) return null;
+    const trimmed = String(dateStr).trim();
+    const parts = trimmed.split('-');
+    if (parts.length < 3) return null;
+
+    const year = Number(parts[0]);
+    const month = Number(parts[1]);
+    const day = Number(parts[2]);
+    if (![year, month, day].every(Number.isFinite)) return null;
+
+    let hours = 12;
+    let minutes = 0;
+    if (parts[3]) {
+        const [hh, mm] = parts[3].split(':');
+        if (hh && !Number.isNaN(Number(hh))) hours = Number(hh);
+        if (mm && !Number.isNaN(Number(mm))) minutes = Number(mm);
+    }
+
+    const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+},
+refreshNextEpisodeState() {
+    if (!this.nextEpisodeInfo || this.nextEpisodeInfo.Enable === false) {
+        this.nextEpisodeStatus = '';
+        this.nextEpisodeCountdownArabicSentence = '';
+        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeReleaseDate = null;
+        return;
+    }
+
+    const releaseDate = this.parseNextEpisodeDate(this.nextEpisodeInfo.date);
+    if (!releaseDate) {
+        this.nextEpisodeStatus = '';
+        this.nextEpisodeCountdownArabicSentence = '';
+        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeReleaseDate = null;
+        return;
+    }
+
+    this.nextEpisodeReleaseDate = releaseDate;
+    const now = new Date();
+
+    this.nextEpisodeExistsInEpisodes = Array.isArray(this.episodes)
+        ? this.episodes.some(
+              (episode) =>
+                  String(episode.EpisodeNumber) ===
+                  String(this.nextEpisodeInfo.number)
+          )
+        : false;
+
+    if (this.nextEpisodeExistsInEpisodes) {
+        this.nextEpisodeStatus = 'available';
+        this.nextEpisodeCountdownArabicSentence = '';
+        this.nextEpisodeCountdownEnglishSentence = '';
+        this.showEnglishNextEpisodeCountdown = false;
+        return;
+    }
+
+    const isSameDay =
+        now.getFullYear() === releaseDate.getFullYear() &&
+        now.getMonth() === releaseDate.getMonth() &&
+        now.getDate() === releaseDate.getDate();
+
+    if (now < releaseDate) {
+        this.nextEpisodeStatus = 'countdown';
+        this.computeNextEpisodeCountdown(now, releaseDate);
+    } else if (isSameDay) {
+        this.nextEpisodeStatus = 'translation';
+        this.nextEpisodeCountdownArabicSentence = '';
+        this.nextEpisodeCountdownEnglishSentence = '';
+        this.showEnglishNextEpisodeCountdown = false;
+    } else {
+        this.nextEpisodeStatus = '';
+        this.nextEpisodeCountdownArabicSentence = '';
+        this.nextEpisodeCountdownEnglishSentence = '';
+        this.showEnglishNextEpisodeCountdown = false;
+    }
+},
+computeNextEpisodeCountdown(currentTime, releaseDate) {
+    const diffMs = releaseDate.getTime() - currentTime.getTime();
+    if (diffMs <= 0) {
+        this.nextEpisodeCountdownArabicSentence = '';
+        this.nextEpisodeCountdownEnglishSentence = '';
+        return;
+    }
+
+    const diffDaysDecimal = diffMs / (1000 * 60 * 60 * 24);
+    const diffDays = Math.floor(diffDaysDecimal);
+    const remainingHours = Math.floor((diffDaysDecimal - diffDays) * 24);
+    const remainingMinutes = Math.floor(
+        ((diffDaysDecimal - diffDays) * 24 - remainingHours) * 60
+    );
+
+    const englishParts = [];
+    if (diffDays > 0) englishParts.push(`${diffDays}d`);
+    if (remainingHours > 0) englishParts.push(`${remainingHours}h`);
+    if (remainingMinutes > 0) englishParts.push(`${remainingMinutes}min`);
+    if (!englishParts.length) englishParts.push('1min');
+
+    const moreThan = 'متبقي أكثر من ';
+    const lessThan = 'متبقي أقل من ';
+    let countdownArabic = '';
+
+    if (diffDaysDecimal < 1) {
+        countdownArabic = `${lessThan}يوم`;
+    } else if (diffDaysDecimal >= 1 && diffDaysDecimal < 2) {
+        countdownArabic =
+            diffDaysDecimal > 1 ? `${moreThan}يوم واحد` : 'متبقي يوم واحد';
+    } else if (diffDaysDecimal >= 2 && diffDaysDecimal < 3) {
+        countdownArabic =
+            diffDaysDecimal > 2 ? `${moreThan}يومان` : 'متبقي يومان';
+    } else if (diffDaysDecimal >= 3 && diffDaysDecimal < 11) {
+        countdownArabic =
+            diffDaysDecimal > diffDays
+                ? `${moreThan}${diffDays} أيام`
+                : `متبقي ${diffDays} أيام`;
+    } else {
+        countdownArabic =
+            diffDaysDecimal > diffDays
+                ? `${moreThan}${diffDays} يومًا`
+                : `متبقي ${diffDays} يومًا`;
+    }
+
+    this.nextEpisodeCountdownArabicSentence = `${countdownArabic} للحلقة ${this.nextEpisodeInfo.number}`;
+    this.nextEpisodeCountdownEnglishSentence = `Less than ${englishParts.join(
+        ''
+    )} for episode ${this.nextEpisodeInfo.number}`;
+},
+toggleNextEpisodeCountdownLanguage() {
+    if (this.nextEpisodeStatus !== 'countdown') {
+        return;
+    }
+    this.showEnglishNextEpisodeCountdown = !this.showEnglishNextEpisodeCountdown;
+},
                 // Get episode type tooltip based on episode properties
                 getEpisodeTypeTooltip(episode) {
                     if (episode.EpisodeNumber.includes("خاصة بالفيلم")) {
@@ -17340,6 +17530,21 @@
                 this.movieTimingInterval = setInterval(() => {
                     this.updateMovieTiming();
                 }, 60000);
+
+                this.loadNextEpisodeInfo();
+this.$watch('episodes', () => {
+    this.refreshNextEpisodeState();
+});
+this.$watch(
+    'nextEpisodeInfo',
+    () => {
+        this.refreshNextEpisodeState();
+    },
+    { deep: true }
+);
+this.nextEpisodeIntervalId = setInterval(() => {
+    this.refreshNextEpisodeState();
+}, 60000);
             },
 
             unmounted() {
@@ -17353,6 +17558,7 @@
                 if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
                 if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
                 if (this.timeoutId) clearTimeout(this.timeoutId);
+                if (this.nextEpisodeIntervalId) clearInterval(this.nextEpisodeIntervalId);
 
                 // Clean up event listener to prevent memory leaks
                 document.removeEventListener("click", this.closeMenu);
