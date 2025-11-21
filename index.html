@@ -5591,47 +5591,87 @@
 
                             </div>
                             <p class="text-white text-lg text-center font-bold mt-4">الأحداث القادمة</p>
-                            <!-- Upcoming Episode Notice -->
-<!-- Upcoming Episode Notice -->
-<div
-  v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
-  class="mt-2 text-center space-y-1"
->
-  <p
-    v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicDynamic"
-    class="text-white transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
-  >
-    <span>متبقي</span>
-    <span
-      class="cursor-pointer hover:text-gray-300"
-      @click="toggleNextEpisodeCountdownLanguage"
-    >
-      {{
-        showEnglishNextEpisodeCountdown
-          ? nextEpisodeCountdownEnglishValue
-          : nextEpisodeCountdownArabicDynamic
-      }}
-    </span>
-    <span>للحلقة</span>
-    <span class="text-yellow-300 transition-all duration-100 active:scale-90">
-      {{ nextEpisodeInfo.number }}
-    </span>
-  </p>
 
-  <p
-    v-else-if="nextEpisodeStatus === 'translation'"
-    class="text-white transition-all duration-100 active:scale-90 text-base"
-  >
-    <span>الحلقة </span>
-    <span
-      class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
-      @click="openEpisodeModal(String(nextEpisodeInfo.number))"
-    >
-      {{ nextEpisodeInfo.number }}
-    </span>
-    <span> قيد الترجمة من قبل المترجمين.</span>
-  </p>
-</div>
+                            <!-- Upcoming Episode Notice -->
+                            <div
+                                v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
+                                class="mt-2 text-center space-y-1"
+                                >
+                                <p
+                                    v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicDynamic"
+                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
+                                >
+                                    <span>متبقي</span>
+                                    <span
+                                    class="cursor-pointer hover:text-gray-300"
+                                    @click="toggleNextEpisodeCountdownLanguage"
+                                    >
+                                    {{
+                                        showEnglishNextEpisodeCountdown
+                                        ? nextEpisodeCountdownEnglishValue
+                                        : nextEpisodeCountdownArabicDynamic
+                                    }}
+                                    </span>
+                                    <span>للحلقة</span>
+                                    <span class="text-yellow-300 transition-all duration-100 active:scale-90">
+                                    {{ nextEpisodeInfo.number }}
+                                    </span>
+                                </p>
+
+                                <p
+                                    v-else-if="nextEpisodeStatus === 'translation'"
+                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base"
+                                >
+                                    <span>الحلقة </span>
+                                    <span
+                                    class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+                                    @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+                                    >
+                                    {{ nextEpisodeInfo.number }}
+                                    </span>
+                                    <span> قيد الترجمة من قبل المترجمين.</span>
+                                </p>
+                            </div>
+                            <!-- Upcoming Manga Notice -->
+                            <div
+                                v-if="nextMangaInfo && nextMangaInfo.Enable !== false && nextMangaStatus"
+                                class="mt-2 text-center space-y-1"
+                                >
+                                <p
+                                    v-if="nextMangaStatus === 'countdown' && nextMangaCountdownArabicDynamic"
+                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
+                                >
+                                    <span>متبقي</span>
+                                    <span
+                                    class="cursor-pointer hover:text-gray-300"
+                                    @click="toggleNextMangaCountdownLanguage"
+                                    >
+                                    {{
+                                        showEnglishNextMangaCountdown
+                                        ? nextMangaCountdownEnglishValue
+                                        : nextMangaCountdownArabicDynamic
+                                    }}
+                                    </span>
+                                    <span>للفصل</span>
+                                    <span class="text-yellow-300 transition-all duration-100 active:scale-90">
+                                    {{ nextMangaInfo.number }}
+                                    </span>
+                                </p>
+
+                                <p
+                                    v-else-if="nextMangaStatus === 'translation'"
+                                    class="text-white text-right transition-all duration-100 active:scale-90 text-base"
+                                >
+                                    <span>الفصل </span>
+                                    <span
+                                    class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+                                    @click="openMangaModal(String(nextMangaInfo.number))"
+                                    >
+                                    {{ nextMangaInfo.number }}
+                                    </span>
+                                    <span> قيد الترجمة من قبل المترجمين.</span>
+                                </p>
+                            </div>
                         </div>
 
                         <!-- Centered Description Box for Colors and Their Names with "معاني الألوان" Legend -->
@@ -6457,13 +6497,22 @@
                     movieTimingInterval: null,
 
                     nextEpisodeInfo: null,
-nextEpisodeReleaseDate: null,
-nextEpisodeStatus: '',
-nextEpisodeCountdownArabicSentence: '',
-nextEpisodeCountdownEnglishSentence: '',
-showEnglishNextEpisodeCountdown: false,
-nextEpisodeExistsInEpisodes: false,
-nextEpisodeIntervalId: null,
+                    nextEpisodeReleaseDate: null,
+                    nextEpisodeStatus: '',
+                    nextEpisodeCountdownArabicSentence: '',
+                    nextEpisodeCountdownEnglishSentence: '',
+                    showEnglishNextEpisodeCountdown: false,
+                    nextEpisodeExistsInEpisodes: false,
+                    nextEpisodeIntervalId: null,
+
+                    nextMangaInfo: null,
+                    nextMangaReleaseDate: null,
+                    nextMangaStatus: '',
+                    nextMangaCountdownArabicDynamic: '',
+                    nextMangaCountdownEnglishValue: '',
+                    showEnglishNextMangaCountdown: false,
+                    nextMangaExistsInList: false,
+                    nextMangaIntervalId: null,
 
                     filterGentaKojimaSceneEpisodes: false,
                     filterGentaKojimaBackgroundEpisodes: false,
@@ -13668,155 +13717,305 @@ nextEpisodeIntervalId: null,
             },
             methods: {
 
+                async loadNextMangaInfo() {
+                    try {
+                        const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
+                        const payload = await response.json();
+                        this.nextMangaInfo = payload?.nextManga ? { ...payload.nextManga } : null;
+                        this.refreshNextMangaState();
+                    } catch (error) {
+                        console.error('Error loading next manga info:', error);
+                        this.nextMangaInfo = null;
+                    }
+                },
+                parseNextMangaDate(dateStr) {
+                    if (!dateStr) return null;
+                    const parts = String(dateStr).trim().split('-');
+                    if (parts.length < 3) return null;
+
+                    const year = Number(parts[0]);
+                    const month = Number(parts[1]);
+                    const day = Number(parts[2]);
+                    if (![year, month, day].every(Number.isFinite)) return null;
+
+                    let hours = 12;
+                    let minutes = 0;
+
+                    if (parts[3]) {
+                        const [hh, mm] = parts[3].split(':');
+                        if (!Number.isNaN(Number(hh))) hours = Number(hh);
+                        if (!Number.isNaN(Number(mm))) minutes = Number(mm);
+                    }
+
+                    const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
+                    return Number.isNaN(parsed.getTime()) ? null : parsed;
+                },
+                refreshNextMangaState() {
+                    if (!this.nextMangaInfo || this.nextMangaInfo.Enable === false) {
+                        this.nextMangaStatus = '';
+                        this.nextMangaCountdownArabicDynamic = '';
+                        this.nextMangaCountdownEnglishValue = '';
+                        this.nextMangaReleaseDate = null;
+                        this.showEnglishNextMangaCountdown = false;
+                        return;
+                    }
+
+                    const releaseDate = this.parseNextMangaDate(this.nextMangaInfo.date);
+                    if (!releaseDate) {
+                        this.nextMangaStatus = '';
+                        this.nextMangaCountdownArabicDynamic = '';
+                        this.nextMangaCountdownEnglishValue = '';
+                        this.nextMangaReleaseDate = null;
+                        this.showEnglishNextMangaCountdown = false;
+                        return;
+                    }
+
+                    this.nextMangaReleaseDate = releaseDate;
+                    const now = new Date();
+
+                    this.nextMangaExistsInList = Array.isArray(this.groupedMangas)
+                        ? this.groupedMangas.some(group =>
+                            group.items?.some(
+                                manga => String(manga.MangaNumber) === String(this.nextMangaInfo.number)
+                            )
+                        )
+                        : false;
+
+                    if (this.nextMangaExistsInList) {
+                        this.nextMangaStatus = 'available';
+                        this.nextMangaCountdownArabicDynamic = '';
+                        this.nextMangaCountdownEnglishValue = '';
+                        this.showEnglishNextMangaCountdown = false;
+                        return;
+                    }
+
+                    const isSameDay =
+                        now.getFullYear() === releaseDate.getFullYear() &&
+                        now.getMonth() === releaseDate.getMonth() &&
+                        now.getDate() === releaseDate.getDate();
+
+                    if (now < releaseDate) {
+                        this.nextMangaStatus = 'countdown';
+                        this.computeNextMangaCountdown(now, releaseDate);
+                    } else if (isSameDay) {
+                        this.nextMangaStatus = 'translation';
+                        this.nextMangaCountdownArabicDynamic = '';
+                        this.nextMangaCountdownEnglishValue = '';
+                        this.showEnglishNextMangaCountdown = false;
+                    } else {
+                        this.nextMangaStatus = '';
+                        this.nextMangaCountdownArabicDynamic = '';
+                        this.nextMangaCountdownEnglishValue = '';
+                        this.showEnglishNextMangaCountdown = false;
+                    }
+                },
+                computeNextMangaCountdown(currentTime, releaseDate) {
+                    const diffMs = releaseDate.getTime() - currentTime.getTime();
+                    if (diffMs <= 0) {
+                        this.nextMangaCountdownArabicDynamic = '';
+                        this.nextMangaCountdownEnglishValue = '';
+                        return;
+                    }
+
+                    const diffDaysDecimal = diffMs / (1000 * 60 * 60 * 24);
+                    const diffDays = Math.floor(diffDaysDecimal);
+                    const remainingHours = Math.floor((diffDaysDecimal - diffDays) * 24);
+                    const remainingMinutes = Math.floor(
+                        ((diffDaysDecimal - diffDays) * 24 - remainingHours) * 60
+                    );
+
+                    const englishParts = [];
+                    if (diffDays > 0) englishParts.push(`${diffDays}d`);
+                    if (remainingHours > 0) englishParts.push(`${remainingHours}h`);
+                    if (remainingMinutes > 0) englishParts.push(`${remainingMinutes}min`);
+                    if (!englishParts.length) englishParts.push('1min');
+                    this.nextMangaCountdownEnglishValue = englishParts.join('');
+
+                    const moreThan = 'أكثر من ';
+                    const lessThan = 'أقل من ';
+                    let arabicDynamic = '';
+
+                    if (diffDaysDecimal < 1) {
+                        arabicDynamic = `${lessThan}يوم`;
+                    } else if (diffDaysDecimal >= 1 && diffDaysDecimal < 2) {
+                        arabicDynamic =
+                            diffDaysDecimal > 1 ? `${moreThan}يوم واحد` : 'يوم واحد';
+                    } else if (diffDaysDecimal >= 2 && diffDaysDecimal < 3) {
+                        arabicDynamic =
+                            diffDaysDecimal > 2 ? `${moreThan}يومان` : 'يومان';
+                    } else if (diffDaysDecimal >= 3 && diffDaysDecimal < 11) {
+                        arabicDynamic =
+                            diffDaysDecimal > diffDays
+                                ? `${moreThan}${diffDays} أيام`
+                                : `${diffDays} أيام`;
+                    } else {
+                        arabicDynamic =
+                            diffDaysDecimal > diffDays
+                                ? `${moreThan}${diffDays} يومًا`
+                                : `${diffDays} يومًا`;
+                    }
+
+                    this.nextMangaCountdownArabicDynamic = arabicDynamic;
+                },
+                toggleNextMangaCountdownLanguage() {
+                    if (
+                        this.nextMangaStatus !== 'countdown' ||
+                        !this.nextMangaCountdownArabicDynamic
+                    ) {
+                        return;
+                    }
+                    this.showEnglishNextMangaCountdown = !this.showEnglishNextMangaCountdown;
+                },
+
                 async loadNextEpisodeInfo() {
-    try {
-        const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
-        const payload = await response.json();
-        this.nextEpisodeInfo = payload?.nextEpisode ? { ...payload.nextEpisode } : null;
-        this.refreshNextEpisodeState();
-    } catch (error) {
-        console.error('Error loading next episode info:', error);
-        this.nextEpisodeInfo = null;
-    }
-},
-parseNextEpisodeDate(dateStr) {
-    if (!dateStr) return null;
-    const parts = String(dateStr).trim().split('-');
-    if (parts.length < 3) return null;
+                    try {
+                        const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
+                        const payload = await response.json();
+                        this.nextEpisodeInfo = payload?.nextEpisode ? { ...payload.nextEpisode } : null;
+                        this.refreshNextEpisodeState();
+                    } catch (error) {
+                        console.error('Error loading next episode info:', error);
+                        this.nextEpisodeInfo = null;
+                    }
+                },
+                parseNextEpisodeDate(dateStr) {
+                    if (!dateStr) return null;
+                    const parts = String(dateStr).trim().split('-');
+                    if (parts.length < 3) return null;
 
-    const year = Number(parts[0]);
-    const month = Number(parts[1]);
-    const day = Number(parts[2]);
-    if (![year, month, day].every(Number.isFinite)) return null;
+                    const year = Number(parts[0]);
+                    const month = Number(parts[1]);
+                    const day = Number(parts[2]);
+                    if (![year, month, day].every(Number.isFinite)) return null;
 
-    let hours = 12;
-    let minutes = 0;
+                    let hours = 12;
+                    let minutes = 0;
 
-    if (parts[3]) {
-        const [hh, mm] = parts[3].split(':');
-        if (!Number.isNaN(Number(hh))) hours = Number(hh);
-        if (!Number.isNaN(Number(mm))) minutes = Number(mm);
-    }
+                    if (parts[3]) {
+                        const [hh, mm] = parts[3].split(':');
+                        if (!Number.isNaN(Number(hh))) hours = Number(hh);
+                        if (!Number.isNaN(Number(mm))) minutes = Number(mm);
+                    }
 
-    const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
-},
-refreshNextEpisodeState() {
-    if (!this.nextEpisodeInfo || this.nextEpisodeInfo.Enable === false) {
-        this.nextEpisodeStatus = '';
-        this.nextEpisodeCountdownArabicDynamic = '';
-        this.nextEpisodeCountdownEnglishValue = '';
-        this.nextEpisodeReleaseDate = null;
-        this.showEnglishNextEpisodeCountdown = false;
-        return;
-    }
+                    const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
+                    return Number.isNaN(parsed.getTime()) ? null : parsed;
+                },
+                refreshNextEpisodeState() {
+                    if (!this.nextEpisodeInfo || this.nextEpisodeInfo.Enable === false) {
+                        this.nextEpisodeStatus = '';
+                        this.nextEpisodeCountdownArabicDynamic = '';
+                        this.nextEpisodeCountdownEnglishValue = '';
+                        this.nextEpisodeReleaseDate = null;
+                        this.showEnglishNextEpisodeCountdown = false;
+                        return;
+                    }
 
-    const releaseDate = this.parseNextEpisodeDate(this.nextEpisodeInfo.date);
-    if (!releaseDate) {
-        this.nextEpisodeStatus = '';
-        this.nextEpisodeCountdownArabicDynamic = '';
-        this.nextEpisodeCountdownEnglishValue = '';
-        this.nextEpisodeReleaseDate = null;
-        this.showEnglishNextEpisodeCountdown = false;
-        return;
-    }
+                    const releaseDate = this.parseNextEpisodeDate(this.nextEpisodeInfo.date);
+                    if (!releaseDate) {
+                        this.nextEpisodeStatus = '';
+                        this.nextEpisodeCountdownArabicDynamic = '';
+                        this.nextEpisodeCountdownEnglishValue = '';
+                        this.nextEpisodeReleaseDate = null;
+                        this.showEnglishNextEpisodeCountdown = false;
+                        return;
+                    }
 
-    this.nextEpisodeReleaseDate = releaseDate;
-    const now = new Date();
+                    this.nextEpisodeReleaseDate = releaseDate;
+                    const now = new Date();
 
-    this.nextEpisodeExistsInEpisodes = Array.isArray(this.episodes)
-        ? this.episodes.some(
-              (episode) =>
-                  String(episode.EpisodeNumber) ===
-                  String(this.nextEpisodeInfo.number)
-          )
-        : false;
+                    this.nextEpisodeExistsInEpisodes = Array.isArray(this.episodes)
+                        ? this.episodes.some(
+                            (episode) =>
+                                String(episode.EpisodeNumber) ===
+                                String(this.nextEpisodeInfo.number)
+                        )
+                        : false;
 
-    if (this.nextEpisodeExistsInEpisodes) {
-        this.nextEpisodeStatus = 'available';
-        this.nextEpisodeCountdownArabicDynamic = '';
-        this.nextEpisodeCountdownEnglishValue = '';
-        this.showEnglishNextEpisodeCountdown = false;
-        return;
-    }
+                    if (this.nextEpisodeExistsInEpisodes) {
+                        this.nextEpisodeStatus = 'available';
+                        this.nextEpisodeCountdownArabicDynamic = '';
+                        this.nextEpisodeCountdownEnglishValue = '';
+                        this.showEnglishNextEpisodeCountdown = false;
+                        return;
+                    }
 
-    const isSameDay =
-        now.getFullYear() === releaseDate.getFullYear() &&
-        now.getMonth() === releaseDate.getMonth() &&
-        now.getDate() === releaseDate.getDate();
+                    const isSameDay =
+                        now.getFullYear() === releaseDate.getFullYear() &&
+                        now.getMonth() === releaseDate.getMonth() &&
+                        now.getDate() === releaseDate.getDate();
 
-    if (now < releaseDate) {
-        this.nextEpisodeStatus = 'countdown';
-        this.computeNextEpisodeCountdown(now, releaseDate);
-    } else if (isSameDay) {
-        this.nextEpisodeStatus = 'translation';
-        this.nextEpisodeCountdownArabicDynamic = '';
-        this.nextEpisodeCountdownEnglishValue = '';
-        this.showEnglishNextEpisodeCountdown = false;
-    } else {
-        this.nextEpisodeStatus = '';
-        this.nextEpisodeCountdownArabicDynamic = '';
-        this.nextEpisodeCountdownEnglishValue = '';
-        this.showEnglishNextEpisodeCountdown = false;
-    }
-},
-computeNextEpisodeCountdown(currentTime, releaseDate) {
-    const diffMs = releaseDate.getTime() - currentTime.getTime();
-    if (diffMs <= 0) {
-        this.nextEpisodeCountdownArabicDynamic = '';
-        this.nextEpisodeCountdownEnglishValue = '';
-        return;
-    }
+                    if (now < releaseDate) {
+                        this.nextEpisodeStatus = 'countdown';
+                        this.computeNextEpisodeCountdown(now, releaseDate);
+                    } else if (isSameDay) {
+                        this.nextEpisodeStatus = 'translation';
+                        this.nextEpisodeCountdownArabicDynamic = '';
+                        this.nextEpisodeCountdownEnglishValue = '';
+                        this.showEnglishNextEpisodeCountdown = false;
+                    } else {
+                        this.nextEpisodeStatus = '';
+                        this.nextEpisodeCountdownArabicDynamic = '';
+                        this.nextEpisodeCountdownEnglishValue = '';
+                        this.showEnglishNextEpisodeCountdown = false;
+                    }
+                },
+                computeNextEpisodeCountdown(currentTime, releaseDate) {
+                    const diffMs = releaseDate.getTime() - currentTime.getTime();
+                    if (diffMs <= 0) {
+                        this.nextEpisodeCountdownArabicDynamic = '';
+                        this.nextEpisodeCountdownEnglishValue = '';
+                        return;
+                    }
 
-    const diffDaysDecimal = diffMs / (1000 * 60 * 60 * 24);
-    const diffDays = Math.floor(diffDaysDecimal);
-    const remainingHours = Math.floor((diffDaysDecimal - diffDays) * 24);
-    const remainingMinutes = Math.floor(
-        ((diffDaysDecimal - diffDays) * 24 - remainingHours) * 60
-    );
+                    const diffDaysDecimal = diffMs / (1000 * 60 * 60 * 24);
+                    const diffDays = Math.floor(diffDaysDecimal);
+                    const remainingHours = Math.floor((diffDaysDecimal - diffDays) * 24);
+                    const remainingMinutes = Math.floor(
+                        ((diffDaysDecimal - diffDays) * 24 - remainingHours) * 60
+                    );
 
-    const englishParts = [];
-    if (diffDays > 0) englishParts.push(`${diffDays}d`);
-    if (remainingHours > 0) englishParts.push(`${remainingHours}h`);
-    if (remainingMinutes > 0) englishParts.push(`${remainingMinutes}min`);
-    if (!englishParts.length) englishParts.push('1min');
-    this.nextEpisodeCountdownEnglishValue = englishParts.join('');
+                    const englishParts = [];
+                    if (diffDays > 0) englishParts.push(`${diffDays}d`);
+                    if (remainingHours > 0) englishParts.push(`${remainingHours}h`);
+                    if (remainingMinutes > 0) englishParts.push(`${remainingMinutes}min`);
+                    if (!englishParts.length) englishParts.push('1min');
+                    this.nextEpisodeCountdownEnglishValue = englishParts.join('');
 
-    const moreThan = 'أكثر من ';
-    const lessThan = 'أقل من ';
-    let arabicDynamic = '';
+                    const moreThan = 'أكثر من ';
+                    const lessThan = 'أقل من ';
+                    let arabicDynamic = '';
 
-    if (diffDaysDecimal < 1) {
-        arabicDynamic = `${lessThan}يوم`;
-    } else if (diffDaysDecimal >= 1 && diffDaysDecimal < 2) {
-        arabicDynamic =
-            diffDaysDecimal > 1 ? `${moreThan}يوم واحد` : 'يوم واحد';
-    } else if (diffDaysDecimal >= 2 && diffDaysDecimal < 3) {
-        arabicDynamic =
-            diffDaysDecimal > 2 ? `${moreThan}يومان` : 'يومان';
-    } else if (diffDaysDecimal >= 3 && diffDaysDecimal < 11) {
-        arabicDynamic =
-            diffDaysDecimal > diffDays
-                ? `${moreThan}${diffDays} أيام`
-                : `${diffDays} أيام`;
-    } else {
-        arabicDynamic =
-            diffDaysDecimal > diffDays
-                ? `${moreThan}${diffDays} يومًا`
-                : `${diffDays} يومًا`;
-    }
+                    if (diffDaysDecimal < 1) {
+                        arabicDynamic = `${lessThan}يوم`;
+                    } else if (diffDaysDecimal >= 1 && diffDaysDecimal < 2) {
+                        arabicDynamic =
+                            diffDaysDecimal > 1 ? `${moreThan}يوم واحد` : 'يوم واحد';
+                    } else if (diffDaysDecimal >= 2 && diffDaysDecimal < 3) {
+                        arabicDynamic =
+                            diffDaysDecimal > 2 ? `${moreThan}يومان` : 'يومان';
+                    } else if (diffDaysDecimal >= 3 && diffDaysDecimal < 11) {
+                        arabicDynamic =
+                            diffDaysDecimal > diffDays
+                                ? `${moreThan}${diffDays} أيام`
+                                : `${diffDays} أيام`;
+                    } else {
+                        arabicDynamic =
+                            diffDaysDecimal > diffDays
+                                ? `${moreThan}${diffDays} يومًا`
+                                : `${diffDays} يومًا`;
+                    }
 
-    this.nextEpisodeCountdownArabicDynamic = arabicDynamic;
-},
-toggleNextEpisodeCountdownLanguage() {
-    if (
-        this.nextEpisodeStatus !== 'countdown' ||
-        !this.nextEpisodeCountdownArabicDynamic
-    ) {
-        return;
-    }
-    this.showEnglishNextEpisodeCountdown = !this.showEnglishNextEpisodeCountdown;
-},
+                    this.nextEpisodeCountdownArabicDynamic = arabicDynamic;
+                },
+                toggleNextEpisodeCountdownLanguage() {
+                    if (
+                        this.nextEpisodeStatus !== 'countdown' ||
+                        !this.nextEpisodeCountdownArabicDynamic
+                    ) {
+                        return;
+                    }
+                    this.showEnglishNextEpisodeCountdown = !this.showEnglishNextEpisodeCountdown;
+                },
                 // Get episode type tooltip based on episode properties
                 getEpisodeTypeTooltip(episode) {
                     if (episode.EpisodeNumber.includes("خاصة بالفيلم")) {
@@ -17542,19 +17741,38 @@ toggleNextEpisodeCountdownLanguage() {
                 }, 60000);
 
                 this.loadNextEpisodeInfo();
-this.$watch('episodes', () => {
-    this.refreshNextEpisodeState();
-});
-this.$watch(
-    'nextEpisodeInfo',
-    () => {
-        this.refreshNextEpisodeState();
-    },
-    { deep: true }
-);
-this.nextEpisodeIntervalId = setInterval(() => {
-    this.refreshNextEpisodeState();
-}, 60000);
+                this.$watch('episodes', () => {
+                    this.refreshNextEpisodeState();
+                });
+                this.$watch(
+                    'nextEpisodeInfo',
+                    () => {
+                        this.refreshNextEpisodeState();
+                    },
+                    { deep: true }
+                );
+                this.nextEpisodeIntervalId = setInterval(() => {
+                    this.refreshNextEpisodeState();
+                }, 60000);
+
+                this.loadNextMangaInfo();
+                this.$watch(
+                    'nextMangaInfo',
+                    () => {
+                        this.refreshNextMangaState();
+                    },
+                    { deep: true }
+                );
+                this.$watch(
+                    () => this.groupedMangas,
+                    () => {
+                        this.refreshNextMangaState();
+                    },
+                    { deep: true }
+                );
+                this.nextMangaIntervalId = setInterval(() => {
+                    this.refreshNextMangaState();
+                }, 60000);
             },
 
             unmounted() {
@@ -17569,6 +17787,7 @@ this.nextEpisodeIntervalId = setInterval(() => {
                 if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
                 if (this.timeoutId) clearTimeout(this.timeoutId);
                 if (this.nextEpisodeIntervalId) clearInterval(this.nextEpisodeIntervalId);
+                if (this.nextMangaIntervalId) clearInterval(this.nextMangaIntervalId);
 
                 // Clean up event listener to prevent memory leaks
                 document.removeEventListener("click", this.closeMenu);
