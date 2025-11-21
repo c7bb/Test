@@ -5592,35 +5592,44 @@
                             </div>
                             <p class="text-white text-lg text-center font-bold mt-4">الأحداث القادمة</p>
                             <!-- Upcoming Episode Notice -->
+<!-- Upcoming Episode Notice -->
 <div
   v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
-  class="mt-2 text-center"
+  class="mt-2 text-center space-y-1"
 >
   <p
-    v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicSentence"
-    @click="toggleNextEpisodeCountdownLanguage"
-    class="text-yellow-300 transition-all duration-100 active:scale-90 cursor-pointer"
+    v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicDynamic"
+    class="text-white transition-all duration-100 active:scale-90 text-base flex flex-wrap justify-center items-center gap-1"
   >
-    {{
-      showEnglishNextEpisodeCountdown
-        ? nextEpisodeCountdownEnglishSentence
-        : nextEpisodeCountdownArabicSentence
-    }}
+    <span>متبقي</span>
+    <span
+      class="cursor-pointer hover:text-gray-300"
+      @click="toggleNextEpisodeCountdownLanguage"
+    >
+      {{
+        showEnglishNextEpisodeCountdown
+          ? nextEpisodeCountdownEnglishValue
+          : nextEpisodeCountdownArabicDynamic
+      }}
+    </span>
+    <span>للحلقة</span>
+    <span class="text-yellow-300 transition-all duration-100 active:scale-90">
+      {{ nextEpisodeInfo.number }}
+    </span>
   </p>
 
   <p
     v-else-if="nextEpisodeStatus === 'translation'"
-    class="text-yellow-300 transition-all duration-100 active:scale-90"
+    class="text-white transition-all duration-100 active:scale-90 text-base"
   >
-    الحلقة {{ nextEpisodeInfo.number }} قيد الترجمة من قبل المترجمين.
-  </p>
-
-  <p
-    v-else-if="nextEpisodeStatus === 'available'"
-    class="text-yellow-300 transition-all duration-100 active:scale-90 underline cursor-pointer"
-    @click="openEpisodeModal(String(nextEpisodeInfo.number))"
-  >
-    الحلقة {{ nextEpisodeInfo.number }} جاهزة — اضغط للعرض.
+    <span>الحلقة </span>
+    <span
+      class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+      @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+    >
+      {{ nextEpisodeInfo.number }}
+    </span>
+    <span> قيد الترجمة من قبل المترجمين.</span>
   </p>
 </div>
                         </div>
@@ -13663,9 +13672,7 @@ nextEpisodeIntervalId: null,
     try {
         const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
         const payload = await response.json();
-        this.nextEpisodeInfo = payload?.nextEpisode
-            ? { ...payload.nextEpisode }
-            : null;
+        this.nextEpisodeInfo = payload?.nextEpisode ? { ...payload.nextEpisode } : null;
         this.refreshNextEpisodeState();
     } catch (error) {
         console.error('Error loading next episode info:', error);
@@ -13674,8 +13681,7 @@ nextEpisodeIntervalId: null,
 },
 parseNextEpisodeDate(dateStr) {
     if (!dateStr) return null;
-    const trimmed = String(dateStr).trim();
-    const parts = trimmed.split('-');
+    const parts = String(dateStr).trim().split('-');
     if (parts.length < 3) return null;
 
     const year = Number(parts[0]);
@@ -13685,10 +13691,11 @@ parseNextEpisodeDate(dateStr) {
 
     let hours = 12;
     let minutes = 0;
+
     if (parts[3]) {
         const [hh, mm] = parts[3].split(':');
-        if (hh && !Number.isNaN(Number(hh))) hours = Number(hh);
-        if (mm && !Number.isNaN(Number(mm))) minutes = Number(mm);
+        if (!Number.isNaN(Number(hh))) hours = Number(hh);
+        if (!Number.isNaN(Number(mm))) minutes = Number(mm);
     }
 
     const parsed = new Date(year, month - 1, day, hours, minutes, 0, 0);
@@ -13697,18 +13704,20 @@ parseNextEpisodeDate(dateStr) {
 refreshNextEpisodeState() {
     if (!this.nextEpisodeInfo || this.nextEpisodeInfo.Enable === false) {
         this.nextEpisodeStatus = '';
-        this.nextEpisodeCountdownArabicSentence = '';
-        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeCountdownArabicDynamic = '';
+        this.nextEpisodeCountdownEnglishValue = '';
         this.nextEpisodeReleaseDate = null;
+        this.showEnglishNextEpisodeCountdown = false;
         return;
     }
 
     const releaseDate = this.parseNextEpisodeDate(this.nextEpisodeInfo.date);
     if (!releaseDate) {
         this.nextEpisodeStatus = '';
-        this.nextEpisodeCountdownArabicSentence = '';
-        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeCountdownArabicDynamic = '';
+        this.nextEpisodeCountdownEnglishValue = '';
         this.nextEpisodeReleaseDate = null;
+        this.showEnglishNextEpisodeCountdown = false;
         return;
     }
 
@@ -13725,8 +13734,8 @@ refreshNextEpisodeState() {
 
     if (this.nextEpisodeExistsInEpisodes) {
         this.nextEpisodeStatus = 'available';
-        this.nextEpisodeCountdownArabicSentence = '';
-        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeCountdownArabicDynamic = '';
+        this.nextEpisodeCountdownEnglishValue = '';
         this.showEnglishNextEpisodeCountdown = false;
         return;
     }
@@ -13741,21 +13750,21 @@ refreshNextEpisodeState() {
         this.computeNextEpisodeCountdown(now, releaseDate);
     } else if (isSameDay) {
         this.nextEpisodeStatus = 'translation';
-        this.nextEpisodeCountdownArabicSentence = '';
-        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeCountdownArabicDynamic = '';
+        this.nextEpisodeCountdownEnglishValue = '';
         this.showEnglishNextEpisodeCountdown = false;
     } else {
         this.nextEpisodeStatus = '';
-        this.nextEpisodeCountdownArabicSentence = '';
-        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeCountdownArabicDynamic = '';
+        this.nextEpisodeCountdownEnglishValue = '';
         this.showEnglishNextEpisodeCountdown = false;
     }
 },
 computeNextEpisodeCountdown(currentTime, releaseDate) {
     const diffMs = releaseDate.getTime() - currentTime.getTime();
     if (diffMs <= 0) {
-        this.nextEpisodeCountdownArabicSentence = '';
-        this.nextEpisodeCountdownEnglishSentence = '';
+        this.nextEpisodeCountdownArabicDynamic = '';
+        this.nextEpisodeCountdownEnglishValue = '';
         return;
     }
 
@@ -13771,38 +13780,39 @@ computeNextEpisodeCountdown(currentTime, releaseDate) {
     if (remainingHours > 0) englishParts.push(`${remainingHours}h`);
     if (remainingMinutes > 0) englishParts.push(`${remainingMinutes}min`);
     if (!englishParts.length) englishParts.push('1min');
+    this.nextEpisodeCountdownEnglishValue = englishParts.join('');
 
-    const moreThan = 'متبقي أكثر من ';
-    const lessThan = 'متبقي أقل من ';
-    let countdownArabic = '';
+    const moreThan = 'أكثر من ';
+    const lessThan = 'أقل من ';
+    let arabicDynamic = '';
 
     if (diffDaysDecimal < 1) {
-        countdownArabic = `${lessThan}يوم`;
+        arabicDynamic = `${lessThan}يوم`;
     } else if (diffDaysDecimal >= 1 && diffDaysDecimal < 2) {
-        countdownArabic =
-            diffDaysDecimal > 1 ? `${moreThan}يوم واحد` : 'متبقي يوم واحد';
+        arabicDynamic =
+            diffDaysDecimal > 1 ? `${moreThan}يوم واحد` : 'يوم واحد';
     } else if (diffDaysDecimal >= 2 && diffDaysDecimal < 3) {
-        countdownArabic =
-            diffDaysDecimal > 2 ? `${moreThan}يومان` : 'متبقي يومان';
+        arabicDynamic =
+            diffDaysDecimal > 2 ? `${moreThan}يومان` : 'يومان';
     } else if (diffDaysDecimal >= 3 && diffDaysDecimal < 11) {
-        countdownArabic =
+        arabicDynamic =
             diffDaysDecimal > diffDays
                 ? `${moreThan}${diffDays} أيام`
-                : `متبقي ${diffDays} أيام`;
+                : `${diffDays} أيام`;
     } else {
-        countdownArabic =
+        arabicDynamic =
             diffDaysDecimal > diffDays
                 ? `${moreThan}${diffDays} يومًا`
-                : `متبقي ${diffDays} يومًا`;
+                : `${diffDays} يومًا`;
     }
 
-    this.nextEpisodeCountdownArabicSentence = `${countdownArabic} للحلقة ${this.nextEpisodeInfo.number}`;
-    this.nextEpisodeCountdownEnglishSentence = `Less than ${englishParts.join(
-        ''
-    )} for episode ${this.nextEpisodeInfo.number}`;
+    this.nextEpisodeCountdownArabicDynamic = arabicDynamic;
 },
 toggleNextEpisodeCountdownLanguage() {
-    if (this.nextEpisodeStatus !== 'countdown') {
+    if (
+        this.nextEpisodeStatus !== 'countdown' ||
+        !this.nextEpisodeCountdownArabicDynamic
+    ) {
         return;
     }
     this.showEnglishNextEpisodeCountdown = !this.showEnglishNextEpisodeCountdown;
