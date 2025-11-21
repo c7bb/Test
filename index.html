@@ -5537,8 +5537,10 @@
 
                         <!-- Manga Announcement Box -->
                         <div class="relative w-full max-w-2xl p-4 mt-4 bg-black bg-opacity-85 rounded-lg shadow-lg border border-yellow-500 animate-borderMove">
-                            <div class="grid grid-cols-2 gap-4">
-                                <!-- Episode Column -->
+                            <!-- Set Grid to 3 Columns -->
+                            <div class="grid grid-cols-3 gap-4">
+                                
+                                <!-- 1. Episode Column (Right or Left depending on page direction) -->
                                 <div class="flex flex-col items-center">
                                     <p class="text-white text-lg text-center font-bold mb-4">حلقة الأسبوع</p>
                                     <button 
@@ -5548,64 +5550,41 @@
                                         {{ ep }}
                                     </button>
                                     <p v-if="episodeOfWeekTimeAgo || episodeOfWeekTimeAgoEnglish" 
-                                       @click="toggleTimeFormat" 
-                                       class="text-white text-xs text-center mt-3 cursor-pointer hover:text-gray-300 transition-colors duration-200">
+                                    @click="toggleTimeFormat" 
+                                    class="text-white text-xs text-center mt-3 cursor-pointer hover:text-gray-300 transition-colors duration-200">
                                         {{ showEnglishTimeFormat ? episodeOfWeekTimeAgoEnglish : episodeOfWeekTimeAgo }}
                                     </p>
                                 </div>
-                                <!-- Manga Column -->
+
+                                <!-- 2. Movie Column (MIDDLE POSITION) -->
+                                <div class="flex flex-col items-center">
+                                    <p class="text-white text-lg text-center font-bold mb-4">فيلم السنة</p>
+                                    <button 
+                                        class="w-full py-2 bg-amber-700 text-white font-bold text-lg rounded hover:bg-red-500 transition-all duration-100 hover:scale-105 active:scale-90">
+                                        28
+                                    </button>
+                                    <!-- Spacer to keep alignment if needed -->
+                                    <div class="mt-3 h-4"></div>
+                                </div>
+
+                                <!-- 3. Manga Column (Last position) -->
                                 <div class="flex flex-col items-center">
                                     <p class="text-white text-lg text-center font-bold mb-4">فصل المانغا</p>
                                     <button 
                                         v-if="mangas && mangas.length > 0"
                                         @click="openMangaModal(mangaCh)"
-                                        class="w-full py-2 bg-green-600 text-white font-bold text-lg rounded hover:bg-blue-500 transition-all duration-100 hover:scale-105 active:scale-90">
+                                        class="w-full py-2 bg-green-600 text-white font-bold text-lg rounded hover:bg-green-500 transition-all duration-100 hover:scale-105 active:scale-90">
                                         {{ mangaCh }}
                                     </button>
                                     <p v-if="mangaOfWeekTimeAgo || mangaOfWeekTimeAgoEnglish" 
-                                       @click="toggleTimeFormatManga" 
-                                       class="text-white text-xs text-center mt-3 cursor-pointer hover:text-gray-300 transition-colors duration-200">
+                                    @click="toggleTimeFormatManga" 
+                                    class="text-white text-xs text-center mt-3 cursor-pointer hover:text-gray-300 transition-colors duration-200">
                                         {{ showEnglishTimeFormatManga ? mangaOfWeekTimeAgoEnglish : mangaOfWeekTimeAgo }}
                                     </p>
-                                    <p class="text-white text-lg text-center font-bold mb-4">إعلانات الحلقات القادمة</p>
                                 </div>
-                            </div>
-                        </div>
 
-                        <!-- Upcoming Announcements Box -->
-                        <div class="relative w-full max-w-3xl p-4 mt-4 bg-black bg-opacity-85 rounded-lg shadow-lg border border-yellow-500 animate-borderMove" dir="rtl">
-                            <p class="text-white text-lg text-center font-bold mb-4">إعلانات الحلقات القادمة</p>
-                            <div class="flex flex-col gap-3 text-right">
-                                <p v-if="nextEpisodeInfo" class="text-white text-sm leading-7">
-                                    متبقي أقل من
-                                    <span
-                                        @click="toggleNextEpisodeTimeFormat"
-                                        class="text-yellow-200 font-semibold cursor-pointer hover:text-yellow-100 transition-colors duration-200 underline underline-offset-4"
-                                    >
-                                        {{ showNextEpisodeEnglishFormat ? nextEpisodeEnglishCountdown : nextEpisodeArabicCountdown }}
-                                    </span>
-                                    للحلقة
-                                    <span
-                                        v-if="nextEpisodeExistsInEpisodes"
-                                        @click="openEpisodeModal(nextEpisodeInfo.number)"
-                                        class="text-yellow-300 font-bold cursor-pointer transition-all duration-100 active:scale-90 hover:text-yellow-100"
-                                    >
-                                        {{ nextEpisodeInfo.number }}
-                                    </span>
-                                    <span v-else class="text-yellow-200 font-semibold">
-                                        {{ nextEpisodeInfo.number }}
-                                    </span>
-                                </p>
-                                <p v-else class="text-gray-300 text-sm leading-7">جارِ تحميل إعلان الحلقة القادمة...</p>
-
-                                <p
-                                    v-for="(paragraph, index) in additionalAnnouncements"
-                                    :key="`announcement-${index}`"
-                                    class="text-white text-sm leading-7"
-                                >
-                                    {{ paragraph }}
-                                </p>
                             </div>
+                            <p class="text-white text-lg text-center font-bold mt-4">الأحداث القادمة</p>
                         </div>
 
                         <!-- Centered Description Box for Colors and Their Names with "معاني الألوان" Legend -->
@@ -6965,12 +6944,6 @@
                     mangaOfWeekTimeAgo: '',
                     mangaOfWeekTimeAgoEnglish: '',
                     showEnglishTimeFormatManga: false,
-                    nextEpisodeInfo: null,
-                    nextEpisodeArabicCountdown: '',
-                    nextEpisodeEnglishCountdown: '',
-                    showNextEpisodeEnglishFormat: false,
-                    additionalAnnouncements: [],
-                    nextEpisodeCountdownInterval: null,
                     mangaUpdateDate: '',
                     currentZikr: '',
                     adhkar: [
@@ -13743,341 +13716,182 @@
                     // Remove the shown zikr from the pool
                     this.remainingAdhkar.splice(randomIndex, 1);
                 },
-
-                async loadNextEpisodeInfo() {
-                    const enableNextEpisodeDebug = false;
-
-                    try {
-                        const response = await fetch('./nextDates.json', { cache: 'no-store' });
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}`);
-                        }
-
-                        const data = await response.json();
-                        const nextEpisode = data?.nextEpisode || data;
-
-                        if (nextEpisode?.number && nextEpisode?.date) {
-                            this.nextEpisodeInfo = {
-                                number: nextEpisode.number.toString().trim(),
-                                date: nextEpisode.date.toString().trim()
-                            };
-                            if (enableNextEpisodeDebug) console.log('Loaded nextEpisodeInfo', this.nextEpisodeInfo);
-                            this.updateNextEpisodeCountdown();
-
-                            if (!this.nextEpisodeCountdownInterval) {
-                                this.nextEpisodeCountdownInterval = setInterval(() => {
-                                    this.updateNextEpisodeCountdown();
-                                }, 60000);
-                            }
-                        } else {
-                            this.nextEpisodeInfo = null;
-                            this.nextEpisodeArabicCountdown = '';
-                            this.nextEpisodeEnglishCountdown = '';
-                        }
-
-                        this.additionalAnnouncements = Array.isArray(data?.announcements)
-                            ? data.announcements.filter(paragraph => typeof paragraph === 'string' && paragraph.trim().length > 0)
-                            : [];
-                    } catch (error) {
-                        console.error('Failed to load next episode info:', error);
-                        this.nextEpisodeInfo = null;
-                        this.nextEpisodeArabicCountdown = '';
-                        this.nextEpisodeEnglishCountdown = '';
-                        this.additionalAnnouncements = [];
-                    }
-                },
-
-                parseNextEpisodeDate(dateString) {
-                    if (!dateString) return null;
-                    const parts = dateString.split('-');
-                    if (parts.length !== 4) return null;
-
-                    const [year, month, day, time] = parts;
-                    const [hour, minute] = time.split(':');
-
-                    const parsed = new Date(
-                        Number(year),
-                        Number(month) - 1,
-                        Number(day),
-                        Number(hour ?? 0),
-                        Number(minute ?? 0),
-                        0,
-                        0
-                    );
-
-                    return isNaN(parsed) ? null : parsed;
-                },
-
-                updateNextEpisodeCountdown() {
-                    if (!this.nextEpisodeInfo?.date) {
-                        this.nextEpisodeArabicCountdown = '';
-                        this.nextEpisodeEnglishCountdown = '';
-                        return;
-                    }
-
-                    const targetDate = this.parseNextEpisodeDate(this.nextEpisodeInfo.date);
-                    if (!targetDate) {
-                        this.nextEpisodeArabicCountdown = '';
-                        this.nextEpisodeEnglishCountdown = '';
-                        return;
-                    }
-
-                    const now = new Date();
-                    const diffMs = targetDate.getTime() - now.getTime();
-
-                    if (diffMs <= 0) {
-                        this.nextEpisodeArabicCountdown = 'تم عرض الحلقة';
-                        this.nextEpisodeEnglishCountdown = 'released';
-                        return;
-                    }
-
-                    this.nextEpisodeArabicCountdown = this.formatArabicDuration(diffMs);
-                    this.nextEpisodeEnglishCountdown = this.formatEnglishDuration(diffMs);
-                },
-
-                formatArabicDuration(diffMs) {
-                    const totalMinutes = Math.floor(diffMs / 60000);
-                    if (totalMinutes <= 0) return 'أقل من دقيقة';
-
-                    const minutesInHour = 60;
-                    const minutesInDay = minutesInHour * 24;
-                    const minutesInWeek = minutesInDay * 7;
-
-                    const weeks = Math.floor(totalMinutes / minutesInWeek);
-                    const days = Math.floor((totalMinutes % minutesInWeek) / minutesInDay);
-                    const hours = Math.floor((totalMinutes % minutesInDay) / minutesInHour);
-                    const minutes = totalMinutes % minutesInHour;
-
-                    const parts = [];
-                    if (weeks > 0) parts.push(`${weeks} أسبوع${weeks > 1 ? 'ًا' : ''}`);
-                    if (days > 0) parts.push(`${days} يوم${days > 1 ? 'ًا' : ''}`);
-                    if (hours > 0) parts.push(`${hours} ساعة`);
-                    if (minutes > 0 && parts.length < 3) parts.push(`${minutes} دقيقة`);
-
-                    return parts.length ? parts.join(' و') : 'أقل من دقيقة';
-                },
-
-                formatEnglishDuration(diffMs) {
-                    const totalMinutes = Math.max(0, Math.floor(diffMs / 60000));
-                    const minutesInYear = 525600;
-                    const minutesInMonth = 43800;
-                    const minutesInWeek = 10080;
-                    const minutesInDay = 1440;
-                    const minutesInHour = 60;
-
-                    let remaining = totalMinutes;
-
-                    const years = Math.floor(remaining / minutesInYear);
-                    remaining -= years * minutesInYear;
-
-                    const months = Math.floor(remaining / minutesInMonth);
-                    remaining -= months * minutesInMonth;
-
-                    const weeks = Math.floor(remaining / minutesInWeek);
-                    remaining -= weeks * minutesInWeek;
-
-                    const days = Math.floor(remaining / minutesInDay);
-                    remaining -= days * minutesInDay;
-
-                    const hours = Math.floor(remaining / minutesInHour);
-                    remaining -= hours * minutesInHour;
-
-                    const minutes = remaining;
-
-                    const parts = [];
-                    if (years > 0) parts.push(`${years}y`);
-                    if (months > 0) parts.push(`${months}m`);
-                    if (weeks > 0) parts.push(`${weeks}w`);
-                    if (days > 0) parts.push(`${days}d`);
-                    if (hours > 0) parts.push(`${hours}h`);
-                    if (minutes > 0) parts.push(`${minutes}min`);
-
-                    return parts.length ? parts.join(' ') : '<1min';
-                },
-
                 updateEpisodeTimeAgo() {
-                    const enableTimeAgoDebug = false;
-                    
-                    if (enableTimeAgoDebug) console.log('updateEpisodeTimeAgo called - episodeOfWeek:', this.episodeOfWeek);
-                    
-                    if (!this.episodeOfWeek) {
-                        if (enableTimeAgoDebug) console.log('No episodeOfWeek found');
-                        this.episodeOfWeekTimeAgo = '';
-                        return;
-                    }
-                    
-                    if (!this.episodeOfWeek.EpisodeBCDate) {
-                        if (enableTimeAgoDebug) console.log('No EpisodeBCDate in episode:', this.episodeOfWeek);
-                        this.episodeOfWeekTimeAgo = '';
-                        return;
-                    }
-                
-                    const bcDate = this.episodeOfWeek.EpisodeBCDate;
-                    if (enableTimeAgoDebug) console.log('Processing EpisodeBCDate:', bcDate);
-                
-                    let episodeDate;
-                
-                    // YYYY-MM-DD
-                    if (bcDate.includes('-')) {
-                        const dateParts = bcDate.split('-');
-                        if (dateParts.length !== 3) {
-                            this.episodeOfWeekTimeAgo = '';
-                            return;
-                        }
-                        const [year, month, day] = dateParts.map(Number);
-                        episodeDate = new Date(year, month - 1, day);
-                
-                        // FIXED: set to 12:00 PM
-                        episodeDate.setHours(12, 0, 0, 0);
-                
-                    } 
-                    // DD/MM/YYYY
-                    else if (bcDate.includes('/')) {
-                        const dateParts = bcDate.split('/');
-                        if (dateParts.length !== 3) {
-                            this.episodeOfWeekTimeAgo = '';
-                            return;
-                        }
-                        const [day, month, year] = dateParts.map(Number);
-                        episodeDate = new Date(year, month - 1, day);
-                
-                        // FIXED: set to 12:00 PM
-                        episodeDate.setHours(12, 0, 0, 0);
-                
-                    } 
-                    else {
-                        this.episodeOfWeekTimeAgo = '';
-                        return;
-                    }
-                
-                    const now = new Date();
-                    const diffMs = now - episodeDate;
-                    const diffSeconds = Math.floor(diffMs / 1000);
-                    const diffMinutes = Math.floor(diffMs / (1000 * 60));
-                    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                    const diffMonths = Math.floor(diffDays / 30);
-                    const diffYears = Math.floor(diffDays / 365);
-                
-                    const hasExtraSeconds = diffSeconds % 60 > 0;
-                    const hasExtraMinutes = diffMinutes % 60 > 0;
-                    const hasExtraHours = diffHours % 24 > 0;
-                    const hasExtraDays = diffDays % 30 > 0;
-                    const hasExtraMonths = (diffDays % 365) >= 30;
-                
-                    let timeAgoText = '';
-                    const moreThan = 'أكثر من ';
-                
-                    if (diffMinutes < 1) {
-                        timeAgoText = 'الآن';
-                    } else if (diffMinutes === 1 && !hasExtraSeconds) {
-                        timeAgoText = 'دقيقة مضت';
-                    } else if (diffMinutes === 1 && hasExtraSeconds) {
-                        timeAgoText = moreThan + 'دقيقة مضت';
-                    } else if (diffMinutes === 2 && !hasExtraSeconds) {
-                        timeAgoText = 'دقيقتان مضتا';
-                    } else if (diffMinutes === 2 && hasExtraSeconds) {
-                        timeAgoText = moreThan + 'دقيقتان مضتا';
-                    } else if (diffMinutes >= 3 && diffMinutes <= 10) {
-                        timeAgoText = (hasExtraSeconds ? moreThan : '') + `${diffMinutes} دقائق مضت`;
-                    } else if (diffMinutes >= 11 && diffMinutes <= 59) {
-                        timeAgoText = (hasExtraSeconds ? moreThan : '') + `${diffMinutes} دقيقة مضت`;
-                    } else if (diffHours === 1 && !hasExtraMinutes) {
-                        timeAgoText = 'ساعة مضت';
-                    } else if (diffHours === 1 && hasExtraMinutes) {
-                        timeAgoText = moreThan + 'ساعة مضت';
-                    } else if (diffHours === 2 && !hasExtraMinutes) {
-                        timeAgoText = 'ساعتان مضتا';
-                    } else if (diffHours === 2 && hasExtraMinutes) {
-                        timeAgoText = moreThan + 'ساعتان مضتا';
-                    } else if (diffHours >= 3 && diffHours <= 10) {
-                        timeAgoText = (hasExtraMinutes ? moreThan : '') + `${diffHours} ساعات مضت`;
-                    } else if (diffHours >= 11 && diffHours <= 23) {
-                        timeAgoText = (hasExtraMinutes ? moreThan : '') + `${diffHours} ساعة مضت`;
-                    } else if (diffDays === 1 && !hasExtraHours) {
-                        timeAgoText = 'يوم مضى';
-                    } else if (diffDays === 1 && hasExtraHours) {
-                        timeAgoText = moreThan + 'يوم مضى';
-                    } else if (diffDays === 2 && !hasExtraHours) {
-                        timeAgoText = 'يومان مضيا';
-                    } else if (diffDays === 2 && hasExtraHours) {
-                        timeAgoText = moreThan + 'يومان مضيا';
-                    } else if (diffDays >= 3 && diffDays <= 10) {
-                        timeAgoText = (hasExtraHours ? moreThan : '') + `${diffDays} أيام مضت`;
-                    } else if (diffDays >= 11 && diffDays < 30) {
-                        timeAgoText = (hasExtraHours ? moreThan : '') + `${diffDays} يومًا مضت`;
-                    } else if (diffMonths === 1 && !hasExtraDays && !hasExtraHours && !hasExtraMinutes) {
-                        timeAgoText = 'شهر مضى';
-                    } else if (diffMonths === 1 && (hasExtraDays || hasExtraHours || hasExtraMinutes)) {
-                        timeAgoText = moreThan + 'شهر مضى';
-                    } else if (diffMonths === 2 && !hasExtraDays && !hasExtraHours && !hasExtraMinutes) {
-                        timeAgoText = 'شهران مضيا';
-                    } else if (diffMonths === 2 && (hasExtraDays || hasExtraHours || hasExtraMinutes)) {
-                        timeAgoText = moreThan + 'شهران مضيا';
-                    } else if (diffMonths >= 3 && diffMonths <= 10) {
-                        timeAgoText = ((hasExtraDays || hasExtraHours || hasExtraMinutes) ? moreThan : '') + `${diffMonths} أشهر مضت`;
-                    } else if (diffMonths >= 11 && diffMonths < 12) {
-                        timeAgoText = ((hasExtraDays || hasExtraHours || hasExtraMinutes) ? moreThan : '') + `${diffMonths} شهرًا مضت`;
-                    } else if (diffYears === 1 && !hasExtraMonths) {
-                        timeAgoText = 'سنة مضت';
-                    } else if (diffYears === 1 && hasExtraMonths) {
-                        timeAgoText = moreThan + 'سنة مضت';
-                    } else if (diffYears === 2 && !hasExtraMonths) {
-                        timeAgoText = 'سنتان مضتا';
-                    } else if (diffYears === 2 && hasExtraMonths) {
-                        timeAgoText = moreThan + 'سنتان مضتا';
-                    } else if (diffYears >= 3 && diffYears <= 10) {
-                        timeAgoText = (hasExtraMonths ? moreThan : '') + `${diffYears} سنوات مضت`;
-                    } else {
-                        timeAgoText = (hasExtraMonths ? moreThan : '') + `${diffYears} سنة مضت`;
-                    }
-                
-                    this.episodeOfWeekTimeAgo = timeAgoText;
-                
-                    this.updateEpisodeTimeAgoEnglish(episodeDate);
-                },
-                
-                updateEpisodeTimeAgoEnglish(episodeDate) {
-                    const enableTimeAgoDebug = false;
-                    const now = new Date();
-                    const diffMs = now - episodeDate;
-
-                    const totalSeconds = Math.floor(diffMs / 1000);
-                    const totalMinutes = Math.floor(totalSeconds / 60);
-                    const totalHours = Math.floor(totalMinutes / 60);
-                    const totalDays = Math.floor(totalHours / 24);
-                    const totalMonths = Math.floor(totalDays / 30);
-                    const totalYears = Math.floor(totalDays / 365);
-
-                    const years = totalYears;
-                    const months = totalMonths - (years * 12);
-                    const weeks = Math.floor((totalDays - (years * 365) - (months * 30)) / 7);
-                    const days = totalDays - (years * 365) - (months * 30) - (weeks * 7);
-                    const hours = totalHours - (totalDays * 24);
-                    const minutes = totalMinutes - (totalHours * 60);
-
-                    let parts = [];
-                    if (years > 0) parts.push(`${years}y`);
-                    if (months > 0) parts.push(`${months}m`);
-                    if (weeks > 0) parts.push(`${weeks}w`);
-                    if (days > 0) parts.push(`${days}d`);
-                    if (hours > 0) parts.push(`${hours}h`);
-                    if (minutes > 0) parts.push(`${minutes}min`);
-
-                    if (parts.length === 0) {
-                        const seconds = totalSeconds;
-                        parts.push(`${seconds}s`);
-                    }
-
-                    this.episodeOfWeekTimeAgoEnglish = parts.join('');
-                },
-
-                toggleNextEpisodeTimeFormat() {
-                    if (!this.nextEpisodeArabicCountdown && !this.nextEpisodeEnglishCountdown) {
-                        return;
-                    }
-                    this.showNextEpisodeEnglishFormat = !this.showNextEpisodeEnglishFormat;
-                },
+				    const enableTimeAgoDebug = false;
+				    
+				    if (enableTimeAgoDebug) console.log('updateEpisodeTimeAgo called - episodeOfWeek:', this.episodeOfWeek);
+				    
+				    if (!this.episodeOfWeek) {
+				        if (enableTimeAgoDebug) console.log('No episodeOfWeek found');
+				        this.episodeOfWeekTimeAgo = '';
+				        return;
+				    }
+				    
+				    if (!this.episodeOfWeek.EpisodeBCDate) {
+				        if (enableTimeAgoDebug) console.log('No EpisodeBCDate in episode:', this.episodeOfWeek);
+				        this.episodeOfWeekTimeAgo = '';
+				        return;
+				    }
+				
+				    const bcDate = this.episodeOfWeek.EpisodeBCDate;
+				    if (enableTimeAgoDebug) console.log('Processing EpisodeBCDate:', bcDate);
+				    
+				    let episodeDate;
+				
+				    // YYYY-MM-DD
+				    if (bcDate.includes('-')) {
+				        const dateParts = bcDate.split('-');
+				        if (dateParts.length !== 3) {
+				            this.episodeOfWeekTimeAgo = '';
+				            return;
+				        }
+				        const [year, month, day] = dateParts.map(Number);
+				        episodeDate = new Date(year, month - 1, day);
+				
+				        // FIXED: set to 12:00 PM
+				        episodeDate.setHours(12, 0, 0, 0);
+				
+				    } 
+				    // DD/MM/YYYY
+				    else if (bcDate.includes('/')) {
+				        const dateParts = bcDate.split('/');
+				        if (dateParts.length !== 3) {
+				            this.episodeOfWeekTimeAgo = '';
+				            return;
+				        }
+				        const [day, month, year] = dateParts.map(Number);
+				        episodeDate = new Date(year, month - 1, day);
+				
+				        // FIXED: set to 12:00 PM
+				        episodeDate.setHours(12, 0, 0, 0);
+				
+				    } 
+				    else {
+				        this.episodeOfWeekTimeAgo = '';
+				        return;
+				    }
+				
+				    const now = new Date();
+				    const diffMs = now - episodeDate;
+				    const diffSeconds = Math.floor(diffMs / 1000);
+				    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+				    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+				    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+				    const diffMonths = Math.floor(diffDays / 30);
+				    const diffYears = Math.floor(diffDays / 365);
+				
+				    const hasExtraSeconds = diffSeconds % 60 > 0;
+				    const hasExtraMinutes = diffMinutes % 60 > 0;
+				    const hasExtraHours = diffHours % 24 > 0;
+				    const hasExtraDays = diffDays % 30 > 0;
+				    const hasExtraMonths = (diffDays % 365) >= 30;
+				
+				    let timeAgoText = '';
+				    const moreThan = 'أكثر من ';
+				
+				    if (diffMinutes < 1) {
+				        timeAgoText = 'الآن';
+				    } else if (diffMinutes === 1 && !hasExtraSeconds) {
+				        timeAgoText = 'دقيقة مضت';
+				    } else if (diffMinutes === 1 && hasExtraSeconds) {
+				        timeAgoText = moreThan + 'دقيقة مضت';
+				    } else if (diffMinutes === 2 && !hasExtraSeconds) {
+				        timeAgoText = 'دقيقتان مضتا';
+				    } else if (diffMinutes === 2 && hasExtraSeconds) {
+				        timeAgoText = moreThan + 'دقيقتان مضتا';
+				    } else if (diffMinutes >= 3 && diffMinutes <= 10) {
+				        timeAgoText = (hasExtraSeconds ? moreThan : '') + `${diffMinutes} دقائق مضت`;
+				    } else if (diffMinutes >= 11 && diffMinutes <= 59) {
+				        timeAgoText = (hasExtraSeconds ? moreThan : '') + `${diffMinutes} دقيقة مضت`;
+				    } else if (diffHours === 1 && !hasExtraMinutes) {
+				        timeAgoText = 'ساعة مضت';
+				    } else if (diffHours === 1 && hasExtraMinutes) {
+				        timeAgoText = moreThan + 'ساعة مضت';
+				    } else if (diffHours === 2 && !hasExtraMinutes) {
+				        timeAgoText = 'ساعتان مضتا';
+				    } else if (diffHours === 2 && hasExtraMinutes) {
+				        timeAgoText = moreThan + 'ساعتان مضتا';
+				    } else if (diffHours >= 3 && diffHours <= 10) {
+				        timeAgoText = (hasExtraMinutes ? moreThan : '') + `${diffHours} ساعات مضت`;
+				    } else if (diffHours >= 11 && diffHours <= 23) {
+				        timeAgoText = (hasExtraMinutes ? moreThan : '') + `${diffHours} ساعة مضت`;
+				    } else if (diffDays === 1 && !hasExtraHours) {
+				        timeAgoText = 'يوم مضى';
+				    } else if (diffDays === 1 && hasExtraHours) {
+				        timeAgoText = moreThan + 'يوم مضى';
+				    } else if (diffDays === 2 && !hasExtraHours) {
+				        timeAgoText = 'يومان مضيا';
+				    } else if (diffDays === 2 && hasExtraHours) {
+				        timeAgoText = moreThan + 'يومان مضيا';
+				    } else if (diffDays >= 3 && diffDays <= 10) {
+				        timeAgoText = (hasExtraHours ? moreThan : '') + `${diffDays} أيام مضت`;
+				    } else if (diffDays >= 11 && diffDays < 30) {
+				        timeAgoText = (hasExtraHours ? moreThan : '') + `${diffDays} يومًا مضت`;
+				    } else if (diffMonths === 1 && !hasExtraDays && !hasExtraHours && !hasExtraMinutes) {
+				        timeAgoText = 'شهر مضى';
+				    } else if (diffMonths === 1 && (hasExtraDays || hasExtraHours || hasExtraMinutes)) {
+				        timeAgoText = moreThan + 'شهر مضى';
+				    } else if (diffMonths === 2 && !hasExtraDays && !hasExtraHours && !hasExtraMinutes) {
+				        timeAgoText = 'شهران مضيا';
+				    } else if (diffMonths === 2 && (hasExtraDays || hasExtraHours || hasExtraMinutes)) {
+				        timeAgoText = moreThan + 'شهران مضيا';
+				    } else if (diffMonths >= 3 && diffMonths <= 10) {
+				        timeAgoText = ((hasExtraDays || hasExtraHours || hasExtraMinutes) ? moreThan : '') + `${diffMonths} أشهر مضت`;
+				    } else if (diffMonths >= 11 && diffMonths < 12) {
+				        timeAgoText = ((hasExtraDays || hasExtraHours || hasExtraMinutes) ? moreThan : '') + `${diffMonths} شهرًا مضت`;
+				    } else if (diffYears === 1 && !hasExtraMonths) {
+				        timeAgoText = 'سنة مضت';
+				    } else if (diffYears === 1 && hasExtraMonths) {
+				        timeAgoText = moreThan + 'سنة مضت';
+				    } else if (diffYears === 2 && !hasExtraMonths) {
+				        timeAgoText = 'سنتان مضتا';
+				    } else if (diffYears === 2 && hasExtraMonths) {
+				        timeAgoText = moreThan + 'سنتان مضتا';
+				    } else if (diffYears >= 3 && diffYears <= 10) {
+				        timeAgoText = (hasExtraMonths ? moreThan : '') + `${diffYears} سنوات مضت`;
+				    } else {
+				        timeAgoText = (hasExtraMonths ? moreThan : '') + `${diffYears} سنة مضت`;
+				    }
+				
+				    this.episodeOfWeekTimeAgo = timeAgoText;
+				
+				    this.updateEpisodeTimeAgoEnglish(episodeDate);
+				},
+				
+				updateEpisodeTimeAgoEnglish(episodeDate) {
+				    const enableTimeAgoDebug = false;
+				    const now = new Date();
+				    const diffMs = now - episodeDate;
+				
+				    const totalSeconds = Math.floor(diffMs / 1000);
+				    const totalMinutes = Math.floor(totalSeconds / 60);
+				    const totalHours = Math.floor(totalMinutes / 60);
+				    const totalDays = Math.floor(totalHours / 24);
+				    const totalMonths = Math.floor(totalDays / 30);
+				    const totalYears = Math.floor(totalDays / 365);
+				
+				    const years = totalYears;
+				    const months = totalMonths - (years * 12);
+				    const weeks = Math.floor((totalDays - (years * 365) - (months * 30)) / 7);
+				    const days = totalDays - (years * 365) - (months * 30) - (weeks * 7);
+				    const hours = totalHours - (totalDays * 24);
+				    const minutes = totalMinutes - (totalHours * 60);
+				
+				    let parts = [];
+				    if (years > 0) parts.push(`${years}y`);
+				    if (months > 0) parts.push(`${months}m`);
+				    if (weeks > 0) parts.push(`${weeks}w`);
+				    if (days > 0) parts.push(`${days}d`);
+				    if (hours > 0) parts.push(`${hours}h`);
+				    if (minutes > 0) parts.push(`${minutes}min`);
+				
+				    if (parts.length === 0) {
+				        const seconds = totalSeconds;
+				        parts.push(`${seconds}s`);
+				    }
+				
+				    this.episodeOfWeekTimeAgoEnglish = parts.join('');
+				},
 
                 toggleTimeFormat() {
                     const enableTimeAgoDebug = false; // Set to true to enable debug logging
@@ -17254,12 +17068,13 @@
                 // Load manga update date and set up interval
                 if (enableDebug) console.log('mounted - Loading manga update date');
                 this.loadMangaUpdateDate();
+                
                 this.mangaTimeInterval = setInterval(() => {
                     if (enableDebug) console.log('Timer tick - updating manga time ago');
                     this.updateMangaTimeAgo();
                 }, 60000); // Update every minute
                 if (enableDebug) console.log('mounted - Manga timer set up complete');
-
+                
                 // Initialize countdown timer for episode broadcast date
                 this.calculateCountdown();
                 this.episodeBroadcastCountdownInterval = setInterval(() => {
@@ -17267,13 +17082,10 @@
                     this.calculateCountdown();
                 }, 60000); // Update every minute
                 if (enableDebug) console.log('mounted - Countdown timer set up complete');
-
-                // Load upcoming episode announcements
-                this.loadNextEpisodeInfo();
             },
 
-// ... (rest of the code remains the same)
             unmounted() {
+
                 // Clear any app-specific intervals/timeouts
                 if (this.intervalId) clearInterval(this.intervalId);
                 if (this.intervalZikrId) clearInterval(this.intervalZikrId);
@@ -17281,7 +17093,6 @@
                 if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
                 if (this.countdownInterval) clearInterval(this.countdownInterval);
                 if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
-                if (this.nextEpisodeCountdownInterval) clearInterval(this.nextEpisodeCountdownInterval);
                 if (this.timeoutId) clearTimeout(this.timeoutId);
 
                 // Clean up event listener to prevent memory leaks
@@ -17291,9 +17102,9 @@
 
         });
 
-        app.directive('tippy', {
-            mounted(el, binding) {
-                if (typeof tippy !== 'undefined') {
+            app.directive('tippy', {
+                mounted(el, binding) {
+                    if (typeof tippy !== 'undefined') {
                     tippy(el, {
                         content: binding.value,
                         theme: 'retro',
@@ -17301,23 +17112,23 @@
                         followCursor: 'horizontal',
                         allowHTML: true,
                         onMount(instance) {
-                            const popper = instance.popper;
-                            popper.style.display = 'flex';
-                            popper.style.alignItems = 'center';
-                            popper.style.justifyContent = 'center';
-                            popper.style.textAlign = 'center';
-                            popper.style.direction = 'rtl';
+                        const popper = instance.popper;
+                        popper.style.display = 'flex';
+                        popper.style.alignItems = 'center';
+                        popper.style.justifyContent = 'center';
+                        popper.style.textAlign = 'center';
+                        popper.style.direction = 'rtl';
                         }
                     });
+                    }
+                },
+                updated(el, binding) {
+                    if (el._tippy) el._tippy.setContent(binding.value);
+                },
+                unmounted(el) {
+                    if (el._tippy) el._tippy.destroy();
                 }
-            },
-            updated(el, binding) {
-                if (el._tippy) el._tippy.setContent(binding.value);
-            },
-            unmounted(el) {
-                if (el._tippy) el._tippy.destroy();
-            }
-        });
+            });
 
 		app.mount('#app');
     </script>
