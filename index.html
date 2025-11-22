@@ -7408,6 +7408,7 @@
                 },
 
                 filteredEpisodes() {
+                    const rawSearchQuery = this.searchQuery.trim().toLowerCase();
                     const searchQuery = this.normalizeText(this.searchQuery);
 
                     // Filter by EpisodeType
@@ -9920,32 +9921,6 @@
                     // Apply other filters (e.g., category and search query)
                     return filteredByType
                     .filter(episode => {
-                        if (this.selectedFilter === 'anime') {
-                            return /^[0-9]+(\.[0-9]+)?$/.test(episode.EpisodeNumber);
-                        } else if (this.selectedFilter === 'movies') {
-                            return episode.EpisodeNumber.includes("الفيلم") && !episode.EpisodeNumber.includes("خاصة بالفيلم");
-                        } else if (this.selectedFilter === 'hourly_special') {
-                            return episode.EpisodeSpecial === "1";
-                        } else if (this.selectedFilter === 'two_hour_special') {
-                            return episode.EpisodeSpecial === "2";
-                        } else if (this.selectedFilter === 'short_story') {
-                            return episode.EpisodeNumber.includes("قصة قصيرة");
-                        } else if (this.selectedFilter === 'ova') {
-                            return episode.EpisodeNumber.includes("أوفا");
-                        } else if (this.selectedFilter === 'movie_special') {
-                            return episode.EpisodeNumber.includes("خاصة بالفيلم") || episode.EpisodeTitle.includes("خاصة بالفيلم");
-                        } else if (this.selectedFilter === 'special_release') {
-                            return episode.EpisodeNumber.includes("إصدار خاص");
-                        } else if (this.selectedFilter === 'magic_kaito') {
-                            return episode.EpisodeNumber.includes("ماجيك كايتو");
-                        } else if (this.selectedFilter === 'zero_diaries') {
-                            return episode.EpisodeNumber.includes("يوميات زيرو");
-                        } else if (this.selectedFilter === 'criminal_hanzawa') {
-                            return episode.EpisodeNumber.includes("المجرم هانزاوا");
-                        }
-                        return true;
-                    })
-                    .filter(episode => {
                         if (searchQuery === "") return true; // Show all episodes when search bar is empty
                         
                         // Build an array of conditions based on checked filters
@@ -9953,10 +9928,13 @@
                         
                         // Number filter logic
                         if (this.searchFilters.number) {
-                            // Convert search query into a list of numbers
                             const numberList = [];
-                            searchQuery.split(',').forEach(part => {
+                            const textFragments = [];
+
+                            rawSearchQuery.split(',').forEach(part => {
                                 part = part.trim();
+                                if (!part) return;
+
                                 if (part.includes('-') && !part.match(/^\d+\.\d+-/)) {
                                     // Handle ranges like "44-60" (but not decimals like "1076.5-")
                                     const [start, end] = part.split('-').map(num => parseFloat(num.trim()));
@@ -9977,22 +9955,40 @@
                                     const num = parseFloat(part);
                                     if (!isNaN(num)) {
                                         numberList.push(num.toString());
+                                    } else {
+                                        textFragments.push(part);
                                     }
                                 }
                             });
-                            
+
                             // Extract number from episode.EpisodeNumber based on textNumberMatchMode
-                            let episodeNumber;
-                            if (this.textNumberMatchMode === 'enabled') {
-                                // Extract number at the end of the string (including decimals)
-                                const episodeNumberMatch = episode.EpisodeNumber.toString().match(/\d+\.?\d*$/);
-                                episodeNumber = episodeNumberMatch ? episodeNumberMatch[0] : episode.EpisodeNumber;
-                            } else {
-                                // Use the full episode number as before
-                                episodeNumber = episode.EpisodeNumber.toString();
+                            let numberConditionEvaluated = false;
+                            let numberMatch = false;
+
+                            if (numberList.length) {
+                                numberConditionEvaluated = true;
+                                let episodeNumber;
+                                if (this.textNumberMatchMode === 'enabled') {
+                                    const episodeNumberMatch = episode.EpisodeNumber.toString().match(/\d+\.?\d*$/);
+                                    episodeNumber = episodeNumberMatch ? episodeNumberMatch[0] : episode.EpisodeNumber;
+                                } else {
+                                    episodeNumber = episode.EpisodeNumber.toString();
+                                }
+
+                                numberMatch = numberList.includes(episodeNumber);
                             }
-                            
-                            matchConditions.push(numberList.includes(episodeNumber));
+
+                            if (textFragments.length) {
+                                numberConditionEvaluated = true;
+                                const normalizedEpisodeNumberText = this.normalizeEpisodeIdentifier(episode.EpisodeNumber);
+                                numberMatch = numberMatch || textFragments.some(fragment =>
+                                    normalizedEpisodeNumberText.includes(this.normalizeEpisodeIdentifier(fragment))
+                                );
+                            }
+
+                            if (numberConditionEvaluated) {
+                                matchConditions.push(numberMatch);
+                            }
                         }
                         
                         // Title filter logic
@@ -14875,7 +14871,6 @@
 
                     // Update page size and recalculate total pages
                     handlePageSizeChange() {
-                        this.clearJumpHighlight();
                         const startIndex = (this.currentPage - 1) * this.oldPageSize;
                         this.currentPage = Math.floor(startIndex / this.pageSize) + 1;
 
@@ -14890,24 +14885,25 @@
                         this.trackLastPage();
                     },
 
-                normalizeText(text) {
-                    let normalizedText = text.toLowerCase();
-                    for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const regex = new RegExp(key, 'g'); // Global search for the word
-                        normalizedText = normalizedText.replace(regex, (match) => {
-                            // Replace with all possible values, separated by "|"
-                            return `(${values.join("|")})`;
-                        });
-                    }
-                    return normalizedText;
-                },
-                normalizeEpisodeIdentifier(value) {
-                    return String(value || '')
-                        .replace(/\s+/g, ' ')
-                        .trim()
-                        .toLowerCase();
-                },
-                
+normalizeText(text) {
+    let normalizedText = text.toLowerCase();
+    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    for (let [key, values] of Object.entries(this.replacementDict)) {
+        const regex = new RegExp(key, 'g'); // Global search for the word
+        normalizedText = normalizedText.replace(regex, (match) => {
+            // Replace with all possible values, separated by "|"
+            return `(${values.join("|")})`;
+        });
+    }
+    return normalizedText;
+},
+normalizeEpisodeIdentifier(value) {
+    return String(value || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+},
+
                 executePendingJump() {
                     if (!this.pendingJumpTarget) return;
                     const targetValue = this.pendingJumpTarget;
