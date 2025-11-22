@@ -7161,9 +7161,9 @@
                 },
 
                 groupedMovies() {
-                    const chunkSize = 28;
+                    const chunkSize = 29;
                     return this.episodes
-                        .filter(e => e.EpisodeNumber.includes('الفيلم') && !e.EpisodeNumber.includes('خاصة بالفيلم'))
+                        .filter(e => e.EpisodeNumber.includes('الفيلم') || e.EpisodeNumber.includes('فيلم تعاوني') && !e.EpisodeNumber.includes('خاصة بالفيلم'))
                         .reduce((acc, _, i, arr) => (i % chunkSize) ? acc : 
                             [...acc, { 
                                 range: `${i+1}-${Math.min(i+chunkSize, arr.length)}`, 
@@ -7415,11 +7415,11 @@
                     let filteredByType = this.episodes;
                     if (this.episodeTypeFilter === 'Manga') {
                         filteredByType = filteredByType.filter(
-                            episode => episode.EpisodeType === 'م' || episode.EpisodeType === 'ث'
+                            episode => episode.EpisodeType === 'م' || episode.EpisodeType === 'ث' || episode.EpisodeType === 'مف'
                         );
                     } else if (this.episodeTypeFilter === 'Filler') {
                         filteredByType = filteredByType.filter(
-                            episode => episode.EpisodeType === 'ف' || episode.EpisodeType === 'ث'
+                            episode => episode.EpisodeType === 'ف' || episode.EpisodeType === 'ث' || episode.EpisodeType === 'مف'
                         );
                     }
 
@@ -9924,7 +9924,7 @@
                         if (this.selectedFilter === 'anime') {
                             return /^[0-9]+(\.[0-9]+)?$/.test(episode.EpisodeNumber);
                         } else if (this.selectedFilter === 'movies') {
-                            return episode.EpisodeNumber.includes("الفيلم") && !episode.EpisodeNumber.includes("خاصة بالفيلم");
+                            return episode.EpisodeNumber.includes("الفيلم") || episode.EpisodeNumber.includes("فيلم تعاوني") && !episode.EpisodeNumber.includes("خاصة بالفيلم");
                         } else if (this.selectedFilter === 'hourly_special') {
                             return episode.EpisodeSpecial === "1";
                         } else if (this.selectedFilter === 'two_hour_special') {
@@ -10083,7 +10083,7 @@
                 return this.episodes.filter(episode => episode.EpisodeNumber.includes("المجرم هانزاوا")).length;
                 },
                 episodeTypeMovieCount() {
-                    return this.episodes.filter(episode => episode.EpisodeNumber.includes("الفيلم")).length;
+                    return this.episodes.filter(episode => episode.EpisodeNumber.includes("الفيلم") || episode.EpisodeNumber.includes("فيلم تعاوني")).length;
                 },
                 episodeTypeHourlySpecialCount() {
                     return this.episodes.filter(episode => episode.EpisodeSpecial.includes('1')).length;
@@ -11525,9 +11525,9 @@
                     const f = this.selectedFilter;
                     const t = this.episodeTypeFilter;
 
-                    if(f === 'all' && t === 'All') return 'عدد الحلقات + الأفلام (مانغا + فِلر)';
-                    if(f === 'all' && t === 'Manga') return 'عدد الحلقات + الأفلام (مانغا)';
-                    if(f === 'all' && t === 'Filler') return 'عدد الحلقات + الأفلام (فِلر)';
+                    if(f === 'all' && t === 'All') return 'عدد الحلقات + الأفلام + خاصة (ساعة) + خاصة (ساعتين) + قصة قصيرة + أوفا + خاصة بالأفلام + الإصدار الخاص + ماجيك كايتو + يوميات زيرو + المجرم هانزاوا (مانغا + فِلر)';
+                    if(f === 'all' && t === 'Manga') return 'عدد الحلقات + الأفلام + خاصة (ساعة) + خاصة (ساعتين) + قصة قصيرة + أوفا + خاصة بالأفلام + الإصدار الخاص + ماجيك كايتو + يوميات زيرو + المجرم هانزاوا (مانغا)';
+                    if(f === 'all' && t === 'Filler') return 'عدد الحلقات + الأفلام + خاصة (ساعة) + خاصة (ساعتين) + قصة قصيرة + أوفا + خاصة بالأفلام + الإصدار الخاص + ماجيك كايتو + يوميات زيرو + المجرم هانزاوا (فِلر)';
                     if(f === 'anime' && t === 'All') return 'عدد الحلقات (مانغا + فِلر)';
                     if(f === 'anime' && t === 'Manga') return 'عدد الحلقات (مانغا)';
                     if(f === 'anime' && t === 'Filler') return 'عدد الحلقات (فِلر)';
@@ -11540,6 +11540,28 @@
                     if(f === 'two_hour_special' && t === 'All') return 'عدد الحلقات الخاصة ساعتين (مانغا + فِلر)';
                     if(f === 'two_hour_special' && t === 'Manga') return 'عدد الحلقات الخاصة ساعتين (مانغا)';
                     if(f === 'two_hour_special' && t === 'Filler') return 'عدد الحلقات الخاصة ساعتين (فِلر)';
+                    if(f === 'short_story' && t === 'All') return 'عدد حلقات القصة القصيرة (مانغا + فِلر)';
+                    if(f === 'short_story' && t === 'Manga') return 'عدد حلقات القصة القصيرة (مانغا)';
+                    if(f === 'short_story' && t === 'Filler') return 'عدد حلقات القصة القصيرة (فِلر)';
+                    if(f === 'ova' && t === 'All') return 'عدد حلقات الأوفا (مانغا + فِلر)';
+                    if(f === 'ova' && t === 'Manga') return 'عدد حلقات الأوفا (مانغا)';
+                    if(f === 'ova' && t === 'Filler') return 'عدد حلقات الأوفا (فِلر)';
+                    if(f === 'movie_special' && t === 'All') return 'عدد الحلقات الخاصة بالأفلام (مانغا + فِلر)';
+                    if(f === 'movie_special' && t === 'Manga') return 'عدد الحلقات الخاصة بالأفلام (مانغا)';
+                    if(f === 'movie_special' && t === 'Filler') return 'عدد الحلقات الخاصة بالأفلام (فِلر)';
+                    if(f === 'special_release' && t === 'All') return 'عدد حلقات الإصدار الخاص (مانغا + فِلر)';
+                    if(f === 'special_release' && t === 'Manga') return 'عدد حلقات الإصدار الخاص (مانغا)';
+                    if(f === 'special_release' && t === 'Filler') return 'عدد حلقات الإصدار الخاص (فِلر)';
+                    if(f === 'magic_kaito' && t === 'All') return 'عدد حلقات ماجيك كايتو (مانغا + فِلر)';
+                    if(f === 'magic_kaito' && t === 'Manga') return 'عدد حلقات ماجيك كايتو (مانغا)';
+                    if(f === 'magic_kaito' && t === 'Filler') return 'عدد حلقات ماجيك كايتو (فِلر)';
+                    if(f === 'zero_diaries' && t === 'All') return 'عدد حلقات يوميات زيرو (مانغا + فِلر)';
+                    if(f === 'zero_diaries' && t === 'Manga') return 'عدد حلقات يوميات زيرو (مانغا)';
+                    if(f === 'zero_diaries' && t === 'Filler') return 'عدد حلقات يوميات زيرو (فِلر)';
+                    if(f === 'criminal_hanzawa' && t === 'All') return 'عدد حلقات المجرم هانزاوا (مانغا + فِلر)';
+                    if(f === 'criminal_hanzawa' && t === 'Manga') return 'عدد حلقات المجرم هانزاوا (مانغا)';
+                    if(f === 'criminal_hanzawa' && t === 'Filler') return 'عدد حلقات المجرم هانزاوا (فِلر)';
+
                     return '';
                 },
 
