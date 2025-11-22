@@ -14895,62 +14895,87 @@
                     this.trackLastPage();
                 },
 
-                    // Update page size and recalculate total pages
-                    handlePageSizeChange() {
-                        const startIndex = (this.currentPage - 1) * this.oldPageSize;
-                        this.currentPage = Math.floor(startIndex / this.pageSize) + 1;
+                // Update page size and recalculate total pages
+                handlePageSizeChange() {
+                    const startIndex = (this.currentPage - 1) * this.oldPageSize;
+                    this.currentPage = Math.floor(startIndex / this.pageSize) + 1;
 
-                        if (this.currentPage > this.totalPages) {
-                            this.currentPage = this.totalPages;
-                        }
-                        if (this.currentPage < 1) {
-                            this.currentPage = 1;
-                        }
-                        
-                        this.oldPageSize = this.pageSize;
-                        this.trackLastPage();
-                    },
+                    if (this.currentPage > this.totalPages) {
+                        this.currentPage = this.totalPages;
+                    }
+                    if (this.currentPage < 1) {
+                        this.currentPage = 1;
+                    }
+                    
+                    this.oldPageSize = this.pageSize;
+                    this.trackLastPage();
+                },
 
-normalizeText(text) {
-    let normalizedText = text.toLowerCase();
-    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    for (let [key, values] of Object.entries(this.replacementDict)) {
-        const regex = new RegExp(key, 'g'); // Global search for the word
-        normalizedText = normalizedText.replace(regex, (match) => {
-            // Replace with all possible values, separated by "|"
-            return `(${values.join("|")})`;
-        });
-    }
-    return normalizedText;
-},
-normalizeEpisodeIdentifier(value) {
-    return String(value || '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toLowerCase();
-},
-
+                normalizeText(text) {
+                    let normalizedText = text.toLowerCase();
+                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    for (let [key, values] of Object.entries(this.replacementDict)) {
+                        const regex = new RegExp(key, 'g'); // Global search for the word
+                        normalizedText = normalizedText.replace(regex, (match) => {
+                            // Replace with all possible values, separated by "|"
+                            return `(${values.join("|")})`;
+                        });
+                    }
+                    return normalizedText;
+                },
+                normalizeEpisodeIdentifier(value) {
+                    return String(value || '')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .toLowerCase();
+                },
 
                 executePendingJump() {
                     if (!this.pendingJumpTarget) return;
+
                     const targetValue = this.pendingJumpTarget;
+
                     this.$nextTick(() => {
                         const dataset = Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes : [];
                         const normalizedTarget = this.normalizeEpisodeIdentifier(targetValue);
                         this.jumpHighlightIdentifier = null;
+
                         if (!dataset.length) {
                             this.pendingJumpTarget = null;
                             return;
                         }
-                        const matchIndex = dataset.findIndex((episode) =>
-                            this.normalizeEpisodeIdentifier(episode.EpisodeNumber) === normalizedTarget
-                        );
+
+                        const searchTitle = !!(this.searchFilters && this.searchFilters.title);
+                        const searchNumber = !(this.searchFilters && this.searchFilters.number === false);
+                        const fallbackNumber = !searchTitle && !searchNumber;
+
+                        const matchIndex = dataset.findIndex((episode) => {
+                            if (searchNumber || fallbackNumber) {
+                                const normalizedEpisodeNumber = this.normalizeEpisodeIdentifier(episode.EpisodeNumber);
+                                if (normalizedEpisodeNumber === normalizedTarget) {
+                                    return true;
+                                }
+                            }
+
+                            if (searchTitle) {
+                                const normalizedEpisodeTitle = this.normalizeEpisodeIdentifier(episode.EpisodeTitle);
+                                if (normalizedEpisodeTitle.includes(normalizedTarget)) {
+                                    return true;
+                                }
+                            }
+
+                            return false;
+                        });
+
                         this.pendingJumpTarget = null;
+
                         if (matchIndex === -1) {
                             console.warn(`Quick-jump target "${targetValue}" was not found.`);
                             return;
                         }
-                        this.jumpHighlightIdentifier = normalizedTarget;
+
+                        const matchedEpisode = dataset[matchIndex];
+                        this.jumpHighlightIdentifier = this.normalizeEpisodeIdentifier(matchedEpisode.EpisodeNumber);
                         const targetPage = Math.floor(matchIndex / this.pageSize) + 1;
                         this.currentPage = targetPage;
                         this.trackLastPage();
