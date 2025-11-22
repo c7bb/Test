@@ -5590,98 +5590,103 @@
                                 </div>
 
                             </div>
-                            <p class="text-white text-lg text-center font-bold mt-4">الأحداث القادمة</p>
+                            <fieldset class="mt-4 border border-yellow-500 rounded-lg p-4 space-y-2">
+                                <legend class="px-2 text-white text-lg text-center font-bold">
+                                    الأحداث القادمة
+                                </legend>
 
-                            <!-- Upcoming Episode Notice -->
-                            <div
-                                v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
-                                class="mt-2 text-center space-y-1"
+                                <!-- Upcoming Episode Notice -->
+                                <div
+                                    v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
+                                    class="text-center space-y-1"
                                 >
-                                <p
-                                    v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicDynamic"
-                                    class="text-white text-base flex flex-wrap justify-center items-center gap-1"
-                                >
-                                    <span>متبقي</span>
-                                    <span
-                                    class="cursor-pointer hover:text-gray-300"
-                                    @click="toggleNextEpisodeCountdownLanguage"
+                                    <p
+                                        v-if="nextEpisodeStatus === 'countdown' && nextEpisodeCountdownArabicDynamic"
+                                        class="text-white text-base flex flex-wrap justify-center items-center gap-1"
                                     >
-                                    {{
-                                        showEnglishNextEpisodeCountdown
-                                        ? nextEpisodeCountdownEnglishValue
-                                        : nextEpisodeCountdownArabicDynamic
-                                    }}
-                                    </span>
-                                    <span>للحلقة</span>
-                                    <span
-                                    v-if="nextEpisodeHasRecord"
-                                    class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
-                                    @click="openEpisodeModal(String(nextEpisodeInfo.number))"
-                                    >
-                                    {{ nextEpisodeInfo.number }}
-                                    </span>
-                                    <span
-                                    v-else
-                                    class="text-yellow-300 transition-all duration-100 active:scale-90"
-                                    >
-                                    {{ nextEpisodeInfo.number }}
-                                    </span>
-                                </p>
+                                        <span>متبقي</span>
+                                        <span
+                                            class="cursor-pointer hover:text-gray-300"
+                                            @click="toggleNextEpisodeCountdownLanguage"
+                                        >
+                                        {{
+                                            showEnglishNextEpisodeCountdown
+                                            ? nextEpisodeCountdownEnglishValue
+                                            : nextEpisodeCountdownArabicDynamic
+                                        }}
+                                        </span>
+                                        <span>للحلقة</span>
+                                        <span
+                                            v-if="nextEpisodeHasRecord"
+                                            class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+                                            @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+                                        >
+                                        {{ nextEpisodeInfo.number }}
+                                        </span>
+                                        <span
+                                            v-else
+                                            class="text-yellow-300 transition-all duration-100 active:scale-90"
+                                        >
+                                        {{ nextEpisodeInfo.number }}
+                                        </span>
+                                    </p>
 
-                                <p
-                                    v-else-if="nextEpisodeStatus === 'translation'"
-                                    class="text-white text-base"
-                                >
-                                    <span>الحلقة </span>
-                                    <span
-                                    class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
-                                    @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+                                    <p
+                                        v-else-if="nextEpisodeStatus === 'translation'"
+                                        class="text-white text-base"
                                     >
-                                    {{ nextEpisodeInfo.number }}
-                                    </span>
-                                    <span> قيد الترجمة من قبل المترجمين.</span>
-                                </p>
-                            </div>
-                            <!-- Upcoming Manga Notice -->
-                            <div
-                                v-if="nextMangaInfo && nextMangaInfo.Enable !== false && nextMangaStatus"
-                                class="mt-2 text-center space-y-1"
-                                >
-                                <p
-                                    v-if="nextMangaStatus === 'countdown' && nextMangaCountdownArabicDynamic"
-                                    class="text-white text-base flex flex-wrap justify-center items-center gap-1"
-                                >
-                                    <span>متبقي</span>
-                                    <span
-                                    class="cursor-pointer hover:text-gray-300"
-                                    @click="toggleNextMangaCountdownLanguage"
-                                    >
-                                    {{
-                                        showEnglishNextMangaCountdown
-                                        ? nextMangaCountdownEnglishValue
-                                        : nextMangaCountdownArabicDynamic
-                                    }}
-                                    </span>
-                                    <span>للفصل</span>
-                                    <span class="text-yellow-300 transition-all duration-100 active:scale-90">
-                                    {{ nextMangaInfo.number }}
-                                    </span>
-                                </p>
+                                        <span>الحلقة </span>
+                                        <span
+                                            class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+                                            @click="openEpisodeModal(String(nextEpisodeInfo.number))"
+                                        >
+                                        {{ nextEpisodeInfo.number }}
+                                        </span>
+                                        <span> قيد الترجمة من قبل المترجمين.</span>
+                                    </p>
+                                </div>
 
-                                <p
-                                    v-else-if="nextMangaStatus === 'translation'"
-                                    class="text-white text-base"
+                                <!-- Upcoming Manga Notice -->
+                                <div
+                                    v-if="nextMangaInfo && nextMangaInfo.Enable !== false && nextMangaStatus"
+                                    class="text-center space-y-1"
                                 >
-                                    <span>الفصل </span>
-                                    <span
-                                    class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
-                                    @click="openMangaModal(String(nextMangaInfo.number))"
+                                    <p
+                                        v-if="nextMangaStatus === 'countdown' && nextMangaCountdownArabicDynamic"
+                                        class="text-white text-base flex flex-wrap justify-center items-center gap-1"
                                     >
-                                    {{ nextMangaInfo.number }}
-                                    </span>
-                                    <span> قيد الترجمة من قبل المترجمين.</span>
-                                </p>
-                            </div>
+                                        <span>متبقي</span>
+                                        <span
+                                            class="cursor-pointer hover:text-gray-300"
+                                            @click="toggleNextMangaCountdownLanguage"
+                                        >
+                                        {{
+                                            showEnglishNextMangaCountdown
+                                            ? nextMangaCountdownEnglishValue
+                                            : nextMangaCountdownArabicDynamic
+                                        }}
+                                        </span>
+                                        <span>للفصل</span>
+                                        <span class="text-yellow-300 transition-all duration-100 active:scale-90">
+                                        {{ nextMangaInfo.number }}
+                                        </span>
+                                    </p>
+
+                                    <p
+                                        v-else-if="nextMangaStatus === 'translation'"
+                                        class="text-white text-base"
+                                    >
+                                        <span>الفصل </span>
+                                        <span
+                                            class="text-yellow-300 underline cursor-pointer transition-all duration-100 active:scale-90"
+                                            @click="openMangaModal(String(nextMangaInfo.number))"
+                                        >
+                                        {{ nextMangaInfo.number }}
+                                        </span>
+                                        <span> قيد الترجمة من قبل المترجمين.</span>
+                                    </p>
+                                </div>
+                            </fieldset>
                         </div>
 
                         <!-- Centered Description Box for Colors and Their Names with "معاني الألوان" Legend -->
