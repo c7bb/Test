@@ -9921,6 +9921,32 @@
                     // Apply other filters (e.g., category and search query)
                     return filteredByType
                     .filter(episode => {
+                        if (this.selectedFilter === 'anime') {
+                            return /^[0-9]+(\.[0-9]+)?$/.test(episode.EpisodeNumber);
+                        } else if (this.selectedFilter === 'movies') {
+                            return episode.EpisodeNumber.includes("الفيلم") && !episode.EpisodeNumber.includes("خاصة بالفيلم");
+                        } else if (this.selectedFilter === 'hourly_special') {
+                            return episode.EpisodeSpecial === "1";
+                        } else if (this.selectedFilter === 'two_hour_special') {
+                            return episode.EpisodeSpecial === "2";
+                        } else if (this.selectedFilter === 'short_story') {
+                            return episode.EpisodeNumber.includes("قصة قصيرة");
+                        } else if (this.selectedFilter === 'ova') {
+                            return episode.EpisodeNumber.includes("أوفا");
+                        } else if (this.selectedFilter === 'movie_special') {
+                            return episode.EpisodeNumber.includes("خاصة بالفيلم") || episode.EpisodeTitle.includes("خاصة بالفيلم");
+                        } else if (this.selectedFilter === 'special_release') {
+                            return episode.EpisodeNumber.includes("إصدار خاص");
+                        } else if (this.selectedFilter === 'magic_kaito') {
+                            return episode.EpisodeNumber.includes("ماجيك كايتو");
+                        } else if (this.selectedFilter === 'zero_diaries') {
+                            return episode.EpisodeNumber.includes("يوميات زيرو");
+                        } else if (this.selectedFilter === 'criminal_hanzawa') {
+                            return episode.EpisodeNumber.includes("المجرم هانزاوا");
+                        }
+                        return true;
+                    })
+                    .filter(episode => {
                         if (searchQuery === "") return true; // Show all episodes when search bar is empty
                         
                         // Build an array of conditions based on checked filters
@@ -14903,6 +14929,7 @@ normalizeEpisodeIdentifier(value) {
         .trim()
         .toLowerCase();
 },
+
 
                 executePendingJump() {
                     if (!this.pendingJumpTarget) return;
