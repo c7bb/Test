@@ -1203,7 +1203,7 @@
                 <div class="relative bg-sky-900 rounded shadow-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col"> <!-- the defualt is 80vh in max-h-[90vh]-->
                     <!-- Sticky Header Section -->
                     <div class="sticky top-0 z-50 bg-sky-900 p-4">
-                        <h2 class="text-xl font-bold text-orange-400 relative">
+                        <h2 class="text-xl font-bold text-green-400 relative">
                             <!-- Close Button in the Top Left of the Title -->
                             <button 
                                 @click="closeEmptyPopup" 
@@ -5624,7 +5624,7 @@
                                         </span>
                                         <span
                                             v-else
-                                            class="text-yellow-300 transition-all duration-100 active:scale-90"
+                                            class="text-yellow-300"
                                         >
                                         {{ nextEpisodeInfo.number }}
                                         </span>
@@ -5666,7 +5666,7 @@
                                         }}
                                         </span>
                                         <span>للفصل</span>
-                                        <span class="text-yellow-300 transition-all duration-100 active:scale-90">
+                                        <span class="text-yellow-300">
                                         {{ nextMangaInfo.number }}
                                         </span>
                                     </p>
@@ -6417,6 +6417,7 @@
                         story: false,
                         summary: false,
                     },
+                    pendingJumpTarget: null,
                     errorMessage: "",
                     statusClearTimeout: 2000,
                     ep: 1182,
@@ -11622,7 +11623,28 @@
                     }
                 },
                 searchQuery(newQuery) {
-                    if (newQuery.trim() === '') {
+                    const trimmed = newQuery.trim();
+
+                    if (trimmed.endsWith('+')) {
+                        const targetValue = trimmed.slice(0, -1).trim();
+
+                        if (!targetValue) {
+                            this.pendingJumpTarget = null;
+                            if (this.searchQuery !== '') this.searchQuery = '';
+                            return;
+                        }
+
+                        this.pendingJumpTarget = targetValue;
+                        if (this.searchQuery !== '') this.searchQuery = '';
+                        this.executePendingJump();
+                        return;
+                    }
+
+                    if (trimmed === '' && this.pendingJumpTarget) {
+                        return;
+                    }
+
+                    if (trimmed === '') {
                         this.currentPage = Math.min(this.lastPage, this.totalPages) || 1;
                     } else {
                         this.currentPage = 1;
@@ -14851,6 +14873,43 @@
                     }
                     return normalizedText;
                 },
+                normalizeEpisodeIdentifier(value) {
+                    return String(value || '')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .toLowerCase();
+                },
+                executePendingJump() {
+                    if (!this.pendingJumpTarget) return;
+
+                    const targetValue = this.pendingJumpTarget;
+
+                    this.$nextTick(() => {
+                        const dataset = Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes : [];
+                        const normalizedTarget = this.normalizeEpisodeIdentifier(targetValue);
+
+                        if (!dataset.length) {
+                            this.pendingJumpTarget = null;
+                            return;
+                        }
+
+                        const matchIndex = dataset.findIndex((episode) =>
+                            this.normalizeEpisodeIdentifier(episode.EpisodeNumber) === normalizedTarget
+                        );
+
+                        this.pendingJumpTarget = null;
+
+                        if (matchIndex === -1) {
+                            console.warn(`Quick-jump target "${targetValue}" was not found.`);
+                            return;
+                        }
+
+                        const targetPage = Math.floor(matchIndex / this.pageSize) + 1;
+                        this.currentPage = targetPage;
+                        this.trackLastPage();
+                    });
+                },
+
                     // Reset the current page to 1
                 resetPageToOne() {
                     this.currentPage = 1; // Reset the page number to 1
