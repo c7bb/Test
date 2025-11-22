@@ -600,6 +600,7 @@
                             <div class="relative">
                                 <input
                                 v-model.trim="searchQuery"
+                                @focus="clearJumpHighlight"
                                 type="text"
                                 placeholder="ابحث..."
                                 class="w-full p-2 text-lg bg-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-teal-400"
@@ -5874,7 +5875,17 @@
                                 {{ episode.EpisodeNumber }}
                             </td>
                             <!-- <td class="border border-gray-300 px-4 text-lg font-bold py-2 text-center cursor-pointer">{{ episode.EpisodeTitle }}</td> -->
-                            <td class="border border-gray-300 px-4 text-lg font-bold py-2 text-center cursor-pointer hover:bg-yellow-900" @click="openModal(episode)">{{ episode.EpisodeTitle }}</td>
+                            <td
+                                :class="[
+                                    'border border-gray-300 px-4 text-lg font-bold py-2 text-center cursor-pointer',
+                                    isJumpHighlighted(episode)
+                                        ? 'bg-yellow-300 text-black hover:bg-yellow-900 hover:text-white'
+                                        : 'hover:bg-yellow-900'
+                                ]"
+                                @click="openModal(episode)"
+                            >
+                                {{ episode.EpisodeTitle }}
+                            </td>
                         </tr>
                     </tbody>
             
@@ -6418,6 +6429,7 @@
                         summary: false,
                     },
                     pendingJumpTarget: null,
+                    jumpHighlightIdentifier: null,
                     errorMessage: "",
                     statusClearTimeout: 2000,
                     ep: 1182,
@@ -14795,18 +14807,21 @@
                 },
 
                 nextPage() {
+                    this.clearJumpHighlight();
                     if (this.currentPage < this.totalPages) {
                         this.currentPage++;
                         this.trackLastPage();
                     }
                 },
                 prevPage() {
+                    this.clearJumpHighlight();
                     if (this.currentPage > 1) {
                         this.currentPage--;
                         this.trackLastPage();
                     }
                 },
                 goToPage(page) {
+                    this.clearJumpHighlight();
                     if (page >= 1 && page <= this.totalPages) {
                         this.currentPage = page;
                         this.trackLastPage();
@@ -14816,14 +14831,26 @@
                     this.lastPage = this.currentPage;
                 },
                 goToFirstPage() {
+                    this.clearJumpHighlight();
                     this.currentPage = 1;
                     this.trackLastPage();
                 },
                 goToLastPage() {
+                    this.clearJumpHighlight();
                     this.currentPage = this.totalPages;
                     this.trackLastPage();
                 },
+                clearJumpHighlight() {
+                    this.jumpHighlightIdentifier = null;
+                },
+                isJumpHighlighted(episode) {
+                    if (!episode || !this.jumpHighlightIdentifier) return false;
+                    return (
+                        this.normalizeEpisodeIdentifier(episode.EpisodeNumber) === this.jumpHighlightIdentifier
+                    );
+                },
                 handlePageSelect(event) {
+                    this.clearJumpHighlight();
                     let pageInput = event.target.value;
 
                     // If the value is empty or invalid, set it to 1
@@ -14848,6 +14875,7 @@
 
                     // Update page size and recalculate total pages
                     handlePageSizeChange() {
+                        this.clearJumpHighlight();
                         const startIndex = (this.currentPage - 1) * this.oldPageSize;
                         this.currentPage = Math.floor(startIndex / this.pageSize) + 1;
 
@@ -14879,31 +14907,27 @@
                         .trim()
                         .toLowerCase();
                 },
+                
                 executePendingJump() {
                     if (!this.pendingJumpTarget) return;
-
                     const targetValue = this.pendingJumpTarget;
-
                     this.$nextTick(() => {
                         const dataset = Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes : [];
                         const normalizedTarget = this.normalizeEpisodeIdentifier(targetValue);
-
+                        this.jumpHighlightIdentifier = null;
                         if (!dataset.length) {
                             this.pendingJumpTarget = null;
                             return;
                         }
-
                         const matchIndex = dataset.findIndex((episode) =>
                             this.normalizeEpisodeIdentifier(episode.EpisodeNumber) === normalizedTarget
                         );
-
                         this.pendingJumpTarget = null;
-
                         if (matchIndex === -1) {
                             console.warn(`Quick-jump target "${targetValue}" was not found.`);
                             return;
                         }
-
+                        this.jumpHighlightIdentifier = normalizedTarget;
                         const targetPage = Math.floor(matchIndex / this.pageSize) + 1;
                         this.currentPage = targetPage;
                         this.trackLastPage();
@@ -17574,6 +17598,7 @@
                 },
 
                 clearSearch() {
+                    this.clearJumpHighlight();
                     this.searchQuery = '';
                 },
 
