@@ -1,18 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-    <script src="https://cdn.lgrckt-in.com/LogRocket.min.js" crossorigin="anonymous"></script>
-    <script>
-       window.LogRocket && window.LogRocket.init('hitfhq/dcref-emt');
-    </script>
-    <script type="text/javascript">
-        (function(c,l,a,r,i,t,y){
-            c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-            t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-            y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-        })(window, document, "clarity", "script", "tzsxusebyo");
-    </script>
-    <script defer src="https://cloud.umami.is/script.js" data-website-id="4d04a0ff-950d-42aa-b123-ce9984e37559"></script>
     <script>
         // Immediate cleanup function
         (function() {
@@ -17019,24 +17007,6 @@
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
 
-                        if (webApp?.initDataUnsafe?.user) {
-                            const initData = webApp.initDataUnsafe;
-                            const user = webApp.initDataUnsafe.user;
-                            LogRocket.identify(String(user.id), {
-                                name: `${user.first_name} ${user.last_name || ''}`.trim(),
-                                telegramProfile: user.username ? `https://t.me/${user.username}` : undefined,
-                                username: user.username || undefined,
-                                language_code: user.language_code || undefined,
-                                is_premium: user.is_premium || false,
-                                photo_url: user.photo_url || undefined,
-                                allows_write_to_pm: user.allows_write_to_pm || undefined,
-                                query_id: initData.query_id || undefined,
-                                auth_date: initData.auth_date || undefined,
-                                signature: initData.signature || undefined,
-                                hash: initData.hash || undefined
-                            });
-                        }
-
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -17915,3 +17885,4 @@
     </style>
 </body>
 </html>
+
