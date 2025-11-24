@@ -5870,7 +5870,7 @@
 
                 <div id="app" class="container mx-auto p-4 shadow-lg rounded"> <!-- removing bg-slate-700 -->
                     <tbody>
-                        <tr v-for="episode in paginatedEpisodes" :key="episode.EpisodeNumber" class="hover:bg-blue-100">
+                        <tr v-for="episode in paginatedEpisodes" :key="episode.EpisodeNumber" :id="'ep-' + normalizeEpisodeIdentifier(episode.EpisodeNumber)" class="hover:bg-blue-100">
                             <td :class="[getBackgroundColor(episode), 'border', 'border-gray-300', 'px-2', 'text-lg', 'font-bold', 'py-2', 'text-center']" v-tippy="getEpisodeTypeTooltip(episode)">
                                 {{ episode.EpisodeNumber }}
                             </td>
@@ -15001,6 +15001,14 @@
                         const targetPage = Math.floor(matchIndex / this.pageSize) + 1;
                         this.currentPage = targetPage;
                         this.trackLastPage();
+                        this.searchOpen = false;
+                        this.$nextTick(() => {
+                            const targetId = 'ep-' + this.jumpHighlightIdentifier;
+                            const el = document.getElementById(targetId);
+                            if (el && typeof el.scrollIntoView === 'function') {
+                                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        });
                     });
                 },
 
