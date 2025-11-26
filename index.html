@@ -5881,7 +5881,7 @@
                                     isJumpHighlighted(episode)
                                         ? 'bg-yellow-300 text-black hover:bg-yellow-900 hover:text-white'
                                         : 'hover:bg-yellow-900',
-                                    lastClickedEpisode === episode ? 'bg-blue-300 text-black' : ''
+                                    lastClickedEpisode === episode ? 'bg-blue-300 text-black hover:text-white' : ''
                                 ]"
                                 @click="selectEpisodeAndOpen(episode)"
                             >
@@ -17175,7 +17175,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+		
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
