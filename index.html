@@ -960,70 +960,86 @@
                                         </div>
                                     </div>
                                     
-                                    <!-- START: UPDATED MOVIE LIST LOOP -->
-                                    <div v-for="(video, index) in selectedEpisode.EpisodeVideosIDs" 
-                                        :key="video.VideoID" 
-                                        class="relative flex flex-col">
-                                        
-                                        <div class="relative">
-                                            
-                                            <!-- Conditional Fieldset (Movie Version) -->
-                                            <fieldset 
-                                                class="rounded relative"
-                                                :class="{ 'border p-3': video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered }">
-                                                
-                                                <!-- Conditional Legend -->
-                                                <legend 
-                                                    v-if="video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered"
-                                                    class="px-2 text-sm">
-                                                    <span v-if="video.EpisodeCategory">
-                                                        {{ video.EpisodeCategory === 'S' ? 'مترجم' : (video.EpisodeCategory === 'D' ? 'مدبلج' : video.EpisodeCategory) }}
-                                                    </span>
-                                                    <span v-if="video.EpisodeTranslator">
-                                                        <span v-if="video.EpisodeCategory"> - </span>{{ video.EpisodeTranslator }}
-                                                    </span>
-                                                    <span v-if="video.EpisodeRemastered">
-                                                        <span v-if="video.EpisodeCategory || video.EpisodeTranslator"> - </span>
-                                                        {{ video.EpisodeRemastered === 'T' ? 'محسنة' : (video.EpisodeRemastered === 'F' ? 'غير محسنة' : video.EpisodeRemastered) }}
-                                                    </span>
-                                                </legend>
-                                                
-                                                <!-- Main Wrapper for Button/Icons -->
-                                                <div class="relative w-full">
-                                                    
-                                                    <!-- Button (Maintains amber-700) -->
-                                                    <button
-                                                        :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                        @click="sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, index, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime)"
-                                                        class="w-full bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
-                                                        <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                        <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                                        <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                    </button>
-                                                    
-                                                    <!-- Status Images (Overlaid Top-Right) -->
-                                                    <img 
-                                                        v-if="video.status === 'success'" 
-                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none"
-                                                    />
-                                                    <img 
-                                                        v-if="video.status === 'error'" 
-                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                        class="absolute right-0 top-0 w-6 h-6 ml-2 z-10 pointer-events-none"
-                                                    />
-                                                    
-                                                    <!-- Centered Loading Overlay -->
-                                                    <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
-                                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                    <!-- START: GROUPED MOVIE LIST LOOP -->
+                                    <div class="flex flex-col gap-4">
+                                        <template v-for="group in groupedVideos" :key="group.key">
+                                            <!-- No metadata: render directly under main legend -->
+                                            <template v-if="!group.hasMetadata">
+                                                <div v-for="video in group.videos" :key="`movie-no-md-${video.VideoID}`" class="relative">
+                                                    <div class="relative w-full">
+                                                        <button
+                                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                            @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
+                                                            class="w-full bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                            <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                            <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                            <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                        </button>
+                                                        <img 
+                                                            v-if="video.status === 'success'" 
+                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                        />
+                                                        <img 
+                                                            v-else-if="video.status === 'error'" 
+                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                        />
+                                                        <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                        </div>
                                                     </div>
-
                                                 </div>
-                                            </fieldset>
-                                        </div>
+                                            </template>
+
+                                            <!-- With metadata: show grouped legend -->
+                                            <div v-else class="relative">
+                                                <fieldset class="rounded relative border p-3">
+                                                    <legend class="px-2 text-sm">
+                                                        <span v-if="group.EpisodeCategory">
+                                                            {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
+                                                        </span>
+                                                        <span v-if="group.EpisodeTranslator">
+                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
+                                                        </span>
+                                                        <span v-if="group.EpisodeRemastered">
+                                                            <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
+                                                            {{ group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered) }}
+                                                        </span>
+                                                    </legend>
+
+                                                    <div class="grid grid-cols-1 gap-2 mt-2">
+                                                        <div v-for="video in group.videos" :key="video.VideoID" class="relative">
+                                                            <div class="relative w-full">
+                                                                <button
+                                                                    :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                                    @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
+                                                                    class="w-full bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                                    <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                                    <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                                    <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                                </button>
+                                                                <img 
+                                                                    v-if="video.status === 'success'" 
+                                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                                    class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                                />
+                                                                <img 
+                                                                    v-else-if="video.status === 'error'" 
+                                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                                    class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                                />
+                                                                <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </fieldset>
+                                            </div>
+                                        </template>
                                     </div>
-                                    <!-- END: UPDATED MOVIE LIST LOOP -->
-                                    
+                                    <!-- END: GROUPED MOVIE LIST LOOP -->
                                 </div>
                             </fieldset>
                         </div>
@@ -1420,7 +1436,7 @@
                                         <legend class="font-bold mb-2">
                                             <label class="transition-all duration-100 active:scale-90">
                                                 <input @click="resetShinichiKudoFilters" type="checkbox" v-model="filterShinichiKudoEpisodes" class="scale-150 ml-2">
-                                                <span>شينتشي كودو ({{ ShinichiKudoEpisodesCount }})</span>
+                                                <span>كودو شينتشي ({{ ShinichiKudoEpisodesCount }})</span>
                                             </label>                                            
                                         </legend>
 
@@ -1462,23 +1478,23 @@
                                             v-model="filterShinichiKudoEpisodes" 
                                             class="scale-150"
                                         >
-                                        <span class="px-2 font-bold">شينتشي كودو ({{ ShinichiKudoEpisodesCount }})</span>
+                                        <span class="px-2 font-bold">كودو شينتشي ({{ ShinichiKudoEpisodesCount }})</span>
                                     </label>
                                 </div>                                                                                            
                             <br />
                             <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
                                 <input type="checkbox" v-model="filterConanEdogawaEpisodes" class="scale-150">
-                                <span class="px-2 font-bold">كونان إدوغاوا ({{ ConanEdogawaEpisodesCount }})</span>
+                                <span class="px-2 font-bold">إدوغاوا كونان ({{ ConanEdogawaEpisodesCount }})</span>
                             </label>
                             <br />
                             <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
                                 <input type="checkbox" v-model="filterRanMouriEpisodes" class="scale-150">
-                                <span class="px-2 font-bold">ران موري ({{ RanMouriEpisodesCount }})</span>
+                                <span class="px-2 font-bold">موري ران ({{ RanMouriEpisodesCount }})</span>
                             </label>
                             <br />
                             <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
                                 <input type="checkbox" v-model="filterKogoroMouriEpisodes" class="scale-150">
-                                <span class="px-2 font-bold">كوغورو موري ({{ KogoroMouriEpisodesCount }})</span>
+                                <span class="px-2 font-bold">موري كوغورو ({{ KogoroMouriEpisodesCount }})</span>
                             </label>                                                                                  
                             </fieldset>
 
@@ -1492,7 +1508,7 @@
                                         <legend class="font-bold mb-2">
                                             <label class="transition-all duration-100 active:scale-90">
                                                 <input @click="resetAyumiYoshidaFilters" type="checkbox" v-model="filterAyumiYoshidaEpisodes" class="scale-150 ml-2">
-                                                <span>أيومي يوشيدا ({{ AyumiYoshidaEpisodesCount }})</span>
+                                                <span>يوشيدا أيومي ({{ AyumiYoshidaEpisodesCount }})</span>
                                             </label>
                                         </legend>
 
@@ -1534,7 +1550,7 @@
                                             v-model="filterAyumiYoshidaEpisodes" 
                                             class="scale-150"
                                         >
-                                        <span class="px-2 font-bold">أيومي يوشيدا ({{ AyumiYoshidaEpisodesCount }})</span>
+                                        <span class="px-2 font-bold">يوشيدا أيومي ({{ AyumiYoshidaEpisodesCount }})</span>
                                     </label>
                                 </div>
                             <br />
@@ -1543,7 +1559,7 @@
                                     <legend class="font-bold mb-2">
                                         <label class="transition-all duration-100 active:scale-90">
                                             <input @click="resetMitsuhikoTsuburayaFilters" type="checkbox" v-model="filterMitsuhikoTsuburayaEpisodes" class="scale-150 ml-2">
-                                            <span>ميتسوهيكو تسوبورايا ({{ MitsuhikoTsuburayaEpisodesCount }})</span>
+                                            <span>تسوبورايا ميتسوهيكو ({{ MitsuhikoTsuburayaEpisodesCount }})</span>
                                         </label>
                                     </legend>
 
@@ -1585,7 +1601,7 @@
                                         v-model="filterMitsuhikoTsuburayaEpisodes" 
                                         class="scale-150"
                                     >
-                                    <span class="px-2 font-bold">ميتسوهيكو تسوبورايا ({{ MitsuhikoTsuburayaEpisodesCount }})</span>
+                                    <span class="px-2 font-bold">تسوبورايا ميتسوهيكو ({{ MitsuhikoTsuburayaEpisodesCount }})</span>
                                 </label>
                             </div>
                             <br />
@@ -1594,7 +1610,7 @@
                                     <legend class="font-bold mb-2">
                                         <label class="transition-all duration-100 active:scale-90">
                                             <input @click="resetGentaKojimaFilters" type="checkbox" v-model="filterGentaKojimaEpisodes" class="scale-150 ml-2">
-                                            <span>جينتا كوجيما ({{ GentaKojimaEpisodesCount }})</span>
+                                            <span>كوجيما جينتا ({{ GentaKojimaEpisodesCount }})</span>
                                         </label>
                                     </legend>
                                     <div class="ml-4 flex space-x-2">
@@ -1635,7 +1651,7 @@
                                         v-model="filterGentaKojimaEpisodes" 
                                         class="scale-150"
                                     >
-                                    <span class="px-2 font-bold">جينتا كوجيما ({{ GentaKojimaEpisodesCount }})</span>
+                                    <span class="px-2 font-bold">كوجيما جينتا ({{ GentaKojimaEpisodesCount }})</span>
                                 </label>
                             </div>
                             <br />
@@ -1644,7 +1660,7 @@
                                     <legend class="font-bold mb-2">
                                         <label class="transition-all duration-100 active:scale-90">
                                             <input @click="resetAiHaibaraFilters" type="checkbox" v-model="filterAiHaibaraEpisodes" class="scale-150 ml-2">
-                                            <span>آي هايبرا ({{ AiHaibaraEpisodesCount }})</span>
+                                            <span>هايبرا آي ({{ AiHaibaraEpisodesCount }})</span>
                                         </label>
                                     </legend>
                                     <div class="ml-4 flex space-x-2">
@@ -1685,7 +1701,7 @@
                                         v-model="filterAiHaibaraEpisodes" 
                                         class="scale-150"
                                     >
-                                    <span class="px-2 font-bold">آي هايبرا ({{ AiHaibaraEpisodesCount }})</span>
+                                    <span class="px-2 font-bold">هايبرا آي ({{ AiHaibaraEpisodesCount }})</span>
                                 </label>
                             </div>                                                                                   
                             </fieldset>
@@ -1700,7 +1716,7 @@
                                         <legend class="font-bold mb-2">
                                             <label class="transition-all duration-100 active:scale-90">
                                                 <input @click="resetHiroshiAgasaFilters" type="checkbox" v-model="filterHiroshiAgasaEpisodes" class="scale-150 ml-2">
-                                                <span>هيروشي أغاسا ({{ HiroshiAgasaEpisodesCount }})</span>
+                                                <span>أغاسا هيروشي ({{ HiroshiAgasaEpisodesCount }})</span>
                                             </label>
                                         </legend>
                                         <div class="ml-4 flex space-x-2">
@@ -1741,7 +1757,7 @@
                                             v-model="filterHiroshiAgasaEpisodes" 
                                             class="scale-150"
                                         >
-                                        <span class="px-2 font-bold">هيروشي أغاسا ({{ HiroshiAgasaEpisodesCount }})</span>
+                                        <span class="px-2 font-bold">أغاسا هيروشي ({{ HiroshiAgasaEpisodesCount }})</span>
                                     </label>
                                 </div> 
                             <br />
@@ -1750,7 +1766,7 @@
                                     <legend class="font-bold mb-2">
                                         <label class="transition-all duration-100 active:scale-90">
                                             <input @click="resetSonokoSuzukiFilters" type="checkbox" v-model="filterSonokoSuzukiEpisodes" class="scale-150 ml-2">
-                                            <span>سونوكو سوزوكي ({{ SonokoSuzukiEpisodesCount }})</span>
+                                            <span>سوزوكي سونوكو ({{ SonokoSuzukiEpisodesCount }})</span>
                                         </label>
                                     </legend>
                                     <div class="ml-4 flex space-x-2">
@@ -1791,7 +1807,7 @@
                                         v-model="filterSonokoSuzukiEpisodes" 
                                         class="scale-150"
                                     >
-                                    <span class="px-2 font-bold">سونوكو سوزوكي ({{ SonokoSuzukiEpisodesCount }})</span>
+                                    <span class="px-2 font-bold">سوزوكي سونوكو ({{ SonokoSuzukiEpisodesCount }})</span>
                                 </label>
                             </div>
                             <br />
@@ -1800,7 +1816,7 @@
                                     <legend class="font-bold mb-2">
                                         <label class="transition-all duration-100 active:scale-90">
                                             <input @click="resetEriKisakiFilters" type="checkbox" v-model="filterEriKisakiEpisodes" class="scale-150 ml-2">
-                                            <span>إيري كيساكي ({{ EriKisakiEpisodesCount }})</span>
+                                            <span>كيساكي إيري ({{ EriKisakiEpisodesCount }})</span>
                                         </label>
                                     </legend>
                                     <div class="ml-4 flex space-x-2">
@@ -1841,7 +1857,7 @@
                                         v-model="filterEriKisakiEpisodes" 
                                         class="scale-150"
                                     >
-                                    <span class="px-2 font-bold">إيري كيساكي ({{ EriKisakiEpisodesCount }})</span>
+                                    <span class="px-2 font-bold">كيساكي إيري ({{ EriKisakiEpisodesCount }})</span>
                                 </label>
                             </div>
                             <br />
@@ -1850,7 +1866,7 @@
                                     <legend class="font-bold mb-2">
                                         <label class="transition-all duration-100 active:scale-90">
                                             <input @click="resetYusakuKudoFilters" type="checkbox" v-model="filterYusakuKudoEpisodes" class="scale-150 ml-2">
-                                            <span>يوساكو كودو ({{ YusakuKudoEpisodesCount }})</span>
+                                            <span>كودو يوساكو ({{ YusakuKudoEpisodesCount }})</span>
                                         </label>
                                     </legend>
                                     <div class="ml-4 flex space-x-2">
@@ -1891,7 +1907,7 @@
                                         v-model="filterYusakuKudoEpisodes" 
                                         class="scale-150"
                                     >
-                                    <span class="px-2 font-bold">يوساكو كودو ({{ YusakuKudoEpisodesCount }})</span>
+                                    <span class="px-2 font-bold">كودو يوساكو ({{ YusakuKudoEpisodesCount }})</span>
                                 </label>
                             </div>
                             <br />
