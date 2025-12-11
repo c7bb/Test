@@ -6278,58 +6278,93 @@
                                 <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeVideosIDs !== null" class="border p-2 rounded mb-4">
                                     <legend class="font-bold text-lg px-2">مشاهدة (عبر البوت)</legend>
                                     <div class="flex flex-col gap-4">
-                                        <!-- Group videos by their category, translator, and remastered status -->
-                                        <div v-for="(group, groupIndex) in groupedVideos" :key="group.key" class="relative">
-                                            <fieldset class="rounded relative border p-3">
-                                                <!-- Group Legend -->
-                                                <legend class="px-2 text-sm">
-                                                    <span v-if="group.EpisodeCategory">
-                                                        {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
-                                                    </span>
-                                                    <span v-if="group.EpisodeTranslator">
-                                                        <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
-                                                    </span>
-                                                    <span v-if="group.EpisodeRemastered">
-                                                        <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
-                                                        {{ group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered) }}
-                                                    </span>
-                                                </legend>
-                                                
-                                                <!-- Video buttons for this group -->
-                                                <div class="grid grid-cols-1 gap-2 mt-2">
-                                                    <div v-for="(video, index) in group.videos" :key="video.VideoID" class="relative">
-                                                        <div class="relative w-full">
-                                                            <!-- The Button -->
-                                                            <button
-                                                                :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                                @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                                class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
-                                                                <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                                <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                                                <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                            </button>
+                                        <!-- Videos without metadata (rendered directly under main legend) -->
+                                        <template v-for="group in groupedVideos">
+                                            <template v-if="!group.hasMetadata">
+                                                <!-- No metadata group - render directly under main legend -->
+                                                <div v-for="(video, index) in group.videos" :key="`no-md-${video.VideoID}`" class="relative">
+                                                    <div class="relative w-full">
+                                                        <!-- The Button -->
+                                                        <button
+                                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                            @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
+                                                            class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                            <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                            <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                            <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                        </button>
 
-                                                            <!-- Status Images (Pinned to Top Right of the Button area) -->
-                                                            <img 
-                                                                v-if="video.status === 'success'" 
-                                                                src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                                class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                            />
-                                                            <img 
-                                                                v-else-if="video.status === 'error'" 
-                                                                src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                                class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                            />
+                                                        <!-- Status Images (Pinned to Top Right of the Button area) -->
+                                                        <img 
+                                                            v-if="video.status === 'success'" 
+                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                        />
+                                                        <img 
+                                                            v-else-if="video.status === 'error'" 
+                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                        />
 
-                                                            <!-- Sending Overlay (Centered over the Button only) -->
-                                                            <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
-                                                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                                            </div>
+                                                        <!-- Sending Overlay (Centered over the Button only) -->
+                                                        <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                                                         </div>
                                                     </div>
                                                 </div>
-                                            </fieldset>
-                                        </div>
+                                            </template>
+                                            <div v-else :key="group.key" class="relative">
+                                                <fieldset class="rounded relative border p-3">
+                                                    <!-- Group Legend -->
+                                                    <legend class="px-2 text-sm">
+                                                        <span v-if="group.EpisodeCategory">
+                                                            {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
+                                                        </span>
+                                                        <span v-if="group.EpisodeTranslator">
+                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
+                                                        </span>
+                                                        <span v-if="group.EpisodeRemastered">
+                                                            <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
+                                                            {{ group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered) }}
+                                                        </span>
+                                                    </legend>
+                                                    
+                                                    <!-- Video buttons for this group -->
+                                                    <div class="grid grid-cols-1 gap-2 mt-2">
+                                                        <div v-for="(video, index) in group.videos" :key="video.VideoID" class="relative">
+                                                            <div class="relative w-full">
+                                                                <!-- The Button -->
+                                                                <button
+                                                                    :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
+                                                                    @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
+                                                                    class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                                    <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                                    <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                                    <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                                </button>
+
+                                                                <!-- Status Images (Pinned to Top Right of the Button area) -->
+                                                                <img 
+                                                                    v-if="video.status === 'success'" 
+                                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
+                                                                    class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                                />
+                                                                <img 
+                                                                    v-else-if="video.status === 'error'" 
+                                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
+                                                                    class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                                                />
+
+                                                                <!-- Sending Overlay (Centered over the Button only) -->
+                                                                <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </fieldset>
+                                            </div>
+                                        </template>
                                     </div>
                                 </fieldset>
                             </div>
@@ -7292,8 +7327,21 @@
 
                     // Create a map to group videos by their unique combination of properties
                     const groups = new Map();
+                    const noMetadataVideos = [];
                     
                     this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
+                        // Check if video has any metadata
+                        const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
+                        
+                        if (!hasMetadata) {
+                            // Add to noMetadataVideos array with original index
+                            noMetadataVideos.push({
+                                ...video,
+                                originalIndex: index
+                            });
+                            return;
+                        }
+                        
                         // Create a unique key for the group
                         const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
                         
@@ -7304,6 +7352,7 @@
                                 EpisodeCategory: video.EpisodeCategory,
                                 EpisodeTranslator: video.EpisodeTranslator,
                                 EpisodeRemastered: video.EpisodeRemastered,
+                                hasMetadata: true,
                                 videos: []
                             });
                         }
@@ -7316,8 +7365,9 @@
                     });
                     
                     // Convert the map to an array and sort the videos within each group by resolution
-                    return Array.from(groups.values()).map(group => ({
+                    const groupedVideos = Array.from(groups.values()).map(group => ({
                         ...group,
+                        hasMetadata: true,
                         videos: group.videos.sort((a, b) => {
                             // Extract numeric part of resolution for proper sorting
                             const resA = parseInt(a.Resolution) || 0;
@@ -7325,6 +7375,26 @@
                             return resB - resA; // Sort in descending order (highest resolution first)
                         })
                     }));
+                    
+                    // If there are videos without metadata, add them as a special group
+                    if (noMetadataVideos.length > 0) {
+                        const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
+                            const resA = parseInt(a.Resolution) || 0;
+                            const resB = parseInt(b.Resolution) || 0;
+                            return resB - resA;
+                        });
+                        
+                        return [
+                            {
+                                key: 'no-metadata',
+                                hasMetadata: false,
+                                videos: sortedNoMetadataVideos
+                            },
+                            ...groupedVideos
+                        ];
+                    }
+                    
+                    return groupedVideos;
                 },
 
                 hasPreviousMovie() {
