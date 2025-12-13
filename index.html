@@ -17381,17 +17381,46 @@
                         return '';
                     }
                     
-                    // First, handle 'بالفيلم n' and 'الفيلم n' patterns (with optional ب prefix and optional space)
-                    let processed = notes.replace(/(ب)?(الفيلم\s*\d+(?:\.\d+)?)/g, (match, hasBa, filmPart) => {
-                        if (this.episodeNotesDebug) console.log('Processing film pattern:', { match, hasBa, filmPart });
-                        const number = filmPart.match(/\d+(?:\.\d+)?/)[0];
+                    // First, handle 'بالفيلم n' and 'الفيلم n' patterns
+                    // Match patterns like: "الفيلم 1", "بالفيلم 1", "الفيلم1", "بالفيلم1", "الفيلم 1.5", etc.
+                    let processed = notes;
+                    
+                    // Process "بالفيلم n" patterns first (more specific, to avoid matching it as "الفيلم")
+                    processed = processed.replace(/(بالفيلم)\s*(\d+(?:\.\d+)?)/g, (match, filmWord, number) => {
+                        if (this.episodeNotesDebug) console.log('Processing بالفيلم pattern:', { match, number });
                         const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                             video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                             this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
-                        if (this.episodeNotesDebug) console.log('Generated film link:', { number, isDisabled });
-                        return `<span data-episode-type="film" data-episode-number="${number}" ${isDisabled ? 'disabled' : ''} class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100" style="pointer-events: ${isDisabled ? 'none' : 'auto'}">${match}</span>`;
+                        const disabledAttr = isDisabled ? ' disabled' : '';
+                        const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90';
+                        const pointerEvents = isDisabled ? 'none' : 'auto';
+                        const html = '<span data-episode-type="film" data-episode-number="' + number + '"' + disabledAttr + ' class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ' + disabledClass + ' transition-all duration-100" style="pointer-events: ' + pointerEvents + '">' + match + '</span>';
+                        if (this.episodeNotesDebug) console.log('Generated بالفيلم link HTML:', html);
+                        return html;
+                    });
+                    
+                    // Then process "الفيلم n" patterns (Safari-compatible: check context manually)
+                    processed = processed.replace(/(الفيلم)\s*(\d+(?:\.\d+)?)/g, (match, filmWord, number, offset, string) => {
+                        // Safari-compatible check: make sure it's not "بالفيلم" (already processed)
+                        const beforeMatch = string.substring(Math.max(0, offset - 5), offset);
+                        if (beforeMatch.endsWith('ب')) {
+                            return match; // This is part of "بالفيلم" which was already processed, skip
+                        }
+                        
+                        if (this.episodeNotesDebug) console.log('Processing الفيلم pattern:', { match, number });
+                        const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
+                            video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
+                            this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
+                                manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
+                        
+                        const disabledAttr = isDisabled ? ' disabled' : '';
+                        const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90';
+                        const pointerEvents = isDisabled ? 'none' : 'auto';
+                        const html = '<span data-episode-type="film" data-episode-number="' + number + '"' + disabledAttr + ' class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ' + disabledClass + ' transition-all duration-100" style="pointer-events: ' + pointerEvents + '">' + match + '</span>';
+                        if (this.episodeNotesDebug) console.log('Generated الفيلم link HTML:', html);
+                        return html;
                     });
                     
                     // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
@@ -17429,7 +17458,10 @@
                                 manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
                         
                         if (this.episodeNotesDebug) console.log('Generated number link:', { number: match, isDisabled });
-                        return `<span data-episode-type="number" data-episode-number="${match}" ${isDisabled ? 'disabled' : ''} class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100" style="pointer-events: ${isDisabled ? 'none' : 'auto'}">${match}</span>`;
+                        const disabledAttr = isDisabled ? ' disabled' : '';
+                        const disabledClass = isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90';
+                        const pointerEvents = isDisabled ? 'none' : 'auto';
+                        return '<span data-episode-type="number" data-episode-number="' + match + '"' + disabledAttr + ' class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ' + disabledClass + ' transition-all duration-100" style="pointer-events: ' + pointerEvents + '">' + match + '</span>';
                     });
                     
                     // Add event delegation in the next tick after the DOM is updated
