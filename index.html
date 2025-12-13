@@ -17447,11 +17447,24 @@
                             return match; // Already processed
                         }
                         
-                        // Skip if part of a larger alphanumeric string (Arabic, English, digits, underscore)
+                        // Skip if part of a larger alphanumeric string (but allow punctuation after numbers)
                         const charBefore = offset > 0 ? string[offset - 1] : ' ';
                         const charAfter = offset + match.length < string.length ? string[offset + match.length] : ' ';
-                        const arabicOrWordRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z0-9_]/;
-                        if (arabicOrWordRegex.test(charBefore) || arabicOrWordRegex.test(charAfter)) {
+                        
+                        // Define punctuation and spaces (these are allowed around numbers)
+                        const punctuationOrSpace = /[\s،.\-:;!?،。、\u060C\u061B\u061F\u0640\u200C\u200D]/;
+                        
+                        // Word characters (letters, digits, underscore) - but exclude punctuation
+                        const wordCharRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z0-9_]/;
+                        
+                        // Skip if character before is a word character (and not punctuation/space)
+                        if (!punctuationOrSpace.test(charBefore) && wordCharRegex.test(charBefore)) {
+                            return match; // Part of larger alphanumeric
+                        }
+                        
+                        // Skip if character after is a word character (and not punctuation/space)
+                        // This allows numbers followed by punctuation like "1160،"
+                        if (!punctuationOrSpace.test(charAfter) && wordCharRegex.test(charAfter)) {
                             return match; // Part of larger alphanumeric
                         }
                         
