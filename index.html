@@ -37,7 +37,7 @@
             }
         })();
     </script>    
-    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>    
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
         <title>.</title>
@@ -6514,9 +6514,11 @@
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
                     episodeNotesDebug: false,  // Enable for debugging episode notes processing
-                    debugMode: true,  // Global debug mode - set to true to enable comprehensive error tracking
-                    errorLog: [],  // Store errors for debugging
                     episodeLinkClickHandler: null,
+                    // Error tracking and debug mode (automatically enabled)
+                    debugMode: true,
+                    errorLog: [],
+                    maxErrorLogSize: 10000000000000000000000,
                     episodeTypeFilter: 'All',
                     episodes: [],
                     selectedMovie: null, // Track the selected movie for resolution/size view
@@ -7364,123 +7366,80 @@
                 },
 
                 groupedVideos() {
-                    try {
-                        if (!this.selectedEpisode || !this.selectedEpisode.EpisodeVideosIDs) {
-                            if (this.debugMode) console.log('[groupedVideos] No selected episode or videos');
-                            return [];
-                        }
-
-                        // Create a map to group videos by their unique combination of properties
-                        const groups = new Map();
-                        const noMetadataVideos = [];
-                        
-                        if (this.debugMode) console.log('[groupedVideos] Processing', this.selectedEpisode.EpisodeVideosIDs.length, 'videos');
-                        
-                        this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
-                            try {
-                                // Check if video has any metadata
-                                const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
-                                
-                                if (!hasMetadata) {
-                                    // Add to noMetadataVideos array with original index
-                                    noMetadataVideos.push({
-                                        ...video,
-                                        originalIndex: index
-                                    });
-                                    return;
-                                }
-                                
-                                // Create a unique key for the group
-                                const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
-                                
-                                if (!groups.has(groupKey)) {
-                                    // Create a new group
-                                    groups.set(groupKey, {
-                                        key: groupKey,
-                                        EpisodeCategory: video.EpisodeCategory,
-                                        EpisodeTranslator: video.EpisodeTranslator,
-                                        EpisodeRemastered: video.EpisodeRemastered,
-                                        hasMetadata: true,
-                                        videos: []
-                                    });
-                                }
-                                
-                                // Add the video to its group with the original index
-                                groups.get(groupKey).videos.push({
-                                    ...video,
-                                    originalIndex: index // Store the original index for sendEpisodeToBot
-                                });
-                            } catch (e) {
-                                const errorMsg = `[groupedVideos] Error processing video at index ${index}: ${e.message}`;
-                                if (this.debugMode) console.error(errorMsg, e, video);
-                                this.logError('groupedVideos', errorMsg, { video, index, error: e });
-                            }
-                        });
-                        
-                        // Convert the map to an array and sort the videos within each group by resolution
-                        const groupedVideos = Array.from(groups.values()).map(group => {
-                            try {
-                                return {
-                                    ...group,
-                                    hasMetadata: true,
-                                    videos: group.videos.sort((a, b) => {
-                                        try {
-                                            // Extract numeric part of resolution for proper sorting
-                                            const resA = parseInt(a.Resolution) || 0;
-                                            const resB = parseInt(b.Resolution) || 0;
-                                            return resB - resA; // Sort in descending order (highest resolution first)
-                                        } catch (e) {
-                                            if (this.debugMode) console.error('[groupedVideos] Error sorting videos:', e, a, b);
-                                            return 0;
-                                        }
-                                    })
-                                };
-                            } catch (e) {
-                                const errorMsg = `[groupedVideos] Error processing group: ${e.message}`;
-                                if (this.debugMode) console.error(errorMsg, e, group);
-                                this.logError('groupedVideos', errorMsg, { group, error: e });
-                                return group; // Return group without sorting if error occurs
-                            }
-                        });
-                        
-                        // If there are videos without metadata, add them as a special group
-                        if (noMetadataVideos.length > 0) {
-                            try {
-                                const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
-                                    try {
-                                        const resA = parseInt(a.Resolution) || 0;
-                                        const resB = parseInt(b.Resolution) || 0;
-                                        return resB - resA;
-                                    } catch (e) {
-                                        if (this.debugMode) console.error('[groupedVideos] Error sorting no-metadata videos:', e);
-                                        return 0;
-                                    }
-                                });
-                                
-                                return [
-                                    {
-                                        key: 'no-metadata',
-                                        hasMetadata: false,
-                                        videos: sortedNoMetadataVideos
-                                    },
-                                    ...groupedVideos
-                                ];
-                            } catch (e) {
-                                const errorMsg = `[groupedVideos] Error processing no-metadata videos: ${e.message}`;
-                                if (this.debugMode) console.error(errorMsg, e);
-                                this.logError('groupedVideos', errorMsg, { noMetadataVideos, error: e });
-                                return groupedVideos; // Return only grouped videos if no-metadata processing fails
-                            }
-                        }
-                        
-                        if (this.debugMode) console.log('[groupedVideos] Successfully grouped', groupedVideos.length, 'groups');
-                        return groupedVideos;
-                    } catch (e) {
-                        const errorMsg = `[groupedVideos] Critical error: ${e.message}`;
-                        console.error(errorMsg, e);
-                        this.logError('groupedVideos', errorMsg, { error: e, stack: e.stack });
-                        return []; // Return empty array on critical error
+                    if (!this.selectedEpisode || !this.selectedEpisode.EpisodeVideosIDs) {
+                        return [];
                     }
+
+                    // Create a map to group videos by their unique combination of properties
+                    const groups = new Map();
+                    const noMetadataVideos = [];
+                    
+                    this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
+                        // Check if video has any metadata
+                        const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
+                        
+                        if (!hasMetadata) {
+                            // Add to noMetadataVideos array with original index
+                            noMetadataVideos.push({
+                                ...video,
+                                originalIndex: index
+                            });
+                            return;
+                        }
+                        
+                        // Create a unique key for the group
+                        const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
+                        
+                        if (!groups.has(groupKey)) {
+                            // Create a new group
+                            groups.set(groupKey, {
+                                key: groupKey,
+                                EpisodeCategory: video.EpisodeCategory,
+                                EpisodeTranslator: video.EpisodeTranslator,
+                                EpisodeRemastered: video.EpisodeRemastered,
+                                hasMetadata: true,
+                                videos: []
+                            });
+                        }
+                        
+                        // Add the video to its group with the original index
+                        groups.get(groupKey).videos.push({
+                            ...video,
+                            originalIndex: index // Store the original index for sendEpisodeToBot
+                        });
+                    });
+                    
+                    // Convert the map to an array and sort the videos within each group by resolution
+                    const groupedVideos = Array.from(groups.values()).map(group => ({
+                        ...group,
+                        hasMetadata: true,
+                        videos: group.videos.sort((a, b) => {
+                            // Extract numeric part of resolution for proper sorting
+                            const resA = parseInt(a.Resolution) || 0;
+                            const resB = parseInt(b.Resolution) || 0;
+                            return resB - resA; // Sort in descending order (highest resolution first)
+                        })
+                    }));
+                    
+                    // If there are videos without metadata, add them as a special group
+                    if (noMetadataVideos.length > 0) {
+                        const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
+                            const resA = parseInt(a.Resolution) || 0;
+                            const resB = parseInt(b.Resolution) || 0;
+                            return resB - resA;
+                        });
+                        
+                        return [
+                            {
+                                key: 'no-metadata',
+                                hasMetadata: false,
+                                videos: sortedNoMetadataVideos
+                            },
+                            ...groupedVideos
+                        ];
+                    }
+                    
+                    return groupedVideos;
                 },
 
                 hasPreviousMovie() {
@@ -7598,15 +7557,8 @@
                 },
 
                 filteredEpisodes() {
-                    try {
-                        const rawSearchQuery = (this.searchQuery || '').trim().toLowerCase();
-                        let searchQuery = '';
-                        try {
-                            searchQuery = this.normalizeText(this.searchQuery || '');
-                        } catch (e) {
-                            console.warn('normalizeText failed in filteredEpisodes:', e);
-                            searchQuery = '';
-                        }
+                    const rawSearchQuery = this.searchQuery.trim().toLowerCase();
+                    const searchQuery = this.normalizeText(this.searchQuery);
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -10214,71 +10166,24 @@
                             }
                         }
                         
-                        // Helper function to safely test regex with fallback
-                        const safeRegexTest = (pattern, text, fallbackText) => {
-                            if (!pattern || !text) {
-                                if (this.debugMode) console.log('[safeRegexTest] Empty pattern or text, returning false');
-                                return false;
-                            }
-                            try {
-                                if (this.debugMode) {
-                                    console.log('[safeRegexTest] Testing pattern:', pattern, 'on text length:', text.length);
-                                }
-                                // Validate regex pattern before using it (for older Safari compatibility)
-                                const testRegex = new RegExp(pattern, 'i');
-                                const result = testRegex.test(text);
-                                if (this.debugMode) {
-                                    console.log('[safeRegexTest] Regex test result:', result);
-                                }
-                                return result;
-                            } catch (e) {
-                                // Fallback to simple string search if regex fails
-                                const errorMsg = `[safeRegexTest] Regex test failed: ${e.message}`;
-                                if (this.debugMode) {
-                                    console.error(errorMsg, e, { pattern, textLength: text?.length, patternLength: pattern?.length });
-                                }
-                                this.logError('safeRegexTest', errorMsg, { 
-                                    pattern, 
-                                    textLength: text?.length, 
-                                    patternLength: pattern?.length,
-                                    error: e, 
-                                    errorType: 'regex_test',
-                                    userAgent: navigator.userAgent 
-                                });
-                                if (fallbackText) {
-                                    const fallbackResult = fallbackText.toLowerCase().includes((this.searchQuery || '').toLowerCase());
-                                    if (this.debugMode) {
-                                        console.log('[safeRegexTest] Using fallback string search, result:', fallbackResult);
-                                    }
-                                    return fallbackResult;
-                                }
-                                return false;
-                            }
-                        };
-                        
                         // Title filter logic
                         if (this.searchFilters.title) {
-                            matchConditions.push(safeRegexTest(searchQuery, episode.EpisodeTitle, episode.EpisodeTitle));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
                         }
                         
                         // Story filter logic
                         if (this.searchFilters.story) {
-                            matchConditions.push(safeRegexTest(searchQuery, episode.EpisodeStory, episode.EpisodeStory));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
                         }
                         
                         // Summary filter logic
                         if (this.searchFilters.summary) {
-                            matchConditions.push(safeRegexTest(searchQuery, episode.EpisodeSummary, episode.EpisodeSummary));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
                         }
                         
                         // Return true if ANY condition is true (OR logic)
                         return matchConditions.length > 0 && matchConditions.some(condition => condition);
                     });
-                    } catch (e) {
-                        console.error('Error in filteredEpisodes:', e);
-                        // Return all episodes as fallback if there's an error
-                        return this.episodes;
-                    }
                 },
 
                 blackOrganizationCount() {
@@ -14061,6 +13966,62 @@
                 },
             },
             methods: {
+                // Error tracking and debugging methods
+                trackError(error, context = {}, variableName = '') {
+                    if (!this.debugMode) return;
+                    
+                    const errorInfo = {
+                        timestamp: new Date().toISOString(),
+                        message: error?.message || String(error),
+                        stack: error?.stack || '',
+                        context: context,
+                        variableName: variableName,
+                        userAgent: navigator.userAgent,
+                        url: window.location.href
+                    };
+                    
+                    this.errorLog.push(errorInfo);
+                    
+                    // Keep log size manageable
+                    if (this.errorLog.length > this.maxErrorLogSize) {
+                        this.errorLog.shift();
+                    }
+                    
+                    // Log to console with context
+                    console.error('[Error Tracker]', {
+                        message: errorInfo.message,
+                        variable: variableName,
+                        context: context,
+                        error: error
+                    });
+                },
+                
+                trackRegexError(regexPattern, error, context = {}) {
+                    this.trackError(error, {
+                        ...context,
+                        regexPattern: regexPattern,
+                        errorType: 'RegexError'
+                    }, 'regexPattern');
+                },
+                
+                safeRegexReplace(str, pattern, replacement, flags = 'g') {
+                    try {
+                        // Test if regex is valid
+                        const regex = new RegExp(pattern, flags);
+                        if (typeof replacement === 'function') {
+                            return str.replace(regex, replacement);
+                        } else {
+                            return str.replace(regex, replacement);
+                        }
+                    } catch (error) {
+                        this.trackRegexError(pattern, error, {
+                            originalString: str?.substring(0, 100),
+                            replacement: typeof replacement === 'function' ? 'function' : replacement?.substring(0, 50),
+                            flags: flags
+                        });
+                        return str; // Return original string on error
+                    }
+                },
 
                 selectEpisodeAndOpen(episode) {
                     this.lastClickedEpisode = episode;
@@ -15183,134 +15144,22 @@
                 },
 
                 normalizeText(text) {
-                    try {
-                        if (!text || typeof text !== 'string') {
-                            return '';
-                        }
-                        let normalizedText = text.toLowerCase();
-                        normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        for (let [key, values] of Object.entries(this.replacementDict)) {
-                            if (!key || !values || !Array.isArray(values)) {
-                                continue;
-                            }
-                            try {
-                                // Escape the key to prevent regex syntax errors
-                                const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                // Also escape values to prevent regex syntax errors
-                                const escapedValues = values.map(v => {
-                                    if (typeof v !== 'string') return '';
-                                    return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                }).filter(v => v.length > 0);
-                                
-                                if (escapedValues.length === 0) {
-                                    continue;
-                                }
-                                
-                                if (this.debugMode) {
-                                    console.log('[normalizeText] Creating regex for key:', key, 'escapedKey:', escapedKey);
-                                }
-                                
-                                const regex = new RegExp(escapedKey, 'g'); // Global search for the word
-                                normalizedText = normalizedText.replace(regex, (match) => {
-                                    // Replace with all possible values, separated by "|"
-                                    const replacement = `(${escapedValues.join("|")})`;
-                                    if (this.debugMode) {
-                                        console.log('[normalizeText] Replacing match:', match, 'with:', replacement);
-                                    }
-                                    return replacement;
-                                });
-                            } catch (e) {
-                                // Skip this replacement if regex creation fails
-                                const errorMsg = `[normalizeText] Regex replacement failed for key "${key}": ${e.message}`;
-                                if (this.debugMode) {
-                                    console.error(errorMsg, e, { key, values, escapedKey });
-                                }
-                                this.logError('normalizeText', errorMsg, { key, values, error: e, errorType: 'regex_creation' });
-                                continue;
-                            }
-                        }
-                        if (this.debugMode) {
-                            console.log('[normalizeText] Final normalized text:', normalizedText);
-                        }
-                        return normalizedText;
-                    } catch (e) {
-                        // Fallback: just escape the text and return it
-                        const errorMsg = `[normalizeText] Critical error: ${e.message}`;
-                        console.error(errorMsg, e);
-                        this.logError('normalizeText', errorMsg, { text, error: e, errorType: 'critical' });
-                        return (text || '').toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    let normalizedText = text.toLowerCase();
+                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    for (let [key, values] of Object.entries(this.replacementDict)) {
+                        const regex = new RegExp(key, 'g'); // Global search for the word
+                        normalizedText = normalizedText.replace(regex, (match) => {
+                            // Replace with all possible values, separated by "|"
+                            return `(${values.join("|")})`;
+                        });
                     }
+                    return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
                     return String(value || '')
                         .replace(/\s+/g, ' ')
                         .trim()
                         .toLowerCase();
-                },
-                
-                // Error logging method for debugging
-                // Always logs errors (for LogRocket tracking), but detailed console logging depends on debugMode
-                logError(functionName, message, details = {}) {
-                    const errorEntry = {
-                        timestamp: new Date().toISOString(),
-                        function: functionName,
-                        message: message,
-                        details: details,
-                        userAgent: navigator.userAgent,
-                        url: window.location.href
-                    };
-                    
-                    // Always add to error log array (for LogRocket tracking) - keep last 50 errors
-                    this.errorLog.push(errorEntry);
-                    if (this.errorLog.length > 50) {
-                        this.errorLog.shift();
-                    }
-                    
-                    // Send to LogRocket if available (always, regardless of debugMode)
-                    if (window.LogRocket && window.LogRocket.captureException) {
-                        try {
-                            const errorForLogRocket = new Error(message);
-                            errorForLogRocket.name = functionName;
-                            errorForLogRocket.details = details;
-                            window.LogRocket.captureException(errorForLogRocket, {
-                                tags: {
-                                    function: functionName,
-                                    errorType: details.errorType || 'unknown'
-                                },
-                                extra: {
-                                    message: message,
-                                    details: details,
-                                    timestamp: errorEntry.timestamp,
-                                    url: errorEntry.url
-                                }
-                            });
-                        } catch (e) {
-                            // Silently fail if LogRocket is not available or fails
-                        }
-                    }
-                    
-                    // Detailed console logging only when debugMode is enabled
-                    if (this.debugMode) {
-                        console.error(`[${functionName}]`, message, details);
-                    } else {
-                        // Minimal logging for critical errors even when debugMode is off
-                        if (details.errorType === 'critical' || details.errorType === 'regex_test' || details.errorType === 'regex_creation' || details.errorType === 'unhandled_regex_error') {
-                            console.warn(`[${functionName}]`, message);
-                        }
-                    }
-                },
-                
-                // Method to get error log (useful for debugging)
-                getErrorLog() {
-                    return this.errorLog;
-                },
-                
-                // Method to clear error log
-                clearErrorLog() {
-                    this.errorLog = [];
-                    if (this.debugMode) {
-                        console.log('[clearErrorLog] Error log cleared');
-                    }
                 },
 
                 executePendingJump() {
@@ -17528,7 +17377,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -17579,95 +17428,135 @@
                 },
 
                 processEpisodeNotes(notes) {
-                    if (this.episodeNotesDebug) console.log('processEpisodeNotes called with notes:', notes);
-                    
-                    // Skip processing for 'ماجيك كايتو2'
-                    if (notes && notes.includes('ماجيك كايتو2')) {
-                        if (this.episodeNotesDebug) console.log('Skipping processing for ماجيك كايتو2');
-                        return notes;
-                    }
-                    
-                    if (!notes) {
-                        if (this.episodeNotesDebug) console.log('No notes provided, returning empty string');
-                        return '';
-                    }
-                    
-                    // First, handle 'بالفيلم n' patterns (with ب prefix)
-                    let processed = notes.replace(/(ب)?(الفيلم\s+\d+(?:\.\d+)?)/g, (match, hasBa, filmPart) => {
-                        if (this.episodeNotesDebug) console.log('Processing film pattern:', { match, hasBa, filmPart });
-                        const number = filmPart.match(/\d+(?:\.\d+)?/)[0];
-                        const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
-                            video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
-                            this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
-                                manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
+                    try {
+                        if (this.episodeNotesDebug) console.log('processEpisodeNotes called with notes:', notes);
                         
-                        if (this.episodeNotesDebug) console.log('Generated film link:', { number, isDisabled });
-                        return `<span 
-                            data-episode-type="film"
-                            data-episode-number="${number}"
-                            ${isDisabled ? 'disabled' : ''}
-                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
-                            style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
-                        >${match}</span>`;
-                    });
-                    
-                    // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
-                    processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<!ب?الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
-                        if (this.episodeNotesDebug) console.log('Processing standalone number:', match);
-                        const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
-                            video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
-                            this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
-                                manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
-                        
-                        if (this.episodeNotesDebug) console.log('Generated number link:', { number: match, isDisabled });
-                        return `<span 
-                            data-episode-type="number"
-                            data-episode-number="${match}"
-                            ${isDisabled ? 'disabled' : ''}
-                            class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
-                            style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
-                        >${match}</span>`;
-                    });
-                    
-                    // Add event delegation in the next tick after the DOM is updated
-                    this.$nextTick(() => {
-                        if (this.episodeNotesDebug) console.log('Setting up event delegation for episode links');
-                        
-                        // Clean up any existing event listeners
-                        if (this.episodeLinkClickHandler) {
-                            document.removeEventListener('click', this.episodeLinkClickHandler);
+                        // Skip processing for 'ماجيك كايتو2'
+                        if (notes && notes.includes('ماجيك كايتو2')) {
+                            if (this.episodeNotesDebug) console.log('Skipping processing for ماجيك كايتو2');
+                            return notes;
                         }
                         
-                        // Create new handler
-                        this.episodeLinkClickHandler = (e) => {
-                            // Only handle clicks on episode links
-                            const link = e.target.closest('.episode-link:not([disabled])');
-                            if (!link) return;
+                        if (!notes) {
+                            if (this.episodeNotesDebug) console.log('No notes provided, returning empty string');
+                            return '';
+                        }
+                        
+                        // First, handle 'بالفيلم n' patterns (with ب prefix)
+                        let processed = notes;
+                        try {
+                            const filmRegex = new RegExp('(ب)?(الفيلم\\s+\\d+(?:\\.\\d+)?)', 'g');
+                            processed = notes.replace(filmRegex, (match, hasBa, filmPart) => {
+                                if (this.episodeNotesDebug) console.log('Processing film pattern:', { match, hasBa, filmPart });
+                                const numberMatch = filmPart ? filmPart.match(/\d+(?:\.\d+)?/) : null;
+                                if (!numberMatch) return match;
+                                const number = numberMatch[0];
+                                const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
+                                    video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
+                                    this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
+                                        manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
+                                
+                                if (this.episodeNotesDebug) console.log('Generated film link:', { number, isDisabled });
+                                return `<span 
+                                    data-episode-type="film"
+                                    data-episode-number="${number}"
+                                    ${isDisabled ? 'disabled' : ''}
+                                    class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
+                                    style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
+                                >${match}</span>`;
+                            });
+                        } catch (error) {
+                            this.trackRegexError('(ب)?(الفيلم\\s+\\d+(?:\\.\\d+)?)', error, { functionName: 'processEpisodeNotes', step: 'filmPattern' });
+                            processed = notes; // Fallback to original
+                        }
+                        
+                        // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
+                        // Using compatible regex for older WebKit (iOS 15.x) - avoiding negative lookbehind
+                        const regex = new RegExp('(\\d+(?:\\.\\d+)?)', 'g');
+                        processed = processed.replace(regex, (match, offset, string) => {
+                            try {
+                                // Check if this number is already inside a tag or part of 'الفيلم n' pattern
+                                const beforeMatch = string.substring(Math.max(0, offset - 50), offset);
+                                const afterMatch = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 10));
+                                
+                                // Skip if inside HTML tag
+                                if (beforeMatch.includes('<') && !beforeMatch.match(/<[^>]*>$/)) {
+                                    return match;
+                                }
+                                
+                                // Skip if part of 'الفيلم' or 'بالفيلم' pattern
+                                if (beforeMatch.match(/(الفيلم|بالفيلم|ب\s*الفيلم)\s*$/)) {
+                                    return match;
+                                }
+                                
+                                // Skip if preceded or followed by word characters
+                                if (beforeMatch.match(/[\d\w]$/) || afterMatch.match(/^[\d\w]/)) {
+                                    return match;
+                                }
+                                
+                                if (this.episodeNotesDebug) console.log('Processing standalone number:', match);
+                                const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
+                                    video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
+                                    this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
+                                        manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'));
+                                
+                                if (this.episodeNotesDebug) console.log('Generated number link:', { number: match, isDisabled });
+                                return `<span 
+                                    data-episode-type="number"
+                                    data-episode-number="${match}"
+                                    ${isDisabled ? 'disabled' : ''}
+                                    class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
+                                    style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
+                                >${match}</span>`;
+                            } catch (error) {
+                                this.trackError(error, { functionName: 'processEpisodeNotes', match: match, offset: offset }, 'processed');
+                                return match;
+                            }
+                        });
+                    
+                        // Add event delegation in the next tick after the DOM is updated
+                        this.$nextTick(() => {
+                            if (this.episodeNotesDebug) console.log('Setting up event delegation for episode links');
                             
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            const type = link.dataset.episodeType;
-                            const number = link.dataset.episodeNumber;
-                            if (this.episodeNotesDebug) {
-                                if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
-                                if (this.episodeNotesDebug) console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
-                                    type === 'film' ? `الفيلم ${number}` : number);
+                            // Clean up any existing event listeners
+                            if (this.episodeLinkClickHandler) {
+                                document.removeEventListener('click', this.episodeLinkClickHandler);
                             }
                             
-                            const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
-                            if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
+                            // Create new handler
+                            this.episodeLinkClickHandler = (e) => {
+                                // Only handle clicks on episode links
+                                const link = e.target.closest('.episode-link:not([disabled])');
+                                if (!link) return;
+                                
+                                e.preventDefault();
+                                e.stopPropagation();
+                                
+                                const type = link.dataset.episodeType;
+                                const number = link.dataset.episodeNumber;
+                                if (this.episodeNotesDebug) {
+                                    if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
+                                    if (this.episodeNotesDebug) console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
+                                        type === 'film' ? `الفيلم ${number}` : number);
+                                }
+                                
+                                const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
+                                if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
+                                
+                                this.resetStatusForEpisodeManga();
+                                this.openEpisodeModal(episodeNumber);
+                            };
                             
-                            this.resetStatusForEpisodeManga();
-                            this.openEpisodeModal(episodeNumber);
-                        };
+                            // Attach the event listener to the document
+                            document.addEventListener('click', this.episodeLinkClickHandler);
+                            if (this.episodeNotesDebug) console.log('Event listener added to document');
+                        });
                         
-                        // Attach the event listener to the document
-                        document.addEventListener('click', this.episodeLinkClickHandler);
-                        if (this.episodeNotesDebug) console.log('Event listener added to document');
-                    });
-                    
-                    return processed;
+                        return processed;
+                    } catch (error) {
+                        this.trackError(error, { functionName: 'processEpisodeNotes', notes: notes?.substring(0, 100) }, 'notes');
+                        return notes || ''; // Return original notes on error
+                    }
                 },
 
                 openEpisodeModal(episodeNumber) {
@@ -18216,55 +18105,39 @@
             mounted() {
                 const enableDebug = false; // Set to true to enable debug logging
                 
-                // Set up global error handler for unhandled regex errors
-                // Always logs errors (for LogRocket), detailed console logging depends on debugMode
-                window.addEventListener('error', (event) => {
-                    if (event.error && event.error.message && event.error.message.includes('regular expression')) {
-                        const errorMsg = `[Global Error Handler] Unhandled regex error: ${event.error.message}`;
-                        
-                        // Always log the error (for LogRocket tracking)
-                        this.logError('globalErrorHandler', errorMsg, {
-                            error: event.error,
-                            message: event.message,
+                // Set up global error handlers for automatic error tracking
+                if (this.debugMode) {
+                    // Global error handler
+                    window.addEventListener('error', (event) => {
+                        this.trackError(event.error || new Error(event.message), {
                             filename: event.filename,
                             lineno: event.lineno,
                             colno: event.colno,
-                            errorType: 'unhandled_regex_error',
-                            stack: event.error?.stack
-                        });
-                        
-                        // Detailed console logging only when debugMode is enabled
-                        if (this.debugMode) {
-                            console.error(errorMsg, event.error);
+                            errorType: 'GlobalError'
+                        }, 'window.error');
+                    });
+                    
+                    // Unhandled promise rejection handler
+                    window.addEventListener('unhandledrejection', (event) => {
+                        this.trackError(event.reason, {
+                            errorType: 'UnhandledRejection',
+                            promise: event.promise
+                        }, 'promise.rejection');
+                    });
+                    
+                    // Syntax error handler (catches regex errors)
+                    const originalConsoleError = console.error;
+                    console.error = (...args) => {
+                        const errorMessage = args.join(' ');
+                        if (errorMessage.includes('Invalid regular expression') || 
+                            errorMessage.includes('invalid group specifier')) {
+                            this.trackRegexError('unknown', new Error(errorMessage), {
+                                errorType: 'SyntaxError',
+                                consoleArgs: args
+                            });
                         }
-                    }
-                });
-                
-                // Set up unhandled promise rejection handler
-                // Always logs errors (for LogRocket), detailed console logging depends on debugMode
-                window.addEventListener('unhandledrejection', (event) => {
-                    if (event.reason && event.reason.message && event.reason.message.includes('regular expression')) {
-                        const errorMsg = `[Global Promise Rejection] Unhandled regex error: ${event.reason.message}`;
-                        
-                        // Always log the error (for LogRocket tracking)
-                        this.logError('globalPromiseRejection', errorMsg, {
-                            error: event.reason,
-                            errorType: 'unhandled_promise_regex_error',
-                            stack: event.reason?.stack
-                        });
-                        
-                        // Detailed console logging only when debugMode is enabled
-                        if (this.debugMode) {
-                            console.error(errorMsg, event.reason);
-                        }
-                    }
-                });
-                
-                // Log debug mode status on mount
-                if (this.debugMode) {
-                    console.log('[Debug Mode] Debug mode is ENABLED - All errors and debug info will be logged to console and LogRocket');
-                } else {
-                    console.log('[Debug Mode] Debug mode is DISABLED - Errors are logged to LogRocket only (no console spam)');
+                        originalConsoleError.apply(console, args);
+                    };
                 }
                 
                 // Initialize zikr rotation
