@@ -17403,26 +17403,32 @@
                     // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
                     // Using a Safari-compatible approach without variable-length lookbehinds
                     processed = processed.replace(/(\d+(?:\.\d+)?)/g, (match, number, offset, string) => {
-                        // Check if this number is inside an HTML tag (already processed)
-                        const beforeMatch = string.substring(Math.max(0, offset - 50), offset);
-                        const afterMatch = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 10));
+                        // Check if this number is inside an HTML span tag (already processed)
+                        // Count opening and closing span tags before this position
+                        const textBefore = string.substring(0, offset);
+                        const openSpans = (textBefore.match(/<span[^>]*>/g) || []).length;
+                        const closeSpans = (textBefore.match(/<\/span>/g) || []).length;
                         
-                        // Skip if inside HTML tag
-                        const tagStart = beforeMatch.lastIndexOf('<');
-                        const tagEnd = beforeMatch.lastIndexOf('>');
-                        if (tagStart > tagEnd) {
+                        // If there are more open spans than closed spans, we're inside a span tag
+                        if (openSpans > closeSpans) {
                             return match; // Inside a tag, skip
                         }
                         
-                        // Skip if part of "الفيلم n" or "بالفيلم n" (already processed)
-                        const beforeContext = string.substring(Math.max(0, offset - 20), offset);
-                        if (/الفيلم\s*$/.test(beforeContext) || /ب?الفيلم\s*$/.test(beforeContext)) {
-                            return match; // Already processed
+                        // Skip if part of "الفيلم n" or "بالفيلم n" pattern
+                        // Check the text before the number (looking back up to 50 chars)
+                        const beforeContext = string.substring(Math.max(0, offset - 50), offset);
+                        // Check for "الفيلم" or "بالفيلم" followed by one or more spaces (matching first regex pattern)
+                        if (/الفيلم\s+$/.test(beforeContext) || /بالفيلم\s+$/.test(beforeContext) || /ب\s+الفيلم\s+$/.test(beforeContext)) {
+                            return match; // Part of film pattern, skip
                         }
                         
-                        // Skip if part of a larger alphanumeric string
-                        if (/[\d\w]$/.test(beforeMatch) || /^[\d\w]/.test(afterMatch)) {
-                            return match; // Part of larger alphanumeric
+                        // Skip if part of a larger alphanumeric string (word boundary check)
+                        const charBefore = offset > 0 ? string[offset - 1] : ' ';
+                        const charAfter = offset + match.length < string.length ? string[offset + match.length] : ' ';
+                        // Check if surrounded by word characters (Arabic letters, digits, Latin letters, underscore)
+                        const arabicOrWordRegex = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFFa-zA-Z0-9_]/;
+                        if (arabicOrWordRegex.test(charBefore) || arabicOrWordRegex.test(charAfter)) {
+                            return match; // Part of larger alphanumeric, skip
                         }
                         
                         if (this.episodeNotesDebug) console.log('Processing standalone number:', match);
