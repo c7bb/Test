@@ -15249,6 +15249,7 @@
                 },
                 
                 // Error logging method for debugging
+                // Always logs errors (for LogRocket tracking), but detailed console logging depends on debugMode
                 logError(functionName, message, details = {}) {
                     const errorEntry = {
                         timestamp: new Date().toISOString(),
@@ -15259,20 +15260,43 @@
                         url: window.location.href
                     };
                     
-                    // Add to error log array (keep last 50 errors)
+                    // Always add to error log array (for LogRocket tracking) - keep last 50 errors
                     this.errorLog.push(errorEntry);
                     if (this.errorLog.length > 50) {
                         this.errorLog.shift();
                     }
                     
-                    // Log to console if debug mode is enabled
-                    if (this.debugMode) {
-                        console.error(`[${functionName}]`, message, details);
+                    // Send to LogRocket if available (always, regardless of debugMode)
+                    if (window.LogRocket && window.LogRocket.captureException) {
+                        try {
+                            const errorForLogRocket = new Error(message);
+                            errorForLogRocket.name = functionName;
+                            errorForLogRocket.details = details;
+                            window.LogRocket.captureException(errorForLogRocket, {
+                                tags: {
+                                    function: functionName,
+                                    errorType: details.errorType || 'unknown'
+                                },
+                                extra: {
+                                    message: message,
+                                    details: details,
+                                    timestamp: errorEntry.timestamp,
+                                    url: errorEntry.url
+                                }
+                            });
+                        } catch (e) {
+                            // Silently fail if LogRocket is not available or fails
+                        }
                     }
                     
-                    // Also log critical errors even if debug mode is off
-                    if (details.errorType === 'critical' || details.errorType === 'regex_test' || details.errorType === 'regex_creation') {
-                        console.warn(`[${functionName}]`, message);
+                    // Detailed console logging only when debugMode is enabled
+                    if (this.debugMode) {
+                        console.error(`[${functionName}]`, message, details);
+                    } else {
+                        // Minimal logging for critical errors even when debugMode is off
+                        if (details.errorType === 'critical' || details.errorType === 'regex_test' || details.errorType === 'regex_creation' || details.errorType === 'unhandled_regex_error') {
+                            console.warn(`[${functionName}]`, message);
+                        }
                     }
                 },
                 
@@ -17504,7 +17528,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -18193,67 +18217,54 @@
                 const enableDebug = false; // Set to true to enable debug logging
                 
                 // Set up global error handler for unhandled regex errors
+                // Always logs errors (for LogRocket), detailed console logging depends on debugMode
                 window.addEventListener('error', (event) => {
                     if (event.error && event.error.message && event.error.message.includes('regular expression')) {
                         const errorMsg = `[Global Error Handler] Unhandled regex error: ${event.error.message}`;
-                        console.error(errorMsg, event.error);
+                        
+                        // Always log the error (for LogRocket tracking)
+                        this.logError('globalErrorHandler', errorMsg, {
+                            error: event.error,
+                            message: event.message,
+                            filename: event.filename,
+                            lineno: event.lineno,
+                            colno: event.colno,
+                            errorType: 'unhandled_regex_error',
+                            stack: event.error?.stack
+                        });
+                        
+                        // Detailed console logging only when debugMode is enabled
                         if (this.debugMode) {
-                            this.logError('globalErrorHandler', errorMsg, {
-                                error: event.error,
-                                message: event.message,
-                                filename: event.filename,
-                                lineno: event.lineno,
-                                colno: event.colno,
-                                errorType: 'unhandled_regex_error',
-                                stack: event.error?.stack
-                            });
+                            console.error(errorMsg, event.error);
                         }
                     }
                 });
                 
                 // Set up unhandled promise rejection handler
+                // Always logs errors (for LogRocket), detailed console logging depends on debugMode
                 window.addEventListener('unhandledrejection', (event) => {
                     if (event.reason && event.reason.message && event.reason.message.includes('regular expression')) {
                         const errorMsg = `[Global Promise Rejection] Unhandled regex error: ${event.reason.message}`;
-                        console.error(errorMsg, event.reason);
+                        
+                        // Always log the error (for LogRocket tracking)
+                        this.logError('globalPromiseRejection', errorMsg, {
+                            error: event.reason,
+                            errorType: 'unhandled_promise_regex_error',
+                            stack: event.reason?.stack
+                        });
+                        
+                        // Detailed console logging only when debugMode is enabled
                         if (this.debugMode) {
-                            this.logError('globalPromiseRejection', errorMsg, {
-                                error: event.reason,
-                                errorType: 'unhandled_promise_regex_error',
-                                stack: event.reason?.stack
-                            });
+                            console.error(errorMsg, event.reason);
                         }
                     }
                 });
                 
-                // Expose debug methods to window for easy debugging
-                window.enableDebugMode = () => {
-                    this.debugMode = true;
-                    console.log('[Debug Mode] Enabled - All errors and debug info will be logged');
-                    console.log('[Debug Mode] Current error log:', this.getErrorLog());
-                };
-                
-                window.disableDebugMode = () => {
-                    this.debugMode = false;
-                    console.log('[Debug Mode] Disabled');
-                };
-                
-                window.getErrorLog = () => {
-                    return this.getErrorLog();
-                };
-                
-                window.clearErrorLog = () => {
-                    this.clearErrorLog();
-                    console.log('[Debug Mode] Error log cleared');
-                };
-                
+                // Log debug mode status on mount
                 if (this.debugMode) {
-                    console.log('[Debug Mode] Debug mode is enabled. Use window.disableDebugMode() to turn off.');
-                    console.log('[Debug Mode] Available commands:');
-                    console.log('  - window.enableDebugMode() - Enable debug logging');
-                    console.log('  - window.disableDebugMode() - Disable debug logging');
-                    console.log('  - window.getErrorLog() - View error log');
-                    console.log('  - window.clearErrorLog() - Clear error log');
+                    console.log('[Debug Mode] Debug mode is ENABLED - All errors and debug info will be logged to console and LogRocket');
+                } else {
+                    console.log('[Debug Mode] Debug mode is DISABLED - Errors are logged to LogRocket only (no console spam)');
                 }
                 
                 // Initialize zikr rotation
