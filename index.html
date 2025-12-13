@@ -6513,7 +6513,7 @@
                     "ش": ["س","ش"],
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
-                    episodeNotesDebug: false,  // Enable for debugging episode notes processing
+                    episodeNotesDebug: true,  // Enable for debugging episode notes processing
                     episodeLinkClickHandler: null,
                     episodeTypeFilter: 'All',
                     episodes: [],
@@ -17427,14 +17427,18 @@
                     // Using a Safari-compatible approach without variable-length lookbehinds
                     processed = processed.replace(/(\d+(?:\.\d+)?)/g, (match, number, offset, string) => {
                         // Check if this number is inside an HTML tag (already processed)
-                        const beforeMatch = string.substring(Math.max(0, offset - 100), offset);
-                        const afterMatch = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 20));
+                        // Simple and reliable: if there's a < before us with no > between it and us, we're inside a tag
+                        const textBefore = string.substring(0, offset);
+                        const lastOpenTag = textBefore.lastIndexOf('<');
+                        const lastCloseTag = textBefore.lastIndexOf('>');
                         
-                        // Skip if inside HTML tag - simpler check
-                        const tagStart = beforeMatch.lastIndexOf('<');
-                        const tagEnd = beforeMatch.lastIndexOf('>');
-                        if (tagStart > tagEnd) {
-                            return match; // Inside a tag, skip
+                        // If last < is after last >, we might be inside a tag
+                        if (lastOpenTag > lastCloseTag) {
+                            // Check if the tag closes after our position
+                            const tagEnd = string.indexOf('>', lastOpenTag);
+                            if (tagEnd > offset) {
+                                return match; // Inside a tag, skip
+                            }
                         }
                         
                         // Skip if part of "الفيلم n" or "بالفيلم n" (already processed)
