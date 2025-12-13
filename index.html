@@ -37,7 +37,7 @@
             }
         })();
     </script>    
-    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>    
+    <script src="https://telegram.org/js/telegram-web-app.js?56"></script>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
         <title>.</title>
@@ -6514,6 +6514,8 @@
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
                     episodeNotesDebug: false,  // Enable for debugging episode notes processing
+                    debugMode: true,  // Global debug mode - set to true to enable comprehensive error tracking
+                    errorLog: [],  // Store errors for debugging
                     episodeLinkClickHandler: null,
                     episodeTypeFilter: 'All',
                     episodes: [],
@@ -7362,80 +7364,123 @@
                 },
 
                 groupedVideos() {
-                    if (!this.selectedEpisode || !this.selectedEpisode.EpisodeVideosIDs) {
-                        return [];
-                    }
+                    try {
+                        if (!this.selectedEpisode || !this.selectedEpisode.EpisodeVideosIDs) {
+                            if (this.debugMode) console.log('[groupedVideos] No selected episode or videos');
+                            return [];
+                        }
 
-                    // Create a map to group videos by their unique combination of properties
-                    const groups = new Map();
-                    const noMetadataVideos = [];
-                    
-                    this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
-                        // Check if video has any metadata
-                        const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
+                        // Create a map to group videos by their unique combination of properties
+                        const groups = new Map();
+                        const noMetadataVideos = [];
                         
-                        if (!hasMetadata) {
-                            // Add to noMetadataVideos array with original index
-                            noMetadataVideos.push({
-                                ...video,
-                                originalIndex: index
-                            });
-                            return;
-                        }
+                        if (this.debugMode) console.log('[groupedVideos] Processing', this.selectedEpisode.EpisodeVideosIDs.length, 'videos');
                         
-                        // Create a unique key for the group
-                        const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
-                        
-                        if (!groups.has(groupKey)) {
-                            // Create a new group
-                            groups.set(groupKey, {
-                                key: groupKey,
-                                EpisodeCategory: video.EpisodeCategory,
-                                EpisodeTranslator: video.EpisodeTranslator,
-                                EpisodeRemastered: video.EpisodeRemastered,
-                                hasMetadata: true,
-                                videos: []
-                            });
-                        }
-                        
-                        // Add the video to its group with the original index
-                        groups.get(groupKey).videos.push({
-                            ...video,
-                            originalIndex: index // Store the original index for sendEpisodeToBot
-                        });
-                    });
-                    
-                    // Convert the map to an array and sort the videos within each group by resolution
-                    const groupedVideos = Array.from(groups.values()).map(group => ({
-                        ...group,
-                        hasMetadata: true,
-                        videos: group.videos.sort((a, b) => {
-                            // Extract numeric part of resolution for proper sorting
-                            const resA = parseInt(a.Resolution) || 0;
-                            const resB = parseInt(b.Resolution) || 0;
-                            return resB - resA; // Sort in descending order (highest resolution first)
-                        })
-                    }));
-                    
-                    // If there are videos without metadata, add them as a special group
-                    if (noMetadataVideos.length > 0) {
-                        const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
-                            const resA = parseInt(a.Resolution) || 0;
-                            const resB = parseInt(b.Resolution) || 0;
-                            return resB - resA;
+                        this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
+                            try {
+                                // Check if video has any metadata
+                                const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
+                                
+                                if (!hasMetadata) {
+                                    // Add to noMetadataVideos array with original index
+                                    noMetadataVideos.push({
+                                        ...video,
+                                        originalIndex: index
+                                    });
+                                    return;
+                                }
+                                
+                                // Create a unique key for the group
+                                const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
+                                
+                                if (!groups.has(groupKey)) {
+                                    // Create a new group
+                                    groups.set(groupKey, {
+                                        key: groupKey,
+                                        EpisodeCategory: video.EpisodeCategory,
+                                        EpisodeTranslator: video.EpisodeTranslator,
+                                        EpisodeRemastered: video.EpisodeRemastered,
+                                        hasMetadata: true,
+                                        videos: []
+                                    });
+                                }
+                                
+                                // Add the video to its group with the original index
+                                groups.get(groupKey).videos.push({
+                                    ...video,
+                                    originalIndex: index // Store the original index for sendEpisodeToBot
+                                });
+                            } catch (e) {
+                                const errorMsg = `[groupedVideos] Error processing video at index ${index}: ${e.message}`;
+                                if (this.debugMode) console.error(errorMsg, e, video);
+                                this.logError('groupedVideos', errorMsg, { video, index, error: e });
+                            }
                         });
                         
-                        return [
-                            {
-                                key: 'no-metadata',
-                                hasMetadata: false,
-                                videos: sortedNoMetadataVideos
-                            },
-                            ...groupedVideos
-                        ];
+                        // Convert the map to an array and sort the videos within each group by resolution
+                        const groupedVideos = Array.from(groups.values()).map(group => {
+                            try {
+                                return {
+                                    ...group,
+                                    hasMetadata: true,
+                                    videos: group.videos.sort((a, b) => {
+                                        try {
+                                            // Extract numeric part of resolution for proper sorting
+                                            const resA = parseInt(a.Resolution) || 0;
+                                            const resB = parseInt(b.Resolution) || 0;
+                                            return resB - resA; // Sort in descending order (highest resolution first)
+                                        } catch (e) {
+                                            if (this.debugMode) console.error('[groupedVideos] Error sorting videos:', e, a, b);
+                                            return 0;
+                                        }
+                                    })
+                                };
+                            } catch (e) {
+                                const errorMsg = `[groupedVideos] Error processing group: ${e.message}`;
+                                if (this.debugMode) console.error(errorMsg, e, group);
+                                this.logError('groupedVideos', errorMsg, { group, error: e });
+                                return group; // Return group without sorting if error occurs
+                            }
+                        });
+                        
+                        // If there are videos without metadata, add them as a special group
+                        if (noMetadataVideos.length > 0) {
+                            try {
+                                const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
+                                    try {
+                                        const resA = parseInt(a.Resolution) || 0;
+                                        const resB = parseInt(b.Resolution) || 0;
+                                        return resB - resA;
+                                    } catch (e) {
+                                        if (this.debugMode) console.error('[groupedVideos] Error sorting no-metadata videos:', e);
+                                        return 0;
+                                    }
+                                });
+                                
+                                return [
+                                    {
+                                        key: 'no-metadata',
+                                        hasMetadata: false,
+                                        videos: sortedNoMetadataVideos
+                                    },
+                                    ...groupedVideos
+                                ];
+                            } catch (e) {
+                                const errorMsg = `[groupedVideos] Error processing no-metadata videos: ${e.message}`;
+                                if (this.debugMode) console.error(errorMsg, e);
+                                this.logError('groupedVideos', errorMsg, { noMetadataVideos, error: e });
+                                return groupedVideos; // Return only grouped videos if no-metadata processing fails
+                            }
+                        }
+                        
+                        if (this.debugMode) console.log('[groupedVideos] Successfully grouped', groupedVideos.length, 'groups');
+                        return groupedVideos;
+                    } catch (e) {
+                        const errorMsg = `[groupedVideos] Critical error: ${e.message}`;
+                        console.error(errorMsg, e);
+                        this.logError('groupedVideos', errorMsg, { error: e, stack: e.stack });
+                        return []; // Return empty array on critical error
                     }
-                    
-                    return groupedVideos;
                 },
 
                 hasPreviousMovie() {
@@ -7553,8 +7598,15 @@
                 },
 
                 filteredEpisodes() {
-                    const rawSearchQuery = this.searchQuery.trim().toLowerCase();
-                    const searchQuery = this.normalizeText(this.searchQuery);
+                    try {
+                        const rawSearchQuery = (this.searchQuery || '').trim().toLowerCase();
+                        let searchQuery = '';
+                        try {
+                            searchQuery = this.normalizeText(this.searchQuery || '');
+                        } catch (e) {
+                            console.warn('normalizeText failed in filteredEpisodes:', e);
+                            searchQuery = '';
+                        }
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -10162,24 +10214,71 @@
                             }
                         }
                         
+                        // Helper function to safely test regex with fallback
+                        const safeRegexTest = (pattern, text, fallbackText) => {
+                            if (!pattern || !text) {
+                                if (this.debugMode) console.log('[safeRegexTest] Empty pattern or text, returning false');
+                                return false;
+                            }
+                            try {
+                                if (this.debugMode) {
+                                    console.log('[safeRegexTest] Testing pattern:', pattern, 'on text length:', text.length);
+                                }
+                                // Validate regex pattern before using it (for older Safari compatibility)
+                                const testRegex = new RegExp(pattern, 'i');
+                                const result = testRegex.test(text);
+                                if (this.debugMode) {
+                                    console.log('[safeRegexTest] Regex test result:', result);
+                                }
+                                return result;
+                            } catch (e) {
+                                // Fallback to simple string search if regex fails
+                                const errorMsg = `[safeRegexTest] Regex test failed: ${e.message}`;
+                                if (this.debugMode) {
+                                    console.error(errorMsg, e, { pattern, textLength: text?.length, patternLength: pattern?.length });
+                                }
+                                this.logError('safeRegexTest', errorMsg, { 
+                                    pattern, 
+                                    textLength: text?.length, 
+                                    patternLength: pattern?.length,
+                                    error: e, 
+                                    errorType: 'regex_test',
+                                    userAgent: navigator.userAgent 
+                                });
+                                if (fallbackText) {
+                                    const fallbackResult = fallbackText.toLowerCase().includes((this.searchQuery || '').toLowerCase());
+                                    if (this.debugMode) {
+                                        console.log('[safeRegexTest] Using fallback string search, result:', fallbackResult);
+                                    }
+                                    return fallbackResult;
+                                }
+                                return false;
+                            }
+                        };
+                        
                         // Title filter logic
                         if (this.searchFilters.title) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
+                            matchConditions.push(safeRegexTest(searchQuery, episode.EpisodeTitle, episode.EpisodeTitle));
                         }
                         
                         // Story filter logic
                         if (this.searchFilters.story) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
+                            matchConditions.push(safeRegexTest(searchQuery, episode.EpisodeStory, episode.EpisodeStory));
                         }
                         
                         // Summary filter logic
                         if (this.searchFilters.summary) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
+                            matchConditions.push(safeRegexTest(searchQuery, episode.EpisodeSummary, episode.EpisodeSummary));
                         }
                         
                         // Return true if ANY condition is true (OR logic)
                         return matchConditions.length > 0 && matchConditions.some(condition => condition);
                     });
+                    } catch (e) {
+                        console.error('Error in filteredEpisodes:', e);
+                        // Return all episodes as fallback if there's an error
+                        return this.episodes;
+                    }
                 },
 
                 blackOrganizationCount() {
@@ -15084,22 +15183,110 @@
                 },
 
                 normalizeText(text) {
-                    let normalizedText = text.toLowerCase();
-                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const regex = new RegExp(key, 'g'); // Global search for the word
-                        normalizedText = normalizedText.replace(regex, (match) => {
-                            // Replace with all possible values, separated by "|"
-                            return `(${values.join("|")})`;
-                        });
+                    try {
+                        if (!text || typeof text !== 'string') {
+                            return '';
+                        }
+                        let normalizedText = text.toLowerCase();
+                        normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        for (let [key, values] of Object.entries(this.replacementDict)) {
+                            if (!key || !values || !Array.isArray(values)) {
+                                continue;
+                            }
+                            try {
+                                // Escape the key to prevent regex syntax errors
+                                const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                // Also escape values to prevent regex syntax errors
+                                const escapedValues = values.map(v => {
+                                    if (typeof v !== 'string') return '';
+                                    return v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                                }).filter(v => v.length > 0);
+                                
+                                if (escapedValues.length === 0) {
+                                    continue;
+                                }
+                                
+                                if (this.debugMode) {
+                                    console.log('[normalizeText] Creating regex for key:', key, 'escapedKey:', escapedKey);
+                                }
+                                
+                                const regex = new RegExp(escapedKey, 'g'); // Global search for the word
+                                normalizedText = normalizedText.replace(regex, (match) => {
+                                    // Replace with all possible values, separated by "|"
+                                    const replacement = `(${escapedValues.join("|")})`;
+                                    if (this.debugMode) {
+                                        console.log('[normalizeText] Replacing match:', match, 'with:', replacement);
+                                    }
+                                    return replacement;
+                                });
+                            } catch (e) {
+                                // Skip this replacement if regex creation fails
+                                const errorMsg = `[normalizeText] Regex replacement failed for key "${key}": ${e.message}`;
+                                if (this.debugMode) {
+                                    console.error(errorMsg, e, { key, values, escapedKey });
+                                }
+                                this.logError('normalizeText', errorMsg, { key, values, error: e, errorType: 'regex_creation' });
+                                continue;
+                            }
+                        }
+                        if (this.debugMode) {
+                            console.log('[normalizeText] Final normalized text:', normalizedText);
+                        }
+                        return normalizedText;
+                    } catch (e) {
+                        // Fallback: just escape the text and return it
+                        const errorMsg = `[normalizeText] Critical error: ${e.message}`;
+                        console.error(errorMsg, e);
+                        this.logError('normalizeText', errorMsg, { text, error: e, errorType: 'critical' });
+                        return (text || '').toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     }
-                    return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
                     return String(value || '')
                         .replace(/\s+/g, ' ')
                         .trim()
                         .toLowerCase();
+                },
+                
+                // Error logging method for debugging
+                logError(functionName, message, details = {}) {
+                    const errorEntry = {
+                        timestamp: new Date().toISOString(),
+                        function: functionName,
+                        message: message,
+                        details: details,
+                        userAgent: navigator.userAgent,
+                        url: window.location.href
+                    };
+                    
+                    // Add to error log array (keep last 50 errors)
+                    this.errorLog.push(errorEntry);
+                    if (this.errorLog.length > 50) {
+                        this.errorLog.shift();
+                    }
+                    
+                    // Log to console if debug mode is enabled
+                    if (this.debugMode) {
+                        console.error(`[${functionName}]`, message, details);
+                    }
+                    
+                    // Also log critical errors even if debug mode is off
+                    if (details.errorType === 'critical' || details.errorType === 'regex_test' || details.errorType === 'regex_creation') {
+                        console.warn(`[${functionName}]`, message);
+                    }
+                },
+                
+                // Method to get error log (useful for debugging)
+                getErrorLog() {
+                    return this.errorLog;
+                },
+                
+                // Method to clear error log
+                clearErrorLog() {
+                    this.errorLog = [];
+                    if (this.debugMode) {
+                        console.log('[clearErrorLog] Error log cleared');
+                    }
                 },
 
                 executePendingJump() {
@@ -18004,6 +18191,70 @@
 
             mounted() {
                 const enableDebug = false; // Set to true to enable debug logging
+                
+                // Set up global error handler for unhandled regex errors
+                window.addEventListener('error', (event) => {
+                    if (event.error && event.error.message && event.error.message.includes('regular expression')) {
+                        const errorMsg = `[Global Error Handler] Unhandled regex error: ${event.error.message}`;
+                        console.error(errorMsg, event.error);
+                        if (this.debugMode) {
+                            this.logError('globalErrorHandler', errorMsg, {
+                                error: event.error,
+                                message: event.message,
+                                filename: event.filename,
+                                lineno: event.lineno,
+                                colno: event.colno,
+                                errorType: 'unhandled_regex_error',
+                                stack: event.error?.stack
+                            });
+                        }
+                    }
+                });
+                
+                // Set up unhandled promise rejection handler
+                window.addEventListener('unhandledrejection', (event) => {
+                    if (event.reason && event.reason.message && event.reason.message.includes('regular expression')) {
+                        const errorMsg = `[Global Promise Rejection] Unhandled regex error: ${event.reason.message}`;
+                        console.error(errorMsg, event.reason);
+                        if (this.debugMode) {
+                            this.logError('globalPromiseRejection', errorMsg, {
+                                error: event.reason,
+                                errorType: 'unhandled_promise_regex_error',
+                                stack: event.reason?.stack
+                            });
+                        }
+                    }
+                });
+                
+                // Expose debug methods to window for easy debugging
+                window.enableDebugMode = () => {
+                    this.debugMode = true;
+                    console.log('[Debug Mode] Enabled - All errors and debug info will be logged');
+                    console.log('[Debug Mode] Current error log:', this.getErrorLog());
+                };
+                
+                window.disableDebugMode = () => {
+                    this.debugMode = false;
+                    console.log('[Debug Mode] Disabled');
+                };
+                
+                window.getErrorLog = () => {
+                    return this.getErrorLog();
+                };
+                
+                window.clearErrorLog = () => {
+                    this.clearErrorLog();
+                    console.log('[Debug Mode] Error log cleared');
+                };
+                
+                if (this.debugMode) {
+                    console.log('[Debug Mode] Debug mode is enabled. Use window.disableDebugMode() to turn off.');
+                    console.log('[Debug Mode] Available commands:');
+                    console.log('  - window.enableDebugMode() - Enable debug logging');
+                    console.log('  - window.disableDebugMode() - Disable debug logging');
+                    console.log('  - window.getErrorLog() - View error log');
+                    console.log('  - window.clearErrorLog() - Clear error log');
+                }
                 
                 // Initialize zikr rotation
                 this.shuffleZikr();
