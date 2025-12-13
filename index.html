@@ -738,7 +738,7 @@
                             </button>
                             </div>
                         </div>
-                    </div> 
+                    </div>
 
                     <!-- Episodes Content -->
                     <div v-if="selectedCategory === 'episodes'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
@@ -6514,11 +6514,10 @@
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
                     episodeNotesDebug: false,  // Enable for debugging episode notes processing
+                    debugMode: true,  // Error tracking and debug mode (enabled by default)
+                    errorLog: [],  // Store error logs for debugging
+                    maxErrorLogSize: 100,  // Maximum number of errors to keep in memory
                     episodeLinkClickHandler: null,
-                    // Error tracking and debug mode (automatically enabled)
-                    debugMode: true,
-                    errorLog: [],
-                    maxErrorLogSize: 50,
                     episodeTypeFilter: 'All',
                     episodes: [],
                     selectedMovie: null, // Track the selected movie for resolution/size view
@@ -7179,101 +7178,160 @@
                 },
 
                 groupedEpisodes() {
-                    // Sort episodes by EpisodeNumber numerically
-                    const validEpisodes = this.episodes
-                        .filter(e => 
-                            e.EpisodeVideosIDs && e.EpisodeVideosIDs.length > 0 &&
-                            !e.EpisodeNumber.includes('الفيلم') &&
-                            !e.EpisodeNumber.includes('قصة قصيرة') &&
-                            !e.EpisodeNumber.includes('أوفا') &&
-                            !e.EpisodeNumber.includes('إصدار خاص') &&
-                            !e.EpisodeNumber.includes('ماجيك كايتو') &&
-                            !e.EpisodeNumber.includes('فيلم تعاوني') &&
-                            !e.EpisodeNumber.includes('يوميات زيرو') &&
-                            !e.EpisodeNumber.includes('المجرم هانزاوا') &&
-                            // Ensure EpisodeNumber is a valid number (including decimals)
-                            !isNaN(parseFloat(e.EpisodeNumber)) && isFinite(parseFloat(e.EpisodeNumber))
-                        )
-                        .sort((a, b) => parseFloat(a.EpisodeNumber) - parseFloat(b.EpisodeNumber));
+                    try {
+                        this.logDebug('Computing groupedEpisodes', 'groupedEpisodes');
+                        // Sort episodes by EpisodeNumber numerically
+                        const validEpisodes = this.episodes
+                            .filter(e => 
+                                e.EpisodeVideosIDs && e.EpisodeVideosIDs.length > 0 &&
+                                !e.EpisodeNumber.includes('الفيلم') &&
+                                !e.EpisodeNumber.includes('قصة قصيرة') &&
+                                !e.EpisodeNumber.includes('أوفا') &&
+                                !e.EpisodeNumber.includes('إصدار خاص') &&
+                                !e.EpisodeNumber.includes('ماجيك كايتو') &&
+                                !e.EpisodeNumber.includes('فيلم تعاوني') &&
+                                !e.EpisodeNumber.includes('يوميات زيرو') &&
+                                !e.EpisodeNumber.includes('المجرم هانزاوا') &&
+                                // Ensure EpisodeNumber is a valid number (including decimals)
+                                !isNaN(parseFloat(e.EpisodeNumber)) && isFinite(parseFloat(e.EpisodeNumber))
+                            )
+                            .sort((a, b) => parseFloat(a.EpisodeNumber) - parseFloat(b.EpisodeNumber));
 
-                    // Manually defined episode ranges
-                    const ranges = [
-                        { start: 1, end: 99 },
-                        { start: 100, end: 199 },
-                        { start: 200, end: 299 },
-                        { start: 300, end: 399 },
-                        { start: 400, end: 499 },
-                        { start: 500, end: 599 },
-                        { start: 600, end: 699 },
-                        { start: 700, end: 799 },
-                        { start: 800, end: 899 },
-                        { start: 900, end: 999 },
-                        { start: 1000, end: 1099 },
-                        { start: 1100, end: 1199 }
-                    ];
-                    
-                    const groups = [];
-                    
-                    // Filter episodes into each range
-                    for (const range of ranges) {
-                        const groupEpisodes = validEpisodes.filter(ep => {
-                            const epNum = parseFloat(ep.EpisodeNumber);
-                            return epNum >= range.start && epNum <= range.end;
-                        });
+                        // Manually defined episode ranges
+                        const ranges = [
+                            { start: 1, end: 99 },
+                            { start: 100, end: 199 },
+                            { start: 200, end: 299 },
+                            { start: 300, end: 399 },
+                            { start: 400, end: 499 },
+                            { start: 500, end: 599 },
+                            { start: 600, end: 699 },
+                            { start: 700, end: 799 },
+                            { start: 800, end: 899 },
+                            { start: 900, end: 999 },
+                            { start: 1000, end: 1099 },
+                            { start: 1100, end: 1199 }
+                        ];
                         
-                        if (groupEpisodes.length > 0) {
-                            groups.push({
-                                range: `${range.start}–${range.end}`,
-                                items: groupEpisodes
-                            });
+                        const groups = [];
+                        
+                        // Filter episodes into each range
+                        for (const range of ranges) {
+                            try {
+                                const groupEpisodes = validEpisodes.filter(ep => {
+                                    try {
+                                        const epNum = parseFloat(ep.EpisodeNumber);
+                                        return epNum >= range.start && epNum <= range.end;
+                                    } catch (error) {
+                                        this.trackError(error, 'groupedEpisodes - filter episode', { episodeNumber: ep?.EpisodeNumber, range });
+                                        return false;
+                                    }
+                                });
+                                
+                                if (groupEpisodes.length > 0) {
+                                    groups.push({
+                                        range: `${range.start}–${range.end}`,
+                                        items: groupEpisodes
+                                    });
+                                }
+                            } catch (error) {
+                                this.trackError(error, 'groupedEpisodes - process range', { range });
+                            }
                         }
+                        
+                        this.logDebug('groupedEpisodes computed', 'groupedEpisodes', { groupCount: groups.length });
+                        return groups;
+                    } catch (error) {
+                        this.trackError(error, 'groupedEpisodes');
+                        return []; // Safe fallback
                     }
-                    
-                    return groups;
                 },
 
                 groupedMovies() {
-                    const chunkSize = 29;
-                    return this.episodes
-                        .filter(e => (e.EpisodeNumber.includes('الفيلم') || e.EpisodeNumber.includes('فيلم تعاوني')) && !e.EpisodeNumber.includes('خاصة بالفيلم'))
-                        .reduce((acc, _, i, arr) => (i % chunkSize) ? acc : 
-                            [...acc, { 
-                                range: `${i+1}-${Math.min(i+chunkSize, arr.length)}`, 
-                                items: arr.slice(i, i+chunkSize)
-                            }], []);
+                    try {
+                        this.logDebug('Computing groupedMovies', 'groupedMovies');
+                        const chunkSize = 29;
+                        const result = this.episodes
+                            .filter(e => (e.EpisodeNumber.includes('الفيلم') || e.EpisodeNumber.includes('فيلم تعاوني')) && !e.EpisodeNumber.includes('خاصة بالفيلم'))
+                            .reduce((acc, _, i, arr) => {
+                                try {
+                                    return (i % chunkSize) ? acc : 
+                                        [...acc, { 
+                                            range: `${i+1}-${Math.min(i+chunkSize, arr.length)}`, 
+                                            items: arr.slice(i, i+chunkSize)
+                                        }];
+                                } catch (error) {
+                                    this.trackError(error, 'groupedMovies - reduce', { index: i, chunkSize });
+                                    return acc;
+                                }
+                            }, []);
+                        this.logDebug('groupedMovies computed', 'groupedMovies', { groupCount: result.length });
+                        return result;
+                    } catch (error) {
+                        this.trackError(error, 'groupedMovies');
+                        return []; // Safe fallback
+                    }
                 },
 
                 groupedMangas() {
-                    const mangaSources = Array.isArray(this.mangas) ? this.mangas : [];
-                    const episodeSources = Array.isArray(this.episodes) ? this.episodes : [];
+                    try {
+                        this.logDebug('Computing groupedMangas', 'groupedMangas');
+                        const mangaSources = Array.isArray(this.mangas) ? this.mangas : [];
+                        const episodeSources = Array.isArray(this.episodes) ? this.episodes : [];
 
-                    const allMangas = [
-                        ...mangaSources.flatMap(m => Array.isArray(m.MangasIDs) ? m.MangasIDs : []),
-                        ...episodeSources.flatMap(e => Array.isArray(e.EpisodeMangasIDs) ? e.EpisodeMangasIDs : [])
-                    ].filter(manga => manga && manga.MangaNumber)
-                     .sort((a, b) => Number(a.MangaNumber) - Number(b.MangaNumber));
+                        const allMangas = [
+                            ...mangaSources.flatMap(m => Array.isArray(m.MangasIDs) ? m.MangasIDs : []),
+                            ...episodeSources.flatMap(e => Array.isArray(e.EpisodeMangasIDs) ? e.EpisodeMangasIDs : [])
+                        ].filter(manga => manga && manga.MangaNumber)
+                         .sort((a, b) => {
+                             try {
+                                 return Number(a.MangaNumber) - Number(b.MangaNumber);
+                             } catch (error) {
+                                 this.trackError(error, 'groupedMangas - sort', { a: a?.MangaNumber, b: b?.MangaNumber });
+                                 return 0;
+                             }
+                         });
 
-                    if (!allMangas.length) {
-                        return [];
-                    }
-
-                    // Remove duplicates by MangaNumber
-                    const uniqueMangas = Array.from(new Set(allMangas.map(m => m.MangaNumber)))
-                        .map(mangaNumber => allMangas.find(m => m.MangaNumber === mangaNumber));
-
-                    const chunkSize = 100;
-                    return uniqueMangas.reduce((acc, _, i, arr) => {
-                        if (i % chunkSize === 0) {
-                            return [
-                                ...acc,
-                                {
-                                    range: `${arr[i].MangaNumber}-${arr[Math.min(i + chunkSize - 1, arr.length - 1)].MangaNumber}`,
-                                    items: arr.slice(i, i + chunkSize)
-                                }
-                            ];
+                        if (!allMangas.length) {
+                            return [];
                         }
-                        return acc;
-                    }, []);
+
+                        // Remove duplicates by MangaNumber
+                        const uniqueMangas = Array.from(new Set(allMangas.map(m => m.MangaNumber)))
+                            .map(mangaNumber => {
+                                try {
+                                    return allMangas.find(m => m.MangaNumber === mangaNumber);
+                                } catch (error) {
+                                    this.trackError(error, 'groupedMangas - find unique', { mangaNumber });
+                                    return null;
+                                }
+                            })
+                            .filter(m => m !== null);
+
+                        const chunkSize = 100;
+                        const result = uniqueMangas.reduce((acc, _, i, arr) => {
+                            try {
+                                if (i % chunkSize === 0) {
+                                    return [
+                                        ...acc,
+                                        {
+                                            range: `${arr[i].MangaNumber}-${arr[Math.min(i + chunkSize - 1, arr.length - 1)].MangaNumber}`,
+                                            items: arr.slice(i, i + chunkSize)
+                                        }
+                                    ];
+                                }
+                                return acc;
+                            } catch (error) {
+                                this.trackError(error, 'groupedMangas - reduce', { index: i, chunkSize });
+                                return acc;
+                            }
+                        }, []);
+                        this.logDebug('groupedMangas computed', 'groupedMangas', { groupCount: result.length });
+                        return result;
+                    } catch (error) {
+                        this.trackError(error, 'groupedMangas');
+                        return []; // Safe fallback
+                    }
                 },
 
                 hasNextEpisode() {
@@ -7366,80 +7424,115 @@
                 },
 
                 groupedVideos() {
-                    if (!this.selectedEpisode || !this.selectedEpisode.EpisodeVideosIDs) {
-                        return [];
-                    }
+                    try {
+                        this.logDebug('Computing groupedVideos', 'groupedVideos', { 
+                            hasSelectedEpisode: !!this.selectedEpisode,
+                            videoCount: this.selectedEpisode?.EpisodeVideosIDs?.length 
+                        });
+                        if (!this.selectedEpisode || !this.selectedEpisode.EpisodeVideosIDs) {
+                            return [];
+                        }
 
-                    // Create a map to group videos by their unique combination of properties
-                    const groups = new Map();
-                    const noMetadataVideos = [];
-                    
-                    this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
-                        // Check if video has any metadata
-                        const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
+                        // Create a map to group videos by their unique combination of properties
+                        const groups = new Map();
+                        const noMetadataVideos = [];
                         
-                        if (!hasMetadata) {
-                            // Add to noMetadataVideos array with original index
-                            noMetadataVideos.push({
-                                ...video,
-                                originalIndex: index
-                            });
-                            return;
-                        }
-                        
-                        // Create a unique key for the group
-                        const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
-                        
-                        if (!groups.has(groupKey)) {
-                            // Create a new group
-                            groups.set(groupKey, {
-                                key: groupKey,
-                                EpisodeCategory: video.EpisodeCategory,
-                                EpisodeTranslator: video.EpisodeTranslator,
-                                EpisodeRemastered: video.EpisodeRemastered,
-                                hasMetadata: true,
-                                videos: []
-                            });
-                        }
-                        
-                        // Add the video to its group with the original index
-                        groups.get(groupKey).videos.push({
-                            ...video,
-                            originalIndex: index // Store the original index for sendEpisodeToBot
-                        });
-                    });
-                    
-                    // Convert the map to an array and sort the videos within each group by resolution
-                    const groupedVideos = Array.from(groups.values()).map(group => ({
-                        ...group,
-                        hasMetadata: true,
-                        videos: group.videos.sort((a, b) => {
-                            // Extract numeric part of resolution for proper sorting
-                            const resA = parseInt(a.Resolution) || 0;
-                            const resB = parseInt(b.Resolution) || 0;
-                            return resB - resA; // Sort in descending order (highest resolution first)
-                        })
-                    }));
-                    
-                    // If there are videos without metadata, add them as a special group
-                    if (noMetadataVideos.length > 0) {
-                        const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
-                            const resA = parseInt(a.Resolution) || 0;
-                            const resB = parseInt(b.Resolution) || 0;
-                            return resB - resA;
+                        this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
+                            try {
+                                // Check if video has any metadata
+                                const hasMetadata = video.EpisodeCategory || video.EpisodeTranslator || video.EpisodeRemastered;
+                                
+                                if (!hasMetadata) {
+                                    // Add to noMetadataVideos array with original index
+                                    noMetadataVideos.push({
+                                        ...video,
+                                        originalIndex: index
+                                    });
+                                    return;
+                                }
+                                
+                                // Create a unique key for the group
+                                const groupKey = `${video.EpisodeCategory || ''}-${video.EpisodeTranslator || ''}-${video.EpisodeRemastered || ''}`;
+                                
+                                if (!groups.has(groupKey)) {
+                                    // Create a new group
+                                    groups.set(groupKey, {
+                                        key: groupKey,
+                                        EpisodeCategory: video.EpisodeCategory,
+                                        EpisodeTranslator: video.EpisodeTranslator,
+                                        EpisodeRemastered: video.EpisodeRemastered,
+                                        hasMetadata: true,
+                                        videos: []
+                                    });
+                                }
+                                
+                                // Add the video to its group with the original index
+                                groups.get(groupKey).videos.push({
+                                    ...video,
+                                    originalIndex: index // Store the original index for sendEpisodeToBot
+                                });
+                            } catch (error) {
+                                this.trackError(error, 'groupedVideos - forEach video', { index, videoID: video?.VideoID });
+                            }
                         });
                         
-                        return [
-                            {
-                                key: 'no-metadata',
-                                hasMetadata: false,
-                                videos: sortedNoMetadataVideos
-                            },
-                            ...groupedVideos
-                        ];
+                        // Convert the map to an array and sort the videos within each group by resolution
+                        const groupedVideos = Array.from(groups.values()).map(group => {
+                            try {
+                                return {
+                                    ...group,
+                                    hasMetadata: true,
+                                    videos: group.videos.sort((a, b) => {
+                                        try {
+                                            // Extract numeric part of resolution for proper sorting
+                                            const resA = parseInt(a.Resolution) || 0;
+                                            const resB = parseInt(b.Resolution) || 0;
+                                            return resB - resA; // Sort in descending order (highest resolution first)
+                                        } catch (error) {
+                                            this.trackError(error, 'groupedVideos - sort videos', { a: a?.Resolution, b: b?.Resolution });
+                                            return 0;
+                                        }
+                                    })
+                                };
+                            } catch (error) {
+                                this.trackError(error, 'groupedVideos - map group', { groupKey: group?.key });
+                                return group;
+                            }
+                        });
+                        
+                        // If there are videos without metadata, add them as a special group
+                        if (noMetadataVideos.length > 0) {
+                            try {
+                                const sortedNoMetadataVideos = noMetadataVideos.sort((a, b) => {
+                                    try {
+                                        const resA = parseInt(a.Resolution) || 0;
+                                        const resB = parseInt(b.Resolution) || 0;
+                                        return resB - resA;
+                                    } catch (error) {
+                                        this.trackError(error, 'groupedVideos - sort noMetadata', { a: a?.Resolution, b: b?.Resolution });
+                                        return 0;
+                                    }
+                                });
+                                
+                                return [
+                                    {
+                                        key: 'no-metadata',
+                                        hasMetadata: false,
+                                        videos: sortedNoMetadataVideos
+                                    },
+                                    ...groupedVideos
+                                ];
+                            } catch (error) {
+                                this.trackError(error, 'groupedVideos - process noMetadata', { noMetadataCount: noMetadataVideos.length });
+                                return groupedVideos;
+                            }
+                        }
+                        
+                        return groupedVideos;
+                    } catch (error) {
+                        this.trackError(error, 'groupedVideos');
+                        return []; // Safe fallback
                     }
-                    
-                    return groupedVideos;
                 },
 
                 hasPreviousMovie() {
@@ -7557,8 +7650,10 @@
                 },
 
                 filteredEpisodes() {
-                    const rawSearchQuery = this.searchQuery.trim().toLowerCase();
-                    const searchQuery = this.normalizeText(this.searchQuery);
+                    try {
+                        this.logDebug('Computing filteredEpisodes', 'filteredEpisodes', { searchQuery: this.searchQuery });
+                        const rawSearchQuery = this.searchQuery.trim().toLowerCase();
+                        const searchQuery = this.normalizeText(this.searchQuery);
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -10068,10 +10163,17 @@
                     }
 
                     // Apply other filters (e.g., category and search query)
-                    return filteredByType
+                    const result = filteredByType
                     .filter(episode => {
                         if (this.selectedFilter === 'anime') {
-                            return /^[0-9]+(\.[0-9]+)?$/.test(episode.EpisodeNumber);
+                            try {
+                                return /^[0-9]+(\.[0-9]+)?$/.test(episode.EpisodeNumber);
+                            } catch (error) {
+                                this.trackError(error, 'filteredEpisodes - anime regex test', { 
+                                    episodeNumber: episode?.EpisodeNumber 
+                                });
+                                return false; // Safe fallback
+                            }
                         } else if (this.selectedFilter === 'movies') {
                             return (episode.EpisodeNumber.includes("الفيلم") || episode.EpisodeNumber.includes("فيلم تعاوني")) && !episode.EpisodeNumber.includes("خاصة بالفيلم");
                         } else if (this.selectedFilter === 'hourly_special') {
@@ -10110,20 +10212,28 @@
                                 part = part.trim();
                                 if (!part) return;
 
-                                if (part.includes('-') && !part.match(/^\d+\.\d+-/)) {
-                                    // Handle ranges like "44-60" (but not decimals like "1076.5-")
-                                    const [start, end] = part.split('-').map(num => parseFloat(num.trim()));
-                                    if (!isNaN(start) && !isNaN(end) && start <= end) {
-                                        // For integer ranges, add all integers in the range
-                                        if (Number.isInteger(start) && Number.isInteger(end)) {
-                                            for (let i = start; i <= end; i++) {
-                                                numberList.push(i.toString());
+                                if (part.includes('-')) {
+                                    try {
+                                        if (!part.match(/^\d+\.\d+-/)) {
+                                            // Handle ranges like "44-60" (but not decimals like "1076.5-")
+                                            const [start, end] = part.split('-').map(num => parseFloat(num.trim()));
+                                            if (!isNaN(start) && !isNaN(end) && start <= end) {
+                                                // For integer ranges, add all integers in the range
+                                                if (Number.isInteger(start) && Number.isInteger(end)) {
+                                                    for (let i = start; i <= end; i++) {
+                                                        numberList.push(i.toString());
+                                                    }
+                                                } else {
+                                                    // For decimal ranges, just add start and end
+                                                    numberList.push(start.toString());
+                                                    numberList.push(end.toString());
+                                                }
                                             }
-                                        } else {
-                                            // For decimal ranges, just add start and end
-                                            numberList.push(start.toString());
-                                            numberList.push(end.toString());
                                         }
+                                    } catch (error) {
+                                        this.trackError(error, 'filteredEpisodes - range regex match', { part });
+                                        // Fallback: treat as text fragment if regex fails
+                                        textFragments.push(part);
                                     }
                                 } else {
                                     // Handle single numbers (including decimals)
@@ -10144,8 +10254,15 @@
                                 numberConditionEvaluated = true;
                                 let episodeNumber;
                                 if (this.textNumberMatchMode === 'enabled') {
-                                    const episodeNumberMatch = episode.EpisodeNumber.toString().match(/\d+\.?\d*$/);
-                                    episodeNumber = episodeNumberMatch ? episodeNumberMatch[0] : episode.EpisodeNumber;
+                                    try {
+                                        const episodeNumberMatch = episode.EpisodeNumber.toString().match(/\d+\.?\d*$/);
+                                        episodeNumber = episodeNumberMatch ? episodeNumberMatch[0] : episode.EpisodeNumber;
+                                    } catch (error) {
+                                        this.trackError(error, 'filteredEpisodes - episode number regex match', { 
+                                            episodeNumber: episode?.EpisodeNumber 
+                                        });
+                                        episodeNumber = episode.EpisodeNumber.toString();
+                                    }
                                 } else {
                                     episodeNumber = episode.EpisodeNumber.toString();
                                 }
@@ -10168,22 +10285,53 @@
                         
                         // Title filter logic
                         if (this.searchFilters.title) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
+                            try {
+                                matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
+                            } catch (error) {
+                                this.trackError(error, 'filteredEpisodes - title regex test', { 
+                                    searchQuery, 
+                                    episodeTitle: episode?.EpisodeTitle 
+                                });
+                                matchConditions.push(false); // Safe fallback
+                            }
                         }
                         
                         // Story filter logic
                         if (this.searchFilters.story) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
+                            try {
+                                matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
+                            } catch (error) {
+                                this.trackError(error, 'filteredEpisodes - story regex test', { 
+                                    searchQuery, 
+                                    episodeStory: episode?.EpisodeStory 
+                                });
+                                matchConditions.push(false); // Safe fallback
+                            }
                         }
                         
                         // Summary filter logic
                         if (this.searchFilters.summary) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
+                            try {
+                                matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
+                            } catch (error) {
+                                this.trackError(error, 'filteredEpisodes - summary regex test', { 
+                                    searchQuery, 
+                                    episodeSummary: episode?.EpisodeSummary 
+                                });
+                                matchConditions.push(false); // Safe fallback
+                            }
                         }
                         
                         // Return true if ANY condition is true (OR logic)
                         return matchConditions.length > 0 && matchConditions.some(condition => condition);
                     });
+                    
+                    this.logDebug('filteredEpisodes computed', 'filteredEpisodes', { resultCount: result.length });
+                    return result;
+                    } catch (error) {
+                        this.trackError(error, 'filteredEpisodes', { searchQuery: this.searchQuery });
+                        return []; // Return empty array on error to prevent UI crash
+                    }
                 },
 
                 blackOrganizationCount() {
@@ -13966,66 +14114,87 @@
                 },
             },
             methods: {
-                // Error tracking and debugging methods
-                trackError(error, context = {}, variableName = '') {
+                // ========== ERROR TRACKING & DEBUG METHODS ==========
+                logError(error, context = '', additionalInfo = {}) {
                     if (!this.debugMode) return;
                     
-                    const errorInfo = {
+                    const errorEntry = {
+                        type: 'error',
                         timestamp: new Date().toISOString(),
                         message: error?.message || String(error),
                         stack: error?.stack || '',
                         context: context,
-                        variableName: variableName,
+                        additionalInfo: additionalInfo,
                         userAgent: navigator.userAgent,
                         url: window.location.href
                     };
                     
-                    this.errorLog.push(errorInfo);
-                    
-                    // Keep log size manageable
+                    this.errorLog.push(errorEntry);
                     if (this.errorLog.length > this.maxErrorLogSize) {
                         this.errorLog.shift();
                     }
                     
-                    // Log to console with context
-                    console.error('[Error Tracker]', {
-                        message: errorInfo.message,
-                        variable: variableName,
-                        context: context,
-                        error: error
-                    });
-                },
-                
-                trackRegexError(regexPattern, error, context = {}) {
-                    this.trackError(error, {
-                        ...context,
-                        regexPattern: regexPattern,
-                        errorType: 'RegexError'
-                    }, 'regexPattern');
-                },
-                
-                safeRegexReplace(str, pattern, replacement, flags = 'g') {
-                    try {
-                        // Test if regex is valid
-                        const regex = new RegExp(pattern, flags);
-                        if (typeof replacement === 'function') {
-                            return str.replace(regex, replacement);
-                        } else {
-                            return str.replace(regex, replacement);
+                    console.error(`[DEBUG MODE] Error in ${context}:`, error, additionalInfo);
+                    
+                    // Send to LogRocket if available
+                    if (window.LogRocket && window.LogRocket.captureException) {
+                        try {
+                            window.LogRocket.captureException(error, {
+                                tags: { context, debugMode: true },
+                                extra: additionalInfo
+                            });
+                        } catch (e) {
+                            console.error('Failed to send error to LogRocket:', e);
                         }
-                    } catch (error) {
-                        this.trackRegexError(pattern, error, {
-                            originalString: str?.substring(0, 100),
-                            replacement: typeof replacement === 'function' ? 'function' : replacement?.substring(0, 50),
-                            flags: flags
-                        });
-                        return str; // Return original string on error
                     }
                 },
+                
+                logWarning(message, context = '', additionalInfo = {}) {
+                    if (!this.debugMode) return;
+                    
+                    const warningEntry = {
+                        type: 'warning',
+                        timestamp: new Date().toISOString(),
+                        message: message,
+                        context: context,
+                        additionalInfo: additionalInfo
+                    };
+                    
+                    this.errorLog.push(warningEntry);
+                    if (this.errorLog.length > this.maxErrorLogSize) {
+                        this.errorLog.shift();
+                    }
+                    
+                    console.warn(`[DEBUG MODE] Warning in ${context}:`, message, additionalInfo);
+                },
+                
+                logDebug(message, context = '', data = {}) {
+                    if (!this.debugMode) return;
+                    
+                    console.log(`[DEBUG MODE] ${context}:`, message, data);
+                },
+                
+                trackError(error, context, additionalInfo = {}) {
+                    this.logError(error, context, additionalInfo);
+                },
+                
+                getErrorLog() {
+                    return this.errorLog;
+                },
+                
+                clearErrorLog() {
+                    this.errorLog = [];
+                    this.logDebug('Error log cleared', 'ErrorTracking');
+                },
+                // ========== END ERROR TRACKING METHODS ==========
 
                 selectEpisodeAndOpen(episode) {
-                    this.lastClickedEpisode = episode;
-                    this.openModal(episode);
+                    try {
+                        this.lastClickedEpisode = episode;
+                        this.openModal(episode);
+                    } catch (error) {
+                        this.trackError(error, 'selectEpisodeAndOpen', { episode: episode?.EpisodeNumber });
+                    }
                 },
 
                 async loadNextMangaInfo() {
@@ -15144,22 +15313,42 @@
                 },
 
                 normalizeText(text) {
-                    let normalizedText = text.toLowerCase();
-                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const regex = new RegExp(key, 'g'); // Global search for the word
-                        normalizedText = normalizedText.replace(regex, (match) => {
-                            // Replace with all possible values, separated by "|"
-                            return `(${values.join("|")})`;
-                        });
+                    try {
+                        let normalizedText = text.toLowerCase();
+                        try {
+                            normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        } catch (error) {
+                            this.trackError(error, 'normalizeText - escape regex replace', { text });
+                            // Continue without escaping if regex fails
+                        }
+                        for (let [key, values] of Object.entries(this.replacementDict)) {
+                            try {
+                                const regex = new RegExp(key, 'g'); // Global search for the word
+                                normalizedText = normalizedText.replace(regex, (match) => {
+                                    // Replace with all possible values, separated by "|"
+                                    return `(${values.join("|")})`;
+                                });
+                            } catch (error) {
+                                this.trackError(error, 'normalizeText - replacement regex', { key, values });
+                                // Skip this replacement if regex fails
+                            }
+                        }
+                        return normalizedText;
+                    } catch (error) {
+                        this.trackError(error, 'normalizeText', { text });
+                        return text.toLowerCase(); // Safe fallback
                     }
-                    return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
-                    return String(value || '')
-                        .replace(/\s+/g, ' ')
-                        .trim()
-                        .toLowerCase();
+                    try {
+                        return String(value || '')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .toLowerCase();
+                    } catch (error) {
+                        this.trackError(error, 'normalizeEpisodeIdentifier', { value });
+                        return String(value || '').trim().toLowerCase(); // Safe fallback without regex
+                    }
                 },
 
                 executePendingJump() {
@@ -16938,9 +17127,17 @@
                 },
 
                 async sendEpisodeToBot(videoID, resolution, size, index, introductionTime, startStoryTime, episodeSuspenseTime, startSongTime, chapterOneTime, chapterTwoTime, endSongTime, chapterThreeTime, nextEpisodeTeaserTime, nextEpisodeHintTime) {
-                    if (!this.selectedEpisode?.EpisodeNumber) {
-                        return;
-                    }
+                    try {
+                        this.logDebug('Sending episode to bot', 'sendEpisodeToBot', { 
+                            videoID, 
+                            resolution, 
+                            episodeNumber: this.selectedEpisode?.EpisodeNumber 
+                        });
+                        
+                        if (!this.selectedEpisode?.EpisodeNumber) {
+                            this.logWarning('No selected episode when sending to bot', 'sendEpisodeToBot');
+                            return;
+                        }
 
                     // Set ratelimiting for all other buttons
                     this.ratelimiting = true;
@@ -16991,9 +17188,18 @@
                     }
 
                     function escapeMarkdown(text) {
-                        return text
-                            .replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&')
-                            .replace(/\n/g, '\\n');
+                        try {
+                            return text
+                                .replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&')
+                                .replace(/\n/g, '\\n');
+                        } catch (error) {
+                            // Track error if debug mode is enabled (access via closure or pass this)
+                            if (this.debugMode) {
+                                this.trackError(error, 'escapeMarkdown', { text });
+                            }
+                            // Safe fallback: return text as-is if regex fails
+                            return text || '';
+                        }
                     }
                     
                     let details = "";
@@ -17019,6 +17225,12 @@
                         this.startCountdown(index);
                         this.errorMessage = "";
                     } catch (error) {
+                        this.trackError(error, 'sendEpisodeToBot - sendVideoResponse', { 
+                            videoID, 
+                            resolution, 
+                            episodeNumber: this.selectedEpisode?.EpisodeNumber,
+                            index 
+                        });
                         this.selectedEpisode.EpisodeVideosIDs[index].status = 'error';
                         this.errorMessage = error.message;
                         if (this.selectedEpisode.EpisodeVideosIDs.some((video) => video.status === "error")) {
@@ -17072,6 +17284,19 @@
                             });
                         }
                     }, this.statusClearTimeout);
+                    } catch (error) {
+                        this.trackError(error, 'sendEpisodeToBot', { 
+                            videoID, 
+                            resolution, 
+                            episodeNumber: this.selectedEpisode?.EpisodeNumber,
+                            index 
+                        });
+                        // Ensure error status is set even if outer catch is triggered
+                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                            this.selectedEpisode.EpisodeVideosIDs[index].status = 'error';
+                            this.errorMessage = error.message || 'Unknown error occurred';
+                        }
+                    }
                 },
 
                 async sendVideoResponse(fileId, caption) {
@@ -17428,29 +17653,33 @@
                 },
 
                 processEpisodeNotes(notes) {
+                    if (this.episodeNotesDebug) console.log('processEpisodeNotes called with notes:', notes);
+                    
+                    // Skip processing for 'ماجيك كايتو2'
+                    if (notes && notes.includes('ماجيك كايتو2')) {
+                        if (this.episodeNotesDebug) console.log('Skipping processing for ماجيك كايتو2');
+                        return notes;
+                    }
+                    
+                    if (!notes) {
+                        if (this.episodeNotesDebug) console.log('No notes provided, returning empty string');
+                        return '';
+                    }
+                    
+                    // First, handle 'بالفيلم n' patterns (with ب prefix)
+                    let processed;
                     try {
-                        if (this.episodeNotesDebug) console.log('processEpisodeNotes called with notes:', notes);
-                        
-                        // Skip processing for 'ماجيك كايتو2'
-                        if (notes && notes.includes('ماجيك كايتو2')) {
-                            if (this.episodeNotesDebug) console.log('Skipping processing for ماجيك كايتو2');
-                            return notes;
-                        }
-                        
-                        if (!notes) {
-                            if (this.episodeNotesDebug) console.log('No notes provided, returning empty string');
-                            return '';
-                        }
-                        
-                        // First, handle 'بالفيلم n' patterns (with ب prefix)
-                        let processed = notes;
-                        try {
-                            const filmRegex = new RegExp('(ب)?(الفيلم\\s+\\d+(?:\\.\\d+)?)', 'g');
-                            processed = notes.replace(filmRegex, (match, hasBa, filmPart) => {
+                        processed = notes.replace(/(ب)?(الفيلم\s+\d+(?:\.\d+)?)/g, (match, hasBa, filmPart) => {
+                            try {
                                 if (this.episodeNotesDebug) console.log('Processing film pattern:', { match, hasBa, filmPart });
-                                const numberMatch = filmPart ? filmPart.match(/\d+(?:\.\d+)?/) : null;
-                                if (!numberMatch) return match;
-                                const number = numberMatch[0];
+                                let number;
+                                try {
+                                    const matchResult = filmPart.match(/\d+(?:\.\d+)?/);
+                                    number = matchResult ? matchResult[0] : '';
+                                } catch (error) {
+                                    this.trackError(error, 'processEpisodeNotes - filmPart regex match', { filmPart });
+                                    number = '';
+                                }
                                 const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                                     video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
                                     this.selectedEpisode?.EpisodeMangasIDs?.some(manga => 
@@ -17464,36 +17693,20 @@
                                     class="episode-link text-lg font-bold underline text-yellow-300 bg-transparent border-0 ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-90'} transition-all duration-100"
                                     style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
                                 >${match}</span>`;
-                            });
-                        } catch (error) {
-                            this.trackRegexError('(ب)?(الفيلم\\s+\\d+(?:\\.\\d+)?)', error, { functionName: 'processEpisodeNotes', step: 'filmPattern' });
-                            processed = notes; // Fallback to original
-                        }
-                        
-                        // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
-                        // Using compatible regex for older WebKit (iOS 15.x) - avoiding negative lookbehind
-                        const regex = new RegExp('(\\d+(?:\\.\\d+)?)', 'g');
-                        processed = processed.replace(regex, (match, offset, string) => {
+                            } catch (error) {
+                                this.trackError(error, 'processEpisodeNotes - film pattern replace callback', { match, hasBa, filmPart });
+                                return match; // Return original match on error
+                            }
+                        });
+                    } catch (error) {
+                        this.trackError(error, 'processEpisodeNotes - film pattern regex replace', { notes });
+                        processed = notes; // Fallback to original notes
+                    }
+                    
+                    // Then handle standalone numbers that weren't part of 'الفيلم n' or 'بالفيلم n'
+                    try {
+                        processed = processed.replace(/(?<!<[^>]*)(?<!الفيلم\s)(?<!ب?الفيلم\s)(?<![\d\w])(\d+(?:\.\d+)?)(?![\d\w])/g, (match) => {
                             try {
-                                // Check if this number is already inside a tag or part of 'الفيلم n' pattern
-                                const beforeMatch = string.substring(Math.max(0, offset - 50), offset);
-                                const afterMatch = string.substring(offset + match.length, Math.min(string.length, offset + match.length + 10));
-                                
-                                // Skip if inside HTML tag
-                                if (beforeMatch.includes('<') && !beforeMatch.match(/<[^>]*>$/)) {
-                                    return match;
-                                }
-                                
-                                // Skip if part of 'الفيلم' or 'بالفيلم' pattern
-                                if (beforeMatch.match(/(الفيلم|بالفيلم|ب\s*الفيلم)\s*$/)) {
-                                    return match;
-                                }
-                                
-                                // Skip if preceded or followed by word characters
-                                if (beforeMatch.match(/[\d\w]$/) || afterMatch.match(/^[\d\w]/)) {
-                                    return match;
-                                }
-                                
                                 if (this.episodeNotesDebug) console.log('Processing standalone number:', match);
                                 const isDisabled = (this.selectedEpisode?.EpisodeVideosIDs?.some(video => 
                                     video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || 
@@ -17509,54 +17722,54 @@
                                     style="pointer-events: ${isDisabled ? 'none' : 'auto'}"
                                 >${match}</span>`;
                             } catch (error) {
-                                this.trackError(error, { functionName: 'processEpisodeNotes', match: match, offset: offset }, 'processed');
-                                return match;
+                                this.trackError(error, 'processEpisodeNotes - standalone number replace callback', { match });
+                                return match; // Return original match on error
                             }
                         });
-                    
-                        // Add event delegation in the next tick after the DOM is updated
-                        this.$nextTick(() => {
-                            if (this.episodeNotesDebug) console.log('Setting up event delegation for episode links');
-                            
-                            // Clean up any existing event listeners
-                            if (this.episodeLinkClickHandler) {
-                                document.removeEventListener('click', this.episodeLinkClickHandler);
-                            }
-                            
-                            // Create new handler
-                            this.episodeLinkClickHandler = (e) => {
-                                // Only handle clicks on episode links
-                                const link = e.target.closest('.episode-link:not([disabled])');
-                                if (!link) return;
-                                
-                                e.preventDefault();
-                                e.stopPropagation();
-                                
-                                const type = link.dataset.episodeType;
-                                const number = link.dataset.episodeNumber;
-                                if (this.episodeNotesDebug) {
-                                    if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
-                                    if (this.episodeNotesDebug) console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
-                                        type === 'film' ? `الفيلم ${number}` : number);
-                                }
-                                
-                                const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
-                                if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
-                                
-                                this.resetStatusForEpisodeManga();
-                                this.openEpisodeModal(episodeNumber);
-                            };
-                            
-                            // Attach the event listener to the document
-                            document.addEventListener('click', this.episodeLinkClickHandler);
-                            if (this.episodeNotesDebug) console.log('Event listener added to document');
-                        });
-                        
-                        return processed;
                     } catch (error) {
-                        this.trackError(error, { functionName: 'processEpisodeNotes', notes: notes?.substring(0, 100) }, 'notes');
-                        return notes || ''; // Return original notes on error
+                        this.trackError(error, 'processEpisodeNotes - standalone number regex replace', { processed });
+                        // Continue with processed as-is if regex fails
                     }
+                    
+                    // Add event delegation in the next tick after the DOM is updated
+                    this.$nextTick(() => {
+                        if (this.episodeNotesDebug) console.log('Setting up event delegation for episode links');
+                        
+                        // Clean up any existing event listeners
+                        if (this.episodeLinkClickHandler) {
+                            document.removeEventListener('click', this.episodeLinkClickHandler);
+                        }
+                        
+                        // Create new handler
+                        this.episodeLinkClickHandler = (e) => {
+                            // Only handle clicks on episode links
+                            const link = e.target.closest('.episode-link:not([disabled])');
+                            if (!link) return;
+                            
+                            e.preventDefault();
+                            e.stopPropagation();
+                            
+                            const type = link.dataset.episodeType;
+                            const number = link.dataset.episodeNumber;
+                            if (this.episodeNotesDebug) {
+                                if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
+                                if (this.episodeNotesDebug) console.log('Calling resetStatusForEpisodeManga and openEpisodeModal with:', 
+                                    type === 'film' ? `الفيلم ${number}` : number);
+                            }
+                            
+                            const episodeNumber = type === 'film' ? `الفيلم ${number}` : number;
+                            if (this.episodeNotesDebug) console.log('Episode link clicked:', { type, number });
+                            
+                            this.resetStatusForEpisodeManga();
+                            this.openEpisodeModal(episodeNumber);
+                        };
+                        
+                        // Attach the event listener to the document
+                        document.addEventListener('click', this.episodeLinkClickHandler);
+                        if (this.episodeNotesDebug) console.log('Event listener added to document');
+                    });
+                    
+                    return processed;
                 },
 
                 openEpisodeModal(episodeNumber) {
@@ -17781,24 +17994,39 @@
                 },
 
                 selectEpisode(episode) {
-                    this.selectedEpisode = episode;
+                    try {
+                        this.logDebug('Selecting episode', 'selectEpisode', { episodeNumber: episode?.EpisodeNumber });
+                        this.selectedEpisode = episode;
+                    } catch (error) {
+                        this.trackError(error, 'selectEpisode', { episode: episode?.EpisodeNumber });
+                    }
                 },
 
                 navigateToNextEpisode() {
-                    if (!this.hasNextEpisode) return;
-                    const currentGroup = this.groupedEpisodes[this.activeTab.episodes].items;
-                    const currentIndex = currentGroup.findIndex(ep => ep.EpisodeNumber === this.selectedEpisode.EpisodeNumber);
-                    if (currentIndex !== -1 && currentIndex < currentGroup.length - 1) {
-                        this.selectedEpisode = currentGroup[currentIndex + 1];
+                    try {
+                        if (!this.hasNextEpisode) return;
+                        const currentGroup = this.groupedEpisodes[this.activeTab.episodes].items;
+                        const currentIndex = currentGroup.findIndex(ep => ep.EpisodeNumber === this.selectedEpisode.EpisodeNumber);
+                        if (currentIndex !== -1 && currentIndex < currentGroup.length - 1) {
+                            this.selectedEpisode = currentGroup[currentIndex + 1];
+                            this.logDebug('Navigated to next episode', 'navigateToNextEpisode', { episodeNumber: this.selectedEpisode?.EpisodeNumber });
+                        }
+                    } catch (error) {
+                        this.trackError(error, 'navigateToNextEpisode');
                     }
                 },
 
                 navigateToPreviousEpisode() {
-                    if (!this.hasPreviousEpisode) return;
-                    const currentGroup = this.groupedEpisodes[this.activeTab.episodes].items;
-                    const currentIndex = currentGroup.findIndex(ep => ep.EpisodeNumber === this.selectedEpisode.EpisodeNumber);
-                    if (currentIndex !== -1 && currentIndex > 0) {
-                        this.selectedEpisode = currentGroup[currentIndex - 1];
+                    try {
+                        if (!this.hasPreviousEpisode) return;
+                        const currentGroup = this.groupedEpisodes[this.activeTab.episodes].items;
+                        const currentIndex = currentGroup.findIndex(ep => ep.EpisodeNumber === this.selectedEpisode.EpisodeNumber);
+                        if (currentIndex !== -1 && currentIndex > 0) {
+                            this.selectedEpisode = currentGroup[currentIndex - 1];
+                            this.logDebug('Navigated to previous episode', 'navigateToPreviousEpisode', { episodeNumber: this.selectedEpisode?.EpisodeNumber });
+                        }
+                    } catch (error) {
+                        this.trackError(error, 'navigateToPreviousEpisode');
                     }
                 },
 
@@ -17893,7 +18121,12 @@
                 },
 
                 selectMovie(movie) {
-                    this.selectedEpisode = movie;
+                    try {
+                        this.logDebug('Selecting movie', 'selectMovie', { movieNumber: movie?.EpisodeNumber });
+                        this.selectedEpisode = movie;
+                    } catch (error) {
+                        this.trackError(error, 'selectMovie', { movie: movie?.EpisodeNumber });
+                    }
                 },
 
                 selectManga(manga) {
@@ -17926,30 +18159,46 @@
                 },
 
                 clearSearch() {
-                    this.clearJumpHighlight();
-                    this.searchQuery = '';
+                    try {
+                        this.logDebug('Clearing search', 'clearSearch');
+                        this.clearJumpHighlight();
+                        this.searchQuery = '';
+                    } catch (error) {
+                        this.trackError(error, 'clearSearch');
+                    }
                 },
 
                 ensureOneChecked(changedKey) {
-                    const checkedFilters = Object.keys(this.searchFilters).filter(key => this.searchFilters[key]);
+                    try {
+                        this.logDebug('Ensuring one filter checked', 'ensureOneChecked', { changedKey });
+                        const checkedFilters = Object.keys(this.searchFilters).filter(key => this.searchFilters[key]);
 
-                    if (checkedFilters.length === 0) {
-                        this.searchFilters[changedKey] = true; // Prevent unchecking the last one
+                        if (checkedFilters.length === 0) {
+                            this.searchFilters[changedKey] = true; // Prevent unchecking the last one
+                            this.logWarning('All filters were unchecked, re-enabled the changed filter', 'ensureOneChecked', { changedKey });
+                        }
+                    } catch (error) {
+                        this.trackError(error, 'ensureOneChecked', { changedKey });
                     }
                 },
 
                 toggleSearch() {
-                    this.searchOpen = !this.searchOpen;
-                    // Close menu when search is opened
-                    if (this.searchOpen && this.menuOpen) {
-                        this.menuOpen = false;
-                    }
-                    if (this.searchOpen) {
-                    this.$nextTick(() => {
-                        document.addEventListener("click", this.closeSearchOutside);
-                    });
-                    } else {
-                    document.removeEventListener("click", this.closeSearchOutside);
+                    try {
+                        this.logDebug('Toggling search', 'toggleSearch', { currentState: this.searchOpen });
+                        this.searchOpen = !this.searchOpen;
+                        // Close menu when search is opened
+                        if (this.searchOpen && this.menuOpen) {
+                            this.menuOpen = false;
+                        }
+                        if (this.searchOpen) {
+                            this.$nextTick(() => {
+                                document.addEventListener("click", this.closeSearchOutside);
+                            });
+                        } else {
+                            document.removeEventListener("click", this.closeSearchOutside);
+                        }
+                    } catch (error) {
+                        this.trackError(error, 'toggleSearch');
                     }
                 },
                 closeSearchOutside(e) {
@@ -18105,40 +18354,42 @@
             mounted() {
                 const enableDebug = false; // Set to true to enable debug logging
                 
-                // Set up global error handlers for automatic error tracking
-                if (this.debugMode) {
-                    // Global error handler
-                    window.addEventListener('error', (event) => {
-                        this.trackError(event.error || new Error(event.message), {
-                            filename: event.filename,
-                            lineno: event.lineno,
-                            colno: event.colno,
-                            errorType: 'GlobalError'
-                        }, 'window.error');
-                    });
-                    
-                    // Unhandled promise rejection handler
-                    window.addEventListener('unhandledrejection', (event) => {
-                        this.trackError(event.reason, {
-                            errorType: 'UnhandledRejection',
+                // ========== GLOBAL ERROR HANDLERS ==========
+                // Global error handler for uncaught errors
+                window.onerror = (message, source, lineno, colno, error) => {
+                    if (this.debugMode) {
+                        this.trackError(error || new Error(message), 'window.onerror', {
+                            message,
+                            source,
+                            lineno,
+                            colno,
+                            stack: error?.stack
+                        });
+                    }
+                    return false; // Allow default error handling to continue
+                };
+                
+                // Global handler for unhandled promise rejections
+                window.addEventListener('unhandledrejection', (event) => {
+                    if (this.debugMode) {
+                        const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+                        this.trackError(error, 'unhandledrejection', {
+                            reason: event.reason,
                             promise: event.promise
-                        }, 'promise.rejection');
-                    });
-                    
-                    // Syntax error handler (catches regex errors)
-                    const originalConsoleError = console.error;
-                    console.error = (...args) => {
-                        const errorMessage = args.join(' ');
-                        if (errorMessage.includes('Invalid regular expression') || 
-                            errorMessage.includes('invalid group specifier')) {
-                            this.trackRegexError('unknown', new Error(errorMessage), {
-                                errorType: 'SyntaxError',
-                                consoleArgs: args
-                            });
-                        }
-                        originalConsoleError.apply(console, args);
-                    };
-                }
+                        });
+                    }
+                });
+                
+                // Vue error handler
+                this.$options.errorHandler = (err, vm, info) => {
+                    if (this.debugMode) {
+                        this.trackError(err, 'Vue.errorHandler', {
+                            componentName: vm?.$options?.name || 'Unknown',
+                            info
+                        });
+                    }
+                };
+                // ========== END GLOBAL ERROR HANDLERS ==========
                 
                 // Initialize zikr rotation
                 this.shuffleZikr();
@@ -18332,4 +18583,3 @@
     </style>
 </body>
 </html>
-
