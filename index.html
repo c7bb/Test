@@ -695,7 +695,7 @@
 
                     <div  
                         v-if="(selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'error')) || (selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'error')) || (selectedManga?.status === 'error') || (selectedEpisode?.status === 'error')"
-                        class="fixed z-10 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center"
+                        class="fixed z-10 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center hidden"
                         >
                         <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col">
                             <!-- Sticky Header Section -->
@@ -851,7 +851,7 @@
                                                 </span>
                                                 <span v-if="group.EpisodeRemastered">
                                                     <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
-                                                    {{ group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered) }}
+                                                    {{ group.EpisodeRemastered === 'TP' ? 'محسنة وخاصة' : (group.EpisodeRemastered === 'FP' ? 'غير محسنة وخاصة' : (group.EpisodeRemastered === 'P' ? 'حلقة خاصة' : (group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered)))) }}
                                                 </span>
                                             </legend>
                                             
@@ -1004,7 +1004,7 @@
                                                         </span>
                                                         <span v-if="group.EpisodeRemastered">
                                                             <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
-                                                            {{ group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered) }}
+                                                            {{ group.EpisodeRemastered === 'TP' ? 'محسنة وخاصة' : (group.EpisodeRemastered === 'FP' ? 'غير محسنة وخاصة' : (group.EpisodeRemastered === 'P' ? 'حلقة خاصة' : (group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered)))) }}
                                                         </span>
                                                     </legend>
 
@@ -1241,7 +1241,7 @@
             </div>
             
             <!-- Empty popup window -->
-            <div v-if="showEmptyPopup" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div v-if="showEmptyPopup" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
                 <div class="relative bg-sky-900 rounded shadow-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col"> <!-- the defualt is 80vh in max-h-[90vh]-->
                     <!-- Sticky Header Section -->
                     <div class="sticky top-0 z-50 bg-sky-900 p-4">
@@ -6366,7 +6366,7 @@
                                                         </span>
                                                         <span v-if="group.EpisodeRemastered">
                                                             <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
-                                                            {{ group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered) }}
+                                                            {{ group.EpisodeRemastered === 'TP' ? 'محسنة وخاصة' : (group.EpisodeRemastered === 'FP' ? 'غير محسنة وخاصة' : (group.EpisodeRemastered === 'P' ? 'حلقة خاصة' : (group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered)))) }}
                                                         </span>
                                                     </legend>
                                                     
@@ -6500,10 +6500,11 @@
                     lastClickedEpisode: null,
                     errorMessage: "",
                     statusClearTimeout: 2000,
-                    ep: 1184,
+                    ep: 1185,
                     mangaCh: 1155,
                     replacementDict: {
-                    "فلم": ["فيلم",],
+                    "فلم": ["فيلم","فلم"],
+                    "فيلم": ["فلم","فيلم"],
                     "ة": ["ه","ة"],
                     "ه": ["ة","ه"],
                     "أ": ["ا","إ","أ"],
@@ -6511,6 +6512,8 @@
                     "إ": ["أ","ا","إ"],
                     "س": ["ش","س"],
                     "ش": ["س","ش"],
+                    "لوبن": ["لوبين","لوبن"],
+                    "لوبين": ["لوبن","لوبين"],
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
                     episodeNotesDebug: false,  // Enable for debugging episode notes processing
