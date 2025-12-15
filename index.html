@@ -7794,7 +7794,7 @@
 
                 filteredEpisodes() {
                     const rawSearchQuery = this.searchQuery.trim().toLowerCase();
-                    const searchQuery = this.normalizeText(this.searchQuery);
+                    const searchQuery = this.normalizeText(this.searchQuery || '');
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -10403,18 +10403,23 @@
                         }
                         
                         // Title filter logic
+                        const normalizedTitle = this.normalizeText(episode.EpisodeTitle || '');
+                        const normalizedStory = this.normalizeText(episode.EpisodeStory || '');
+                        const normalizedSummary = this.normalizeText(episode.EpisodeSummary || '');
+
+                        // Title filter logic
                         if (this.searchFilters.title) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(normalizedTitle));
                         }
                         
                         // Story filter logic
                         if (this.searchFilters.story) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(normalizedStory));
                         }
                         
                         // Summary filter logic
                         if (this.searchFilters.summary) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(normalizedSummary));
                         }
                         
                         // Return true if ANY condition is true (OR logic)
