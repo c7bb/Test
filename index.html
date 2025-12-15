@@ -606,8 +606,8 @@
 
         <!-- Inactivity countdown badge -->
         <div 
-            v-if="!inactivityModal && inactivityCountdown <= 300" 
-            class="fixed bottom-4 right-4 z-[110] bg-gray-900 text-yellow-200 px-3 py-2 rounded shadow-lg text-sm"
+            v-if="!inactivityModal && inactivityCountdown <= 30" 
+            class="fixed bottom-4 right-1 z-[110] bg-red-900 text-yellow-300 px-2 py-2 rounded shadow-lg text-sm"
         >
             ⚠️ تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم نشاطك
         </div>
@@ -15434,46 +15434,15 @@
                 },
 
                 normalizeText(text) {
-                    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
                     let normalizedText = text.toLowerCase();
-
+                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const lowerKey = key.toLowerCase();
-                        const keyWithoutAl = lowerKey.startsWith('ال') ? lowerKey.slice(2) : lowerKey;
-
-                        const escapedKey = escapeRegex(lowerKey);
-                        const escapedKeyWithoutAl = escapeRegex(keyWithoutAl);
-                        const pattern = lowerKey.startsWith('ال')
-                            ? `${escapedKey}|${escapedKeyWithoutAl}`
-                            : `${escapedKey}|ال${escapedKey}`;
-
-                        const regex = new RegExp(pattern, 'g');
-
-                        const valueVariants = Array.from(new Set(
-                            values.flatMap((val) => {
-                                const lowerVal = val.toLowerCase();
-                                if (lowerVal.startsWith('ال')) {
-                                    const withoutAl = lowerVal.slice(2);
-                                    return [lowerVal, withoutAl];
-                                }
-                                return [lowerVal, `ال${lowerVal}`];
-                            })
-                        ));
-
-                        normalizedText = normalizedText.replace(regex, () => `(${valueVariants.map(escapeRegex).join("|")})`);
+                        const regex = new RegExp(key, 'g'); // Global search for the word
+                        normalizedText = normalizedText.replace(regex, (match) => {
+                            // Replace with all possible values, separated by "|"
+                            return `(${values.join("|")})`;
+                        });
                     }
-
-                    // Generic handling: make every Arabic word match with or without "ال"
-                    normalizedText = normalizedText.replace(/[\u0621-\u064A]+/g, (word) => {
-                        // Skip if already a pattern
-                        if (word.includes('|') || word.includes('(') || word.includes(')')) return word;
-                        const base = word.startsWith('ال') ? word.slice(2) : word;
-                        const withAl = word.startsWith('ال') ? word : `ال${word}`;
-                        const variants = Array.from(new Set([word, withAl, base].filter(Boolean)));
-                        return `(${variants.map(escapeRegex).join("|")})`;
-                    });
-
                     return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
