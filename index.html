@@ -6561,6 +6561,7 @@
                     inactivityIntervalId: null,
                     inactivityModal: false,
                     inactivityListeners: [],
+                    lastActivityAt: Date.now(),
                     ep: 1185,
                     mangaCh: 1155,
                     replacementDict: {
@@ -14209,11 +14210,10 @@
                 },
 
                 resetInactivityCountdown() {
+                    if (this.inactivityModal) return;
+                    this.lastActivityAt = Date.now();
                     this.inactivityModal = false;
                     this.inactivityCountdown = this.inactivityDurationSeconds;
-                    if (!this.inactivityIntervalId) {
-                        this.startInactivityCountdownInterval();
-                    }
                 },
 
                 startInactivityCountdownInterval() {
@@ -14221,15 +14221,19 @@
                         clearInterval(this.inactivityIntervalId);
                     }
                     this.inactivityIntervalId = setInterval(() => {
-                        if (this.inactivityModal) return;
-                        if (this.inactivityCountdown > 0) {
-                            this.inactivityCountdown -= 1;
-                        }
-                        if (this.inactivityCountdown <= 0) {
-                            this.inactivityCountdown = 0;
-                            this.inactivityModal = true;
-                        }
+                        this.updateInactivityCountdown();
                     }, 1000);
+                },
+
+                updateInactivityCountdown() {
+                    if (this.inactivityModal) return;
+                    const now = Date.now();
+                    const elapsedSeconds = Math.floor((now - this.lastActivityAt) / 1000);
+                    const remaining = this.inactivityDurationSeconds - elapsedSeconds;
+                    this.inactivityCountdown = remaining > 0 ? remaining : 0;
+                    if (remaining <= 0) {
+                        this.inactivityModal = true;
+                    }
                 },
 
                 registerInactivityListeners() {
@@ -14251,16 +14255,38 @@
                         'pointerup'
                     ];
                     events.forEach(eventName => {
-                        const handler = () => this.resetInactivityCountdown();
+                        const handler = () => {
+                            if (this.inactivityModal) return;
+                            this.lastActivityAt = Date.now();
+                            this.inactivityCountdown = this.inactivityDurationSeconds;
+                        };
                         window.addEventListener(eventName, handler, { passive: true });
-                        this.inactivityListeners.push({ eventName, handler });
+                        this.inactivityListeners.push({ target: window, eventName, handler });
                     });
+
+                    // Handle tab visibility/focus to catch throttled timers
+                    const visibilityHandler = () => {
+                        if (document.visibilityState === 'visible' && !this.inactivityModal) {
+                            this.lastActivityAt = Date.now();
+                            this.updateInactivityCountdown();
+                        }
+                    };
+                    document.addEventListener('visibilitychange', visibilityHandler, { passive: true });
+                    this.inactivityListeners.push({ target: document, eventName: 'visibilitychange', handler: visibilityHandler });
+
+                    const focusHandler = () => {
+                        if (this.inactivityModal) return;
+                        this.lastActivityAt = Date.now();
+                        this.updateInactivityCountdown();
+                    };
+                    window.addEventListener('focus', focusHandler, { passive: true });
+                    this.inactivityListeners.push({ target: window, eventName: 'focus', handler: focusHandler });
                 },
 
                 clearInactivityListeners() {
                     if (!Array.isArray(this.inactivityListeners)) return;
-                    this.inactivityListeners.forEach(({ eventName, handler }) => {
-                        window.removeEventListener(eventName, handler);
+                    this.inactivityListeners.forEach(({ target, eventName, handler }) => {
+                        (target || window).removeEventListener(eventName, handler);
                     });
                     this.inactivityListeners = [];
                 },
