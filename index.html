@@ -15434,15 +15434,37 @@
                 },
 
                 normalizeText(text) {
+                    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     let normalizedText = text.toLowerCase();
-                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+                    // 1) Apply replacementDict with optional "ال" handling for keys and values
                     for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const regex = new RegExp(key, 'g'); // Global search for the word
-                        normalizedText = normalizedText.replace(regex, (match) => {
-                            // Replace with all possible values, separated by "|"
-                            return `(${values.join("|")})`;
-                        });
+                        const lowerKey = key.toLowerCase();
+                        const keyBase = lowerKey.startsWith('ال') ? lowerKey.slice(2) : lowerKey;
+                        const keyPattern = `(?:ال)?${escapeRegex(keyBase)}`;
+
+                        // Build value variants with/without "ال"
+                        const valueVariants = Array.from(new Set(
+                            values.flatMap((val) => {
+                                const lv = val.toLowerCase();
+                                const base = lv.startsWith('ال') ? lv.slice(2) : lv;
+                                return [lv, `ال${base}`, base];
+                            })
+                        ));
+
+                        const replacement = `(${valueVariants.map(escapeRegex).join("|")})`;
+                        normalizedText = normalizedText.replace(new RegExp(keyPattern, 'g'), replacement);
                     }
+
+                    // 2) Generic handling: every Arabic word matches with or without leading "ال"
+                    normalizedText = normalizedText.replace(/[\u0621-\u064A]+/g, (word) => {
+                        // Skip if already transformed into a pattern
+                        if (word.includes('|') || word.includes('(') || word.includes(')')) return word;
+                        const base = word.startsWith('ال') ? word.slice(2) : word;
+                        const variants = Array.from(new Set([word, `ال${base}`, base].filter(Boolean)));
+                        return `(${variants.map(escapeRegex).join("|")})`;
+                    });
+
                     return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
