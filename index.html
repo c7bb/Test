@@ -606,7 +606,7 @@
 
         <!-- Inactivity countdown badge -->
         <div 
-            v-if="!inactivityModal && inactivityCountdown <= 30" 
+            v-if="!inactivityModal && inactivityCountdown <= 300" 
             class="fixed bottom-4 right-4 z-[110] bg-gray-900/80 text-yellow-200 px-3 py-2 rounded shadow-lg text-sm"
         >
             تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم نشاطك
@@ -15437,7 +15437,6 @@
                     const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
                     let normalizedText = text.toLowerCase();
-                    normalizedText = escapeRegex(normalizedText);
 
                     for (let [key, values] of Object.entries(this.replacementDict)) {
                         const lowerKey = key.toLowerCase();
@@ -15462,8 +15461,19 @@
                             })
                         ));
 
-                        normalizedText = normalizedText.replace(regex, () => `(${valueVariants.join("|")})`);
+                        normalizedText = normalizedText.replace(regex, () => `(${valueVariants.map(escapeRegex).join("|")})`);
                     }
+
+                    // Generic handling: make every Arabic word match with or without "ال"
+                    normalizedText = normalizedText.replace(/[\u0621-\u064A]+/g, (word) => {
+                        // Skip if already a pattern
+                        if (word.includes('|') || word.includes('(') || word.includes(')')) return word;
+                        const base = word.startsWith('ال') ? word.slice(2) : word;
+                        const withAl = word.startsWith('ال') ? word : `ال${word}`;
+                        const variants = Array.from(new Set([word, withAl, base].filter(Boolean)));
+                        return `(${variants.map(escapeRegex).join("|")})`;
+                    });
+
                     return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
