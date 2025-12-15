@@ -606,10 +606,10 @@
 
         <!-- Inactivity countdown badge -->
         <div 
-            v-if="!inactivityModal" 
+            v-if="!inactivityModal && inactivityCountdown <= 30" 
             class="fixed bottom-4 right-4 z-[110] bg-gray-900/80 text-yellow-200 px-3 py-2 rounded shadow-lg text-sm"
         >
-            تنتهي الجلسة خلال {{ formattedInactivityCountdown }} من عدم النشاط
+            تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم نشاطك
         </div>
 
             <!-- Updated Menu Button -->
@@ -15434,14 +15434,35 @@
                 },
 
                 normalizeText(text) {
+                    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
                     let normalizedText = text.toLowerCase();
-                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    normalizedText = escapeRegex(normalizedText);
+
                     for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const regex = new RegExp(key, 'g'); // Global search for the word
-                        normalizedText = normalizedText.replace(regex, (match) => {
-                            // Replace with all possible values, separated by "|"
-                            return `(${values.join("|")})`;
-                        });
+                        const lowerKey = key.toLowerCase();
+                        const keyWithoutAl = lowerKey.startsWith('ال') ? lowerKey.slice(2) : lowerKey;
+
+                        const escapedKey = escapeRegex(lowerKey);
+                        const escapedKeyWithoutAl = escapeRegex(keyWithoutAl);
+                        const pattern = lowerKey.startsWith('ال')
+                            ? `${escapedKey}|${escapedKeyWithoutAl}`
+                            : `${escapedKey}|ال${escapedKey}`;
+
+                        const regex = new RegExp(pattern, 'g');
+
+                        const valueVariants = Array.from(new Set(
+                            values.flatMap((val) => {
+                                const lowerVal = val.toLowerCase();
+                                if (lowerVal.startsWith('ال')) {
+                                    const withoutAl = lowerVal.slice(2);
+                                    return [lowerVal, withoutAl];
+                                }
+                                return [lowerVal, `ال${lowerVal}`];
+                            })
+                        ));
+
+                        normalizedText = normalizedText.replace(regex, () => `(${valueVariants.join("|")})`);
                     }
                     return normalizedText;
                 },
