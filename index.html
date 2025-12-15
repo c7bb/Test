@@ -591,7 +591,7 @@
         <!-- Inactivity session modal -->
         <div 
             v-if="inactivityModal" 
-            class="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center"
+            class="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center"
         >
             <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
                 <div class="text-xl font-bold">لقد أنتهت الجلسة الحالية</div>
@@ -607,9 +607,9 @@
         <!-- Inactivity countdown badge -->
         <div 
             v-if="!inactivityModal && inactivityCountdown <= 300" 
-            class="fixed bottom-4 right-4 z-[110] bg-gray-900/80 text-yellow-200 px-3 py-2 rounded shadow-lg text-sm"
+            class="fixed bottom-4 right-4 z-[110] bg-gray-900 text-yellow-200 px-3 py-2 rounded shadow-lg text-sm"
         >
-            تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم نشاطك
+            ⚠️ تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم نشاطك
         </div>
 
             <!-- Updated Menu Button -->
