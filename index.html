@@ -7794,7 +7794,7 @@
 
                 filteredEpisodes() {
                     const rawSearchQuery = this.searchQuery.trim().toLowerCase();
-                    const searchQuery = this.normalizeText(this.searchQuery || '');
+                    const searchQuery = this.normalizeText(this.searchQuery);
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -10403,23 +10403,18 @@
                         }
                         
                         // Title filter logic
-                        const normalizedTitle = this.normalizeText(episode.EpisodeTitle || '');
-                        const normalizedStory = this.normalizeText(episode.EpisodeStory || '');
-                        const normalizedSummary = this.normalizeText(episode.EpisodeSummary || '');
-
-                        // Title filter logic
                         if (this.searchFilters.title) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(normalizedTitle));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
                         }
                         
                         // Story filter logic
                         if (this.searchFilters.story) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(normalizedStory));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
                         }
                         
                         // Summary filter logic
                         if (this.searchFilters.summary) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(normalizedSummary));
+                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
                         }
                         
                         // Return true if ANY condition is true (OR logic)
@@ -15439,37 +15434,15 @@
                 },
 
                 normalizeText(text) {
-                    const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     let normalizedText = text.toLowerCase();
-
-                    // 1) Apply replacementDict with optional "ال" handling for keys and values
+                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const lowerKey = key.toLowerCase();
-                        const keyBase = lowerKey.startsWith('ال') ? lowerKey.slice(2) : lowerKey;
-                        const keyPattern = `(?:ال)?${escapeRegex(keyBase)}`;
-
-                        // Build value variants with/without "ال"
-                        const valueVariants = Array.from(new Set(
-                            values.flatMap((val) => {
-                                const lv = val.toLowerCase();
-                                const base = lv.startsWith('ال') ? lv.slice(2) : lv;
-                                return [lv, `ال${base}`, base];
-                            })
-                        ));
-
-                        const replacement = `(${valueVariants.map(escapeRegex).join("|")})`;
-                        normalizedText = normalizedText.replace(new RegExp(keyPattern, 'g'), replacement);
+                        const regex = new RegExp(key, 'g'); // Global search for the word
+                        normalizedText = normalizedText.replace(regex, (match) => {
+                            // Replace with all possible values, separated by "|"
+                            return `(${values.join("|")})`;
+                        });
                     }
-
-                    // 2) Generic handling: every Arabic word matches with or without leading "ال"
-                    normalizedText = normalizedText.replace(/[\u0621-\u064A]+/g, (word) => {
-                        // Skip if already transformed into a pattern
-                        if (word.includes('|') || word.includes('(') || word.includes(')')) return word;
-                        const base = word.startsWith('ال') ? word.slice(2) : word;
-                        const variants = Array.from(new Set([word, `ال${base}`, base].filter(Boolean)));
-                        return `(${variants.map(escapeRegex).join("|")})`;
-                    });
-
                     return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
