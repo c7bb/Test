@@ -594,7 +594,7 @@
             class="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center"
         >
             <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
-                <div class="text-xl font-bold">
+                <div class="text-xl -m-3 font-bold">
                     لقد انتهت الجلسة الحالية
                 </div>
             
@@ -631,6 +631,10 @@
                     <button @click="openDirectWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">حلقات</button>
                     <button @click="openDirectWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">أفلام</button>
                     <button @click="openDirectWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا</button>
+                    <hr class="my-2 border-gray-600">
+                    <button @click="openFastingWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>حلقات</button>
+                    <button @click="openFastingWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا</button>
+                    <button @click="openFastingWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>أفلام</button>
                 </div>
             </div>
 
@@ -1186,6 +1190,160 @@
                                 </div>
                             </fieldset>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- النافذة السريعة Modal -->
+            <div v-if="showFastingWindow" class="fixed z-50 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col">
+                    <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-xl font-bold">النافذة السريعة</h2>
+                            <button 
+                                v-if="!isMangaQueueRunning" 
+                                @click="closeFastingWindow" 
+                                class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
+                                <img src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" alt="Close" class="h-8 w-8" />
+                            </button>                              
+                        </div>
+                        
+                        <fieldset class="border p-2 rounded mt-2">
+                            <legend class="px-2">اختر نوع المحتوى:</legend>
+                            <div class="flex justify-around">
+                                <label class="flex items-center transition-all duration-100 active:scale-90">
+                                    <input type="radio" v-model="selectedCategory" value="episodes" class="ml-2" disabled>
+                                    حلقات
+                                </label>
+                                <label class="flex items-center transition-all duration-100 active:scale-90">
+                                    <input type="radio" v-model="selectedCategory" value="movies" class="ml-2" disabled>
+                                    أفلام
+                                </label>
+                                <label class="flex items-center transition-all duration-100 active:scale-90">
+                                    <input type="radio" v-model="selectedCategory" value="mangas" class="ml-2" :disabled="isMangaQueueRunning">
+                                    مانغا
+                                </label>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <!-- Manga Bulk Send Content -->
+                    <div v-if="selectedCategory === 'mangas'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                        <div v-if="!isMangaQueueRunning" class="space-y-4">
+                            <div class="flex gap-4 items-center">
+                                <div class="flex-1">
+                                    <label class="block mb-2 text-sm">من الفصل:</label>
+                                    <input 
+                                        v-model.number="mangaStartNumber" 
+                                        type="number" 
+                                        min="1"
+                                        class="w-full p-2 bg-gray-700 rounded text-white"
+                                        placeholder="ابدأ من"
+                                    />
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block mb-2 text-sm">إلى الفصل:</label>
+                                    <input 
+                                        v-model.number="mangaEndNumber" 
+                                        type="number" 
+                                        min="1"
+                                        class="w-full p-2 bg-gray-700 rounded text-white"
+                                        placeholder="انتهي عند"
+                                    />
+                                </div>
+                            </div>
+                            <button 
+                                @click="startMangaQueue" 
+                                :disabled="!mangaStartNumber || !mangaEndNumber || mangaStartNumber > mangaEndNumber"
+                                class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                إرسال المانغا
+                            </button>
+                        </div>
+
+                        <!-- Queue Progress Display -->
+                        <div v-if="isMangaQueueRunning || mangaQueueStats.total > 0" class="space-y-4 mt-4">
+                            <!-- Progress Bar -->
+                            <div class="w-full">
+                                <div class="flex justify-between mb-2 text-sm">
+                                    <span>التقدم</span>
+                                    <span>{{ mangaQueueProgress }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-6 overflow-hidden">
+                                    <div 
+                                        class="h-6 transition-all duration-300 rounded-full"
+                                        :class="{
+                                            'bg-green-500': mangaQueueProgress >= 100,
+                                            'bg-blue-500': mangaQueueProgress >= 50 && mangaQueueProgress < 100,
+                                            'bg-yellow-500': mangaQueueProgress >= 25 && mangaQueueProgress < 50,
+                                            'bg-red-500': mangaQueueProgress < 25
+                                        }"
+                                        :style="{ width: mangaQueueProgress + '%' }"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <!-- Statistics -->
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">إجمالي المانغا</div>
+                                    <div class="text-xl font-bold">{{ mangaQueueStats.total }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">تم الإرسال</div>
+                                    <div class="text-xl font-bold text-green-400">{{ mangaQueueStats.sent }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">في الانتظار</div>
+                                    <div class="text-xl font-bold text-yellow-400">{{ mangaQueueStats.waiting }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">فشل</div>
+                                    <div class="text-xl font-bold text-red-400">{{ mangaQueueStats.failed }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">الوقت المستغرق</div>
+                                    <div class="text-xl font-bold">{{ formatTime(mangaQueueStats.elapsedTime) }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">الوقت المتبقي</div>
+                                    <div class="text-xl font-bold">{{ formatTime(mangaQueueStats.remainingTime) }}</div>
+                                </div>
+                            </div>
+
+                            <!-- Control Buttons -->
+                            <div v-if="isMangaQueueRunning" class="flex gap-4">
+                                <button 
+                                    @click="toggleMangaQueuePause" 
+                                    class="flex-1 bg-yellow-500 text-white px-6 py-3 rounded hover:bg-yellow-600 transition-all duration-100 active:scale-90 font-bold">
+                                    {{ isMangaQueuePaused ? 'استئناف' : 'إيقاف مؤقت' }}
+                                </button>
+                                <button 
+                                    @click="showStopConfirmation = true" 
+                                    class="flex-1 bg-red-500 text-white px-6 py-3 rounded hover:bg-red-600 transition-all duration-100 active:scale-90 font-bold">
+                                    إيقاف
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stop Confirmation Modal -->
+            <div v-if="showStopConfirmation" class="fixed z-[60] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="bg-cyan-900 text-slate-200 font-bold rounded-lg p-6 max-w-md">
+                    <h3 class="text-xl mb-4">تأكيد الإيقاف</h3>
+                    <p class="mb-6">هل أنت متأكد من إيقاف عملية الإرسال؟</p>
+                    <div class="flex gap-4">
+                        <button 
+                            @click="stopMangaQueue" 
+                            class="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all duration-100 active:scale-90">
+                            نعم
+                        </button>
+                        <button 
+                            @click="showStopConfirmation = false" 
+                            class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
+                            لا
+                        </button>
                     </div>
                 </div>
             </div>
@@ -6550,7 +6708,25 @@
                     userJoined: false,
                     showEmptyPopup: false,
                     showDirectWindow: false,
+                    showFastingWindow: false,
                     selectedCategory: 'episodes',
+                    mangaStartNumber: null,
+                    mangaEndNumber: null,
+                    mangaQueue: [],
+                    mangaQueueIndex: 0,
+                    isMangaQueueRunning: false,
+                    isMangaQueuePaused: false,
+                    showStopConfirmation: false,
+                    mangaQueueStats: {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    },
+                    mangaQueueStartTime: null,
+                    mangaQueueInterval: null,
                     activeTab: { episodes: 0, movies: 0, mangas: 0 },
                     searchFilters: {
                         number: true,
@@ -7523,6 +7699,12 @@
                         }
                         return acc;
                     }, []);
+                },
+
+                mangaQueueProgress() {
+                    if (this.mangaQueueStats.total === 0) return 0;
+                    const completed = this.mangaQueueStats.sent + this.mangaQueueStats.failed;
+                    return Math.round((completed / this.mangaQueueStats.total) * 100);
                 },
 
                 hasNextEpisode() {
@@ -17955,6 +18137,145 @@
                     this.selectedCategory = category;
                     this.showDirectWindow = true;
                     this.menuOpen = false;
+                },
+
+                openFastingWindow(category) {
+                    document.body.style.overflow = 'hidden';
+                    this.selectedCategory = category;
+                    this.showFastingWindow = true;
+                    this.menuOpen = false;
+                },
+
+                closeFastingWindow() {
+                    if (!this.isMangaQueueRunning) {
+                        document.body.style.overflow = '';
+                        this.showFastingWindow = false;
+                        this.mangaStartNumber = null;
+                        this.mangaEndNumber = null;
+                    }
+                },
+
+                formatTime(seconds) {
+                    if (!seconds || seconds < 0) return '00:00';
+                    const mins = Math.floor(seconds / 60);
+                    const secs = Math.floor(seconds % 60);
+                    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                },
+
+                startMangaQueue() {
+                    if (!this.mangaStartNumber || !this.mangaEndNumber || this.mangaStartNumber > this.mangaEndNumber) {
+                        return;
+                    }
+
+                    // Get all mangas
+                    const allMangas = this.groupedMangas.flatMap(group => group.items);
+                    
+                    // Filter mangas in range
+                    this.mangaQueue = allMangas.filter(manga => {
+                        const num = parseFloat(manga.MangaNumber);
+                        return num >= this.mangaStartNumber && num <= this.mangaEndNumber;
+                    }).sort((a, b) => parseFloat(a.MangaNumber) - parseFloat(b.MangaNumber));
+
+                    if (this.mangaQueue.length === 0) {
+                        alert('لا توجد مانغا في النطاق المحدد');
+                        return;
+                    }
+
+                    // Initialize queue
+                    this.mangaQueueIndex = 0;
+                    this.isMangaQueueRunning = true;
+                    this.isMangaQueuePaused = false;
+                    this.mangaQueueStartTime = Date.now();
+                    this.mangaQueueStats = {
+                        total: this.mangaQueue.length,
+                        sent: 0,
+                        failed: 0,
+                        waiting: this.mangaQueue.length,
+                        elapsedTime: 0,
+                        remainingTime: this.mangaQueue.length * (this.statusClearTimeout / 1000)
+                    };
+
+                    // Start timer
+                    this.mangaQueueInterval = setInterval(() => {
+                        if (!this.isMangaQueuePaused && this.isMangaQueueRunning) {
+                            const elapsed = Math.floor((Date.now() - this.mangaQueueStartTime) / 1000);
+                            const remaining = Math.max(0, (this.mangaQueueStats.waiting * (this.statusClearTimeout / 1000)) - elapsed);
+                            this.mangaQueueStats.elapsedTime = elapsed;
+                            this.mangaQueueStats.remainingTime = remaining;
+                        }
+                    }, 1000);
+
+                    // Start processing
+                    this.processMangaQueue();
+                },
+
+                async processMangaQueue() {
+                    const processNext = async () => {
+                        // Check if we should continue
+                        if (!this.isMangaQueueRunning || this.mangaQueueIndex >= this.mangaQueue.length) {
+                            if (this.mangaQueueIndex >= this.mangaQueue.length) {
+                                this.stopMangaQueue();
+                            }
+                            return;
+                        }
+
+                        // Wait if paused
+                        if (this.isMangaQueuePaused) {
+                            setTimeout(processNext, 100);
+                            return;
+                        }
+
+                        const manga = this.mangaQueue[this.mangaQueueIndex];
+                        this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex - 1;
+
+                        try {
+                            await this.sendMangaResponse(manga.MangaFileID, `*الفصل: ${manga.MangaNumber}\nالحجم: ${this.formatFileSize(manga.MangaFileSize, true)}*`);
+                            this.mangaQueueStats.sent++;
+                        } catch (error) {
+                            console.error('Error sending manga:', error);
+                            this.mangaQueueStats.failed++;
+                        }
+
+                        this.mangaQueueIndex++;
+                        this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
+
+                        // Wait before next send
+                        if (this.isMangaQueueRunning && this.mangaQueueIndex < this.mangaQueue.length) {
+                            setTimeout(processNext, this.statusClearTimeout);
+                        } else if (this.mangaQueueIndex >= this.mangaQueue.length) {
+                            this.stopMangaQueue();
+                        }
+                    };
+
+                    processNext();
+                },
+
+                toggleMangaQueuePause() {
+                    this.isMangaQueuePaused = !this.isMangaQueuePaused;
+                    if (!this.isMangaQueuePaused) {
+                        this.processMangaQueue();
+                    }
+                },
+
+                stopMangaQueue() {
+                    this.isMangaQueueRunning = false;
+                    this.isMangaQueuePaused = false;
+                    this.showStopConfirmation = false;
+                    if (this.mangaQueueInterval) {
+                        clearInterval(this.mangaQueueInterval);
+                        this.mangaQueueInterval = null;
+                    }
+                    this.mangaQueue = [];
+                    this.mangaQueueIndex = 0;
+                    this.mangaQueueStats = {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    };
+                    document.body.style.overflow = '';
                 },
 
                 resetEpisodesView() {
