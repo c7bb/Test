@@ -1236,9 +1236,10 @@
                                     <input 
                                         v-model.number="mangaStartNumber" 
                                         type="number" 
-                                        min="1"
+                                        :min="minMangaNumber"
+                                        :max="maxMangaNumber"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
-                                        placeholder="ابدأ من"
+                                        :placeholder="`ابدأ من (${minMangaNumber})`"
                                     />
                                 </div>
                                 <div class="flex-1">
@@ -1246,15 +1247,16 @@
                                     <input 
                                         v-model.number="mangaEndNumber" 
                                         type="number" 
-                                        min="1"
+                                        :min="minMangaNumber"
+                                        :max="maxMangaNumber"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
-                                        placeholder="انتهي عند"
+                                        :placeholder="`انتهي عند (${maxMangaNumber})`"
                                     />
                                 </div>
                             </div>
                             <button 
                                 @click="startMangaQueue" 
-                                :disabled="!mangaStartNumber || !mangaEndNumber || mangaStartNumber > mangaEndNumber"
+                                :disabled="mangaStartNumber === null || mangaStartNumber === undefined || mangaEndNumber === null || mangaEndNumber === undefined || mangaStartNumber > mangaEndNumber || mangaStartNumber < minMangaNumber || mangaEndNumber > maxMangaNumber"
                                 class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
                                 إرسال المانغا
                             </button>
@@ -7675,7 +7677,7 @@
                     const allMangas = [
                         ...mangaSources.flatMap(m => Array.isArray(m.MangasIDs) ? m.MangasIDs : []),
                         ...episodeSources.flatMap(e => Array.isArray(e.EpisodeMangasIDs) ? e.EpisodeMangasIDs : [])
-                    ].filter(manga => manga && manga.MangaNumber)
+                    ].filter(manga => manga && (manga.MangaNumber === 0 || manga.MangaNumber === "0" || manga.MangaNumber))
                      .sort((a, b) => Number(a.MangaNumber) - Number(b.MangaNumber));
 
                     if (!allMangas.length) {
@@ -7705,6 +7707,20 @@
                     if (this.mangaQueueStats.total === 0) return 0;
                     const completed = this.mangaQueueStats.sent + this.mangaQueueStats.failed;
                     return Math.round((completed / this.mangaQueueStats.total) * 100);
+                },
+
+                minMangaNumber() {
+                    const allMangas = this.groupedMangas.flatMap(group => group.items);
+                    if (allMangas.length === 0) return 0;
+                    const numbers = allMangas.map(m => parseFloat(m.MangaNumber)).filter(n => !isNaN(n));
+                    return numbers.length > 0 ? Math.min(...numbers) : 0;
+                },
+
+                maxMangaNumber() {
+                    const allMangas = this.groupedMangas.flatMap(group => group.items);
+                    if (allMangas.length === 0) return 0;
+                    const numbers = allMangas.map(m => parseFloat(m.MangaNumber)).filter(n => !isNaN(n));
+                    return numbers.length > 0 ? Math.max(...numbers) : 0;
                 },
 
                 hasNextEpisode() {
@@ -18163,17 +18179,19 @@
                 },
 
                 startMangaQueue() {
-                    if (!this.mangaStartNumber || !this.mangaEndNumber || this.mangaStartNumber > this.mangaEndNumber) {
+                    if (this.mangaStartNumber === null || this.mangaStartNumber === undefined || 
+                        this.mangaEndNumber === null || this.mangaEndNumber === undefined || 
+                        this.mangaStartNumber > this.mangaEndNumber) {
                         return;
                     }
 
                     // Get all mangas
                     const allMangas = this.groupedMangas.flatMap(group => group.items);
                     
-                    // Filter mangas in range
+                    // Filter mangas in range (handles "0" as valid manga number)
                     this.mangaQueue = allMangas.filter(manga => {
                         const num = parseFloat(manga.MangaNumber);
-                        return num >= this.mangaStartNumber && num <= this.mangaEndNumber;
+                        return !isNaN(num) && num >= this.mangaStartNumber && num <= this.mangaEndNumber;
                     }).sort((a, b) => parseFloat(a.MangaNumber) - parseFloat(b.MangaNumber));
 
                     if (this.mangaQueue.length === 0) {
