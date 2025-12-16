@@ -6763,6 +6763,7 @@
                     lastClickedEpisode: null,
                     errorMessage: "",
                     statusClearTimeout: 2000,
+                    fastingStatusClearTimeout: 3000,
                     inactivityDurationSeconds: 300,
                     inactivityCountdown: 300,
                     inactivityIntervalId: null,
@@ -18186,6 +18187,7 @@
 
                 closeFastingWindow() {
                     if (!this.isMangaQueueRunning) {
+                        this.stopMangaQueue();
                         document.body.style.overflow = '';
                         this.showFastingWindow = false;
                         this.mangaStartNumber = null;
@@ -18266,7 +18268,7 @@
                         failed: 0,
                         waiting: this.mangaQueue.length,
                         elapsedTime: 0,
-                        remainingTime: this.mangaQueue.length * (this.statusClearTimeout / 1000)
+                        remainingTime: this.mangaQueue.length * (this.fastingStatusClearTimeout / 1000)
                     };
 
                     // Clear any existing process
@@ -18283,7 +18285,7 @@
                             const elapsed = Math.floor((now - this.mangaQueueStartTime - this.mangaQueueTotalPausedTime) / 1000);
                             // Calculate remaining time based on actual remaining items
                             const remainingItems = this.mangaQueueStats.waiting;
-                            const estimatedTimePerItem = this.statusClearTimeout / 1000;
+                            const estimatedTimePerItem = this.fastingStatusClearTimeout / 1000;
                             // If no items waiting, remaining time should be 0
                             const remaining = remainingItems > 0 ? Math.max(0, remainingItems * estimatedTimePerItem) : 0;
                             this.mangaQueueStats.elapsedTime = elapsed;
@@ -18383,7 +18385,7 @@
 
                         // Wait before next send
                         if (this.isMangaQueueRunning && this.mangaQueueIndex < this.mangaQueue.length) {
-                            this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), this.statusClearTimeout);
+                            this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), this.fastingStatusClearTimeout);
                         } else if (this.mangaQueueIndex >= this.mangaQueue.length) {
                             this.finishMangaQueue();
                         }
