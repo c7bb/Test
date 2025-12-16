@@ -1238,6 +1238,8 @@
                                         type="number" 
                                         :min="minMangaNumber"
                                         :max="maxMangaNumber"
+                                        step="1"
+                                        @input="handleMangaNumberInput('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`ابدأ من (${minMangaNumber})`"
                                     />
@@ -1249,6 +1251,8 @@
                                         type="number" 
                                         :min="minMangaNumber"
                                         :max="maxMangaNumber"
+                                        step="1"
+                                        @input="handleMangaNumberInput('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`انتهي عند (${maxMangaNumber})`"
                                     />
@@ -18176,6 +18180,20 @@
                     const mins = Math.floor(seconds / 60);
                     const secs = Math.floor(seconds % 60);
                     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+                },
+
+                handleMangaNumberInput(field) {
+                    const rawValue = this[field];
+                    const parsed = parseFloat(rawValue);
+
+                    if (isNaN(parsed)) {
+                        this[field] = null;
+                        return;
+                    }
+
+                    const clamped = Math.min(Math.max(parsed, this.minMangaNumber), this.maxMangaNumber);
+                    // Ensure integers since step=1 and arrows should move by whole numbers
+                    this[field] = Math.round(clamped);
                 },
 
                 startMangaQueue() {
