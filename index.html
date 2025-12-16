@@ -1240,6 +1240,7 @@
                                         :max="maxMangaNumber"
                                         step="1"
                                         @input="handleMangaNumberInput('mangaStartNumber')"
+                                        @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`ابدأ من (${minMangaNumber})`"
                                     />
@@ -1253,6 +1254,7 @@
                                         :max="maxMangaNumber"
                                         step="1"
                                         @input="handleMangaNumberInput('mangaEndNumber')"
+                                        @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`انتهي عند (${maxMangaNumber})`"
                                     />
@@ -1320,8 +1322,9 @@
                             <div v-if="isMangaQueueRunning" class="flex gap-4">
                                 <button 
                                     @click="toggleMangaQueuePause" 
-                                    class="flex-1 bg-yellow-500 text-white px-6 py-3 rounded hover:bg-yellow-600 transition-all duration-100 active:scale-90 font-bold">
-                                    {{ isMangaQueuePaused ? 'استئناف' : 'إيقاف مؤقت' }}
+                                    :disabled="isMangaQueuePauseRequested"
+                                    class="flex-1 bg-yellow-500 text-white px-6 py-3 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                    {{ isMangaQueuePauseRequested ? 'جاري الإيقاف...' : (isMangaQueuePaused ? 'استئناف' : 'إيقاف مؤقت') }}
                                 </button>
                                 <button 
                                     @click="showStopConfirmation = true" 
@@ -6722,6 +6725,9 @@
                     mangaQueueIndex: 0,
                     isMangaQueueRunning: false,
                     isMangaQueuePaused: false,
+                    isMangaQueueSending: false,
+                    isMangaQueuePauseRequested: false,
+                    mangaQueueProcessId: null,
                     showStopConfirmation: false,
                     mangaQueueStats: {
                         total: 0,
@@ -18182,12 +18188,28 @@
                     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
                 },
 
+                handleMangaNumberFocus(field) {
+                    // When focusing on empty field, set to min value
+                    if (this[field] === null || this[field] === undefined || this[field] === '') {
+                        this.$nextTick(() => {
+                            this[field] = this.minMangaNumber;
+                        });
+                    }
+                },
+
                 handleMangaNumberInput(field) {
                     const rawValue = this[field];
+                    
+                    // Handle empty/null values - set to min when incrementing
+                    if (rawValue === null || rawValue === undefined || rawValue === '') {
+                        this[field] = this.minMangaNumber;
+                        return;
+                    }
+                    
                     const parsed = parseFloat(rawValue);
 
                     if (isNaN(parsed)) {
-                        this[field] = null;
+                        this[field] = this.minMangaNumber;
                         return;
                     }
 
@@ -18221,6 +18243,8 @@
                     this.mangaQueueIndex = 0;
                     this.isMangaQueueRunning = true;
                     this.isMangaQueuePaused = false;
+                    this.isMangaQueueSending = false;
+                    this.isMangaQueuePauseRequested = false;
                     this.mangaQueueStartTime = Date.now();
                     this.mangaQueueStats = {
                         total: this.mangaQueue.length,
@@ -18231,11 +18255,20 @@
                         remainingTime: this.mangaQueue.length * (this.statusClearTimeout / 1000)
                     };
 
+                    // Clear any existing process
+                    if (this.mangaQueueProcessId !== null) {
+                        clearTimeout(this.mangaQueueProcessId);
+                        this.mangaQueueProcessId = null;
+                    }
+
                     // Start timer
                     this.mangaQueueInterval = setInterval(() => {
-                        if (!this.isMangaQueuePaused && this.isMangaQueueRunning) {
+                        if (this.isMangaQueueRunning) {
                             const elapsed = Math.floor((Date.now() - this.mangaQueueStartTime) / 1000);
-                            const remaining = Math.max(0, (this.mangaQueueStats.waiting * (this.statusClearTimeout / 1000)) - elapsed);
+                            // Calculate remaining time based on actual remaining items
+                            const remainingItems = this.mangaQueueStats.waiting;
+                            const estimatedTimePerItem = this.statusClearTimeout / 1000;
+                            const remaining = Math.max(0, remainingItems * estimatedTimePerItem);
                             this.mangaQueueStats.elapsedTime = elapsed;
                             this.mangaQueueStats.remainingTime = remaining;
                         }
@@ -18246,7 +18279,16 @@
                 },
 
                 async processMangaQueue() {
-                    const processNext = async () => {
+                    // Generate unique process ID to prevent duplicate processing
+                    const currentProcessId = Date.now() + Math.random();
+                    this.mangaQueueProcessId = currentProcessId;
+
+                    const processNext = async (processId) => {
+                        // Verify this is still the active process
+                        if (this.mangaQueueProcessId !== processId) {
+                            return; // Another process has started, exit
+                        }
+
                         // Check if we should continue
                         if (!this.isMangaQueueRunning || this.mangaQueueIndex >= this.mangaQueue.length) {
                             if (this.mangaQueueIndex >= this.mangaQueue.length) {
@@ -18255,51 +18297,95 @@
                             return;
                         }
 
-                        // Wait if paused
-                        if (this.isMangaQueuePaused) {
-                            setTimeout(processNext, 100);
+                        // Check if pause was requested - wait for current send to complete
+                        if (this.isMangaQueuePauseRequested && !this.isMangaQueueSending) {
+                            this.isMangaQueuePaused = true;
+                            this.isMangaQueuePauseRequested = false;
+                            setTimeout(() => processNext(processId), 100);
                             return;
                         }
 
-                        const manga = this.mangaQueue[this.mangaQueueIndex];
-                        this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex - 1;
+                        // Wait if paused (but not if pause is just being requested)
+                        if (this.isMangaQueuePaused && !this.isMangaQueuePauseRequested) {
+                            setTimeout(() => processNext(processId), 100);
+                            return;
+                        }
+
+                        // Mark as sending
+                        this.isMangaQueueSending = true;
+                        const currentIndex = this.mangaQueueIndex;
+                        const manga = this.mangaQueue[currentIndex];
+                        
+                        // Update waiting count before sending
+                        this.mangaQueueStats.waiting = this.mangaQueue.length - currentIndex - 1;
 
                         try {
                             await this.sendMangaResponse(manga.MangaFileID, `*الفصل: ${manga.MangaNumber}\nالحجم: ${this.formatFileSize(manga.MangaFileSize, true)}*`);
-                            this.mangaQueueStats.sent++;
+                            // Only increment if we're still on the same index (prevent duplicates)
+                            if (this.mangaQueueIndex === currentIndex) {
+                                this.mangaQueueStats.sent++;
+                                this.mangaQueueIndex++;
+                                this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
+                            }
                         } catch (error) {
                             console.error('Error sending manga:', error);
-                            this.mangaQueueStats.failed++;
+                            // Only increment if we're still on the same index
+                            if (this.mangaQueueIndex === currentIndex) {
+                                this.mangaQueueStats.failed++;
+                                this.mangaQueueIndex++;
+                                this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
+                            }
                         }
 
-                        this.mangaQueueIndex++;
-                        this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
+                        // Mark as not sending
+                        this.isMangaQueueSending = false;
+
+                        // Check if pause was requested during send
+                        if (this.isMangaQueuePauseRequested) {
+                            this.isMangaQueuePaused = true;
+                            this.isMangaQueuePauseRequested = false;
+                            return;
+                        }
 
                         // Wait before next send
                         if (this.isMangaQueueRunning && this.mangaQueueIndex < this.mangaQueue.length) {
-                            setTimeout(processNext, this.statusClearTimeout);
+                            this.mangaQueueProcessId = setTimeout(() => processNext(processId), this.statusClearTimeout);
                         } else if (this.mangaQueueIndex >= this.mangaQueue.length) {
                             this.stopMangaQueue();
                         }
                     };
 
-                    processNext();
+                    processNext(currentProcessId);
                 },
 
                 toggleMangaQueuePause() {
-                    this.isMangaQueuePaused = !this.isMangaQueuePaused;
-                    if (!this.isMangaQueuePaused) {
-                        this.processMangaQueue();
+                    if (this.isMangaQueuePaused) {
+                        // Resume
+                        this.isMangaQueuePaused = false;
+                        this.isMangaQueuePauseRequested = false;
+                        // Only restart if not already processing
+                        if (!this.isMangaQueueSending && this.mangaQueueProcessId === null) {
+                            this.processMangaQueue();
+                        }
+                    } else {
+                        // Request pause - will wait for current send to complete
+                        this.isMangaQueuePauseRequested = true;
                     }
                 },
 
                 stopMangaQueue() {
                     this.isMangaQueueRunning = false;
                     this.isMangaQueuePaused = false;
+                    this.isMangaQueueSending = false;
+                    this.isMangaQueuePauseRequested = false;
                     this.showStopConfirmation = false;
                     if (this.mangaQueueInterval) {
                         clearInterval(this.mangaQueueInterval);
                         this.mangaQueueInterval = null;
+                    }
+                    if (this.mangaQueueProcessId !== null) {
+                        clearTimeout(this.mangaQueueProcessId);
+                        this.mangaQueueProcessId = null;
                     }
                     this.mangaQueue = [];
                     this.mangaQueueIndex = 0;
