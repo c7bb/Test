@@ -10342,7 +10342,7 @@
                             const numberList = [];
                             const textFragments = [];
 
-                            rawSearchQuery.split(',').forEach(part => {
+                            rawSearchQuery.split(/[،,]/).forEach(part => {
                                 part = part.trim();
                                 if (!part) return;
 
