@@ -6580,10 +6580,8 @@
                     "المديرية": ["المحافظة", "الإقليم", "الولاية", "المنطقة", "المقاطعة", "المدينة", "العاصمة", "البلدة", "القرية", "الحي", "الضاحية"],
                     "المنطقة": ["المحافظة", "الإقليم", "الولاية", "المديرية", "المقاطعة", "المدينة", "العاصمة", "البلدة", "القرية", "الحي", "الضاحية"],
                     "جريمة في": ["جريمة قتل في", "جريمة في"],    
-                    "فلم": ["فلم","الفلم","فيلم","الفيلم"],
-                    "الفلم": ["فلم","الفلم","فيلم","الفيلم"],
-                    "فيلم": ["فلم","الفلم","فيلم","الفيلم"],
-                    "الفيلم": ["فلم","الفلم","فيلم","الفيلم"],
+                    "فلم": ["فيلم","فلم"],
+                    "فيلم": ["فلم","فيلم"],
                     "ة": ["ه","ة"],
                     "ه": ["ة","ه"],
                     "أ": ["ا","إ","أ"],
@@ -15435,8 +15433,20 @@
                     this.trackLastPage();
                 },
 
+                // Convert Eastern-Arabic / Persian numerals to Western numerals
+                normalizeDigits(text) {
+                    if (!text) return '';
+                    const digitMap = {
+                        '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+                        '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+                        '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+                        '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+                    };
+                    return String(text).replace(/[٠-٩۰-۹]/g, (digit) => digitMap[digit] || digit);
+                },
+
                 normalizeText(text) {
-                    let normalizedText = text.toLowerCase();
+                    let normalizedText = this.normalizeDigits(text).toLowerCase();
                     normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                     for (let [key, values] of Object.entries(this.replacementDict)) {
                         const regex = new RegExp(key, 'g'); // Global search for the word
@@ -15445,12 +15455,10 @@
                             return `(${values.join("|")})`;
                         });
                     }
-                    // Make any word starting with 'ال' also match without it, e.g. "المنحدرات" -> "(المنحدرات|منحدرات)"
-                    normalizedText = normalizedText.replace(/ال([\u0621-\u064A]+)/g, '(ال$1|$1)');
                     return normalizedText;
                 },
                 normalizeEpisodeIdentifier(value) {
-                    return String(value || '')
+                    return this.normalizeDigits(String(value || ''))
                         .replace(/\s+/g, ' ')
                         .trim()
                         .toLowerCase();
