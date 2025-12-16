@@ -10346,9 +10346,12 @@
                                 part = part.trim();
                                 if (!part) return;
 
-                                if (part.includes('-') && !part.match(/^\d+\.\d+-/)) {
+                                // Normalize digits so ranges and numbers work with Arabic-Indic/Persian numerals
+                                const normalizedPart = this.normalizeDigits(part);
+
+                                if (normalizedPart.includes('-') && !normalizedPart.match(/^\d+\.\d+-/)) {
                                     // Handle ranges like "44-60" (but not decimals like "1076.5-")
-                                    const [start, end] = part.split('-').map(num => parseFloat(num.trim()));
+                                    const [start, end] = normalizedPart.split('-').map(num => parseFloat(num.trim()));
                                     if (!isNaN(start) && !isNaN(end) && start <= end) {
                                         // For integer ranges, add all integers in the range
                                         if (Number.isInteger(start) && Number.isInteger(end)) {
@@ -10363,11 +10366,11 @@
                                     }
                                 } else {
                                     // Handle single numbers (including decimals)
-                                    const num = parseFloat(part);
+                                    const num = parseFloat(normalizedPart);
                                     if (!isNaN(num)) {
                                         numberList.push(num.toString());
                                     } else {
-                                        textFragments.push(part);
+                                        textFragments.push(normalizedPart);
                                     }
                                 }
                             });
