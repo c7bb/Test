@@ -12067,7 +12067,8 @@
                     const trimmed = newQuery.trim();
 
                     if (trimmed.endsWith('+')) {
-                        const targetValue = trimmed.slice(0, -1).trim();
+                        // Normalize digits so quick-jump works for Arabic-Indic/Persian numbers
+                        const targetValue = this.normalizeDigits(trimmed.slice(0, -1).trim());
 
                         if (!targetValue) {
                             this.pendingJumpTarget = null;
