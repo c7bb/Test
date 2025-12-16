@@ -1332,6 +1332,15 @@
                                     إيقاف
                                 </button>
                             </div>
+
+                            <!-- Finished Button -->
+                            <div v-if="!isMangaQueueRunning && mangaQueueStats.total > 0" class="flex gap-4 mt-4">
+                                <button 
+                                    @click="resetMangaQueue" 
+                                    class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 transition-all duration-100 active:scale-90 font-bold">
+                                    إرسال جديد
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -6739,6 +6748,8 @@
                         remainingTime: 0
                     },
                     mangaQueueStartTime: null,
+                    mangaQueuePausedTime: 0,
+                    mangaQueueTotalPausedTime: 0,
                     mangaQueueInterval: null,
                     activeTab: { episodes: 0, movies: 0, mangas: 0 },
                     searchFilters: {
@@ -18247,6 +18258,8 @@
                     this.isMangaQueueSending = false;
                     this.isMangaQueuePauseRequested = false;
                     this.mangaQueueStartTime = Date.now();
+                    this.mangaQueuePausedTime = 0;
+                    this.mangaQueueTotalPausedTime = 0;
                     this.mangaQueueStats = {
                         total: this.mangaQueue.length,
                         sent: 0,
@@ -18265,8 +18278,9 @@
 
                     // Start timer
                     this.mangaQueueInterval = setInterval(() => {
-                        if (this.isMangaQueueRunning) {
-                            const elapsed = Math.floor((Date.now() - this.mangaQueueStartTime) / 1000);
+                        if (this.isMangaQueueRunning && !this.isMangaQueuePaused) {
+                            const now = Date.now();
+                            const elapsed = Math.floor((now - this.mangaQueueStartTime - this.mangaQueueTotalPausedTime) / 1000);
                             // Calculate remaining time based on actual remaining items
                             const remainingItems = this.mangaQueueStats.waiting;
                             const estimatedTimePerItem = this.statusClearTimeout / 1000;
@@ -18294,7 +18308,7 @@
                         // Check if we should continue
                         if (!this.isMangaQueueRunning || this.mangaQueueIndex >= this.mangaQueue.length) {
                             if (this.mangaQueueIndex >= this.mangaQueue.length) {
-                                this.stopMangaQueue();
+                                this.finishMangaQueue();
                             }
                             return;
                         }
@@ -18303,6 +18317,7 @@
                         if (this.isMangaQueuePauseRequested && !this.isMangaQueueSending) {
                             this.isMangaQueuePaused = true;
                             this.isMangaQueuePauseRequested = false;
+                            this.mangaQueuePausedTime = Date.now(); // Record when pause started
                             this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), 100);
                             return;
                         }
@@ -18346,6 +18361,7 @@
                         if (this.isMangaQueuePauseRequested) {
                             this.isMangaQueuePaused = true;
                             this.isMangaQueuePauseRequested = false;
+                            this.mangaQueuePausedTime = Date.now(); // Record when pause started
                             return;
                         }
 
@@ -18353,7 +18369,7 @@
                         if (this.isMangaQueueRunning && this.mangaQueueIndex < this.mangaQueue.length) {
                             this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), this.statusClearTimeout);
                         } else if (this.mangaQueueIndex >= this.mangaQueue.length) {
-                            this.stopMangaQueue();
+                            this.finishMangaQueue();
                         }
                     };
 
@@ -18362,7 +18378,12 @@
 
                 toggleMangaQueuePause() {
                     if (this.isMangaQueuePaused) {
-                        // Resume - just clear the pause flag, the process loop will continue
+                        // Resume - calculate paused time and add to total
+                        if (this.mangaQueuePausedTime > 0) {
+                            const pausedDuration = Date.now() - this.mangaQueuePausedTime;
+                            this.mangaQueueTotalPausedTime += pausedDuration;
+                            this.mangaQueuePausedTime = 0;
+                        }
                         this.isMangaQueuePaused = false;
                         this.isMangaQueuePauseRequested = false;
                     } else {
@@ -18396,7 +18417,35 @@
                         elapsedTime: 0,
                         remainingTime: 0
                     };
+                    this.mangaQueueStartTime = null;
+                    this.mangaQueuePausedTime = 0;
+                    this.mangaQueueTotalPausedTime = 0;
                     document.body.style.overflow = '';
+                },
+
+                finishMangaQueue() {
+                    // Called when queue finishes naturally - don't reset stats
+                    this.isMangaQueueRunning = false;
+                    this.isMangaQueuePaused = false;
+                    this.isMangaQueueSending = false;
+                    this.isMangaQueuePauseRequested = false;
+                    if (this.mangaQueueInterval) {
+                        clearInterval(this.mangaQueueInterval);
+                        this.mangaQueueInterval = null;
+                    }
+                    if (this.mangaQueueTimeoutId !== null) {
+                        clearTimeout(this.mangaQueueTimeoutId);
+                        this.mangaQueueTimeoutId = null;
+                    }
+                    this.mangaQueueProcessId = null;
+                    // Keep stats visible, just stop the process
+                },
+
+                resetMangaQueue() {
+                    // Reset everything for a new queue
+                    this.stopMangaQueue();
+                    this.mangaStartNumber = null;
+                    this.mangaEndNumber = null;
                 },
 
                 resetEpisodesView() {
