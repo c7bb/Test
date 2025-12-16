@@ -6728,6 +6728,7 @@
                     isMangaQueueSending: false,
                     isMangaQueuePauseRequested: false,
                     mangaQueueProcessId: null,
+                    mangaQueueTimeoutId: null,
                     showStopConfirmation: false,
                     mangaQueueStats: {
                         total: 0,
@@ -18256,10 +18257,11 @@
                     };
 
                     // Clear any existing process
-                    if (this.mangaQueueProcessId !== null) {
-                        clearTimeout(this.mangaQueueProcessId);
-                        this.mangaQueueProcessId = null;
+                    if (this.mangaQueueTimeoutId !== null) {
+                        clearTimeout(this.mangaQueueTimeoutId);
+                        this.mangaQueueTimeoutId = null;
                     }
+                    this.mangaQueueProcessId = null;
 
                     // Start timer
                     this.mangaQueueInterval = setInterval(() => {
@@ -18301,13 +18303,13 @@
                         if (this.isMangaQueuePauseRequested && !this.isMangaQueueSending) {
                             this.isMangaQueuePaused = true;
                             this.isMangaQueuePauseRequested = false;
-                            setTimeout(() => processNext(processId), 100);
+                            this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), 100);
                             return;
                         }
 
                         // Wait if paused (but not if pause is just being requested)
                         if (this.isMangaQueuePaused && !this.isMangaQueuePauseRequested) {
-                            setTimeout(() => processNext(processId), 100);
+                            this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), 100);
                             return;
                         }
 
@@ -18349,7 +18351,7 @@
 
                         // Wait before next send
                         if (this.isMangaQueueRunning && this.mangaQueueIndex < this.mangaQueue.length) {
-                            this.mangaQueueProcessId = setTimeout(() => processNext(processId), this.statusClearTimeout);
+                            this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), this.statusClearTimeout);
                         } else if (this.mangaQueueIndex >= this.mangaQueue.length) {
                             this.stopMangaQueue();
                         }
@@ -18360,13 +18362,9 @@
 
                 toggleMangaQueuePause() {
                     if (this.isMangaQueuePaused) {
-                        // Resume
+                        // Resume - just clear the pause flag, the process loop will continue
                         this.isMangaQueuePaused = false;
                         this.isMangaQueuePauseRequested = false;
-                        // Only restart if not already processing
-                        if (!this.isMangaQueueSending && this.mangaQueueProcessId === null) {
-                            this.processMangaQueue();
-                        }
                     } else {
                         // Request pause - will wait for current send to complete
                         this.isMangaQueuePauseRequested = true;
@@ -18383,10 +18381,11 @@
                         clearInterval(this.mangaQueueInterval);
                         this.mangaQueueInterval = null;
                     }
-                    if (this.mangaQueueProcessId !== null) {
-                        clearTimeout(this.mangaQueueProcessId);
-                        this.mangaQueueProcessId = null;
+                    if (this.mangaQueueTimeoutId !== null) {
+                        clearTimeout(this.mangaQueueTimeoutId);
+                        this.mangaQueueTimeoutId = null;
                     }
+                    this.mangaQueueProcessId = null;
                     this.mangaQueue = [];
                     this.mangaQueueIndex = 0;
                     this.mangaQueueStats = {
