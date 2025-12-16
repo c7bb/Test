@@ -594,14 +594,21 @@
             class="fixed inset-0 z-[120] bg-black/80 backdrop-blur-sm flex items-center justify-center"
         >
             <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
-                <div class="text-xl font-bold">لقد أنتهت الجلسة الحالية</div>
+                <div class="text-xl font-bold">
+                    لقد انتهت الجلسة الحالية
+                </div>
+            
+                <div class="text-xl font-bold text-yellow-200">
+                    بسبب عدم النشاط
+                </div>
+            
                 <button 
                     @click="refreshSession" 
                     class="px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400 transition-all duration-100 active:scale-95"
                 >
                     تحديث الجلسة
                 </button>
-            </div>
+            </div>        
         </div>
 
         <!-- Inactivity countdown badge -->
@@ -609,7 +616,7 @@
             v-if="!inactivityModal && inactivityCountdown <= 30" 
             class="fixed bottom-4 right-1 z-[110] bg-red-900 text-yellow-300 px-2 py-2 rounded shadow-lg text-sm"
         >
-            ⚠️ تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم نشاطك
+            ⚠️ تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم النشاط
         </div>
 
             <!-- Updated Menu Button -->
@@ -6567,6 +6574,12 @@
                     replacementDict: {
                     "سينشي": ["شينتشي", "سينشي"],
                     "شينتشي": ["سينشي", "شينتشي"],
+                    "سينفونية": ["سينفونية", "سنفونية", "سيمفونية", "سمفونية", "سفونية", "سيفونية"],
+                    "سنفونية": ["سينفونية", "سنفونية", "سيمفونية", "سمفونية", "سفونية", "سيفونية"],
+                    "سيمفونية": ["سينفونية", "سنفونية", "سيمفونية", "سمفونية", "سفونية", "سيفونية"],
+                    "سمفونية": ["سينفونية", "سنفونية", "سيمفونية", "سمفونية", "سفونية", "سيفونية"],
+                    "سفونية":  ["سينفونية", "سنفونية", "سيمفونية", "سمفونية", "سفونية", "سيفونية"],
+                    "سيفونية": ["سينفونية", "سنفونية", "سيمفونية", "سمفونية", "سفونية", "سيفونية"],
                     "المحافظة": ["المقاطعة", "المدينة", "العاصمة", "الإقليم", "الولاية", "المديرية", "المنطقة", "البلدة", "القرية", "الحي", "الضاحية"],
                     "المقاطعة": ["المحافظة", "المدينة", "العاصمة", "الإقليم", "الولاية", "المديرية", "المنطقة", "البلدة", "القرية", "الحي", "الضاحية"],
                     "المدينة": ["المحافظة", "المقاطعة", "العاصمة", "البلدة", "القرية", "الحي", "الضاحية", "الإقليم", "الولاية", "المديرية", "المنطقة"],
@@ -14307,7 +14320,7 @@
                 },
 
                 refreshSession() {
-                    this.setBodyScrollLock(false);
+                    // this.setBodyScrollLock(false);
                     window.location.reload();
                 },
 
@@ -17624,7 +17637,7 @@
                     if (episode) {
                         this.openModal(episode); // Open the modal for the found episode
                     } else {
-                        console.log("Episode not found!");
+                        console.log("Episode not found!", { requested: episodeCode, totalLoaded: this.episodes.length });
                     }
                 },
 
