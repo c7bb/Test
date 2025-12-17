@@ -37,6 +37,10 @@
             }
         })();
     </script>    
+    <script type="module">
+        import { init, id } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
+        window.InstantDB = { init, id };
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js?56"></script>    
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
@@ -1229,24 +1233,23 @@
 
                     <!-- Manga Bulk Send Content -->
                     <div v-if="selectedCategory === 'mangas'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
-                        
-                        <!-- Daily Limit Status --> 
-                        <div class="px-0 pt-2 pb-4"> 
-                             <div class="bg-slate-800 rounded p-2 text-sm flex flex-col gap-1 border border-cyan-700"> 
-                                 <div class="flex justify-between items-center"> 
-                                     <span>التحميلات اليومية:</span> 
-                                     <span :class="{'text-green-400': remainingDownloads > 20, 'text-yellow-400': remainingDownloads <= 20 && remainingDownloads > 0, 'text-red-500': remainingDownloads === 0}"> 
-                                         {{ dailyDownloads }} / {{ maxDailyDownloads }} 
-                                     </span> 
-                                 </div> 
-                                 <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1"> 
-                                     <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: ((dailyDownloads / maxDailyDownloads) * 100) + '%' }"></div> 
-                                 </div> 
-                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400"> 
-                                     <span>المتبقي: {{ remainingDownloads }}</span> 
-                                     <span>🔄️ {{ timeUntilReset }}</span> 
-                                 </div> 
-                             </div> 
+                        <!-- Daily Limit Status -->
+                        <div class="px-4 pt-2 mb-4">
+                            <div class="bg-slate-800 rounded p-2 text-sm flex flex-col gap-1 border border-cyan-700">
+                                <div class="flex justify-between items-center">
+                                    <span>التحميلات اليومية:</span>
+                                    <span :class="{'text-green-400': remainingDownloads > 20, 'text-yellow-400': remainingDownloads <= 20 && remainingDownloads > 0, 'text-red-500': remainingDownloads === 0}">
+                                        {{ dailyDownloads }} / {{ maxDailyDownloads }}
+                                    </span>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1">
+                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (dailyDownloads / maxDailyDownloads * 100) + '%' }"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
+                                    <span>المتبقي: {{ remainingDownloads }}</span>
+                                    <span>🔄️ {{ timeUntilReset }}</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div v-if="!isMangaQueueRunning && mangaQueueStats.total === 0" class="space-y-4">
@@ -6858,10 +6861,6 @@
         </div>
     </div>
 
-    <script type="module">
-        import { init, id } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
-        window.InstantDB = { init, id };
-    </script>
     <script>
         const webApp = window.Telegram?.WebApp || null;
         const { createApp } = Vue;
@@ -6869,13 +6868,6 @@
         const app = createApp({
             data() {
                 return {
-                    // InstantDB Daily Limit
-                    dailyDownloads: 0,
-                    maxDailyDownloads: 100,
-                    remainingDownloads: 0,
-                    timeUntilReset: '',
-                    dailyLimitRowId: null,
-
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -6938,6 +6930,15 @@
                     lastActivityAt: Date.now(),
                     ep: 1185,
                     mangaCh: 1155,
+                    
+                    // Daily Limit Data
+                    dailyDownloads: 0,
+                    dailyLimitRowId: null,
+                    maxDailyDownloads: 100,
+                    now: Date.now(),
+                    _db: null,
+                    userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test-user', // Fallback for testing if not in Telegram
+
                     replacementDict: {
                     "سينشي": ["شينتشي", "سينشي"],
                     "شينتشي": ["سينشي", "شينتشي"],
@@ -7779,6 +7780,29 @@
                 };
             },
             computed: {
+                remainingDownloads() {
+                    return Math.max(0, this.maxDailyDownloads - this.dailyDownloads);
+                },
+                timeUntilReset() {
+                    // Reset is at midnight local time? Or UTC? 
+                    // Usually daily limits reset at 00:00 UTC or user local time.
+                    // Let's assume user local time since we use Date.now() and no timezone info.
+                    // Or standard UTC. Let's use local midnight for simplicity unless specified.
+                    // InstantDB user snippet used `today = new Date().toISOString().split('T')[0]`, which is UTC date.
+                    // So reset should be next UTC midnight.
+                    
+                    const now = new Date(this.now);
+                    const tomorrow = new Date(now);
+                    tomorrow.setUTCHours(24, 0, 0, 0);
+                    const diff = tomorrow - now;
+                    
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                    
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                },
+
 
                 formattedInactivityCountdown() {
                     const minutes = Math.floor(this.inactivityCountdown / 60)
@@ -14641,109 +14665,87 @@
 
                             // Update timer for reset every second
                             setInterval(() => {
-                                 this.updateResetTimer();
+                                this.now = Date.now();
                             }, 1000);
-                            this.updateResetTimer(); // Initial call
                         } else {
                             console.log('Waiting for InstantDB SDK...');
                             setTimeout(initialize, 500);
                         }
                     };
-
                     initialize();
-                },
-
-                getUserId() {
-                     // Fallback for testing if not in Telegram or initDataUnsafe is missing
-                     return window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test_user';
-                },
-
-                getTodayDate() {
-                    return new Date().toISOString().split('T')[0];
                 },
 
                 subscribeToDailyDownloads() {
                     if (!this._db) return;
-                    const userId = this.getUserId();
-                    const today = this.getTodayDate();
-                    // We query for the specific user and date
-                    const query = {
-                        dailyLimitDownloadsMangas: {
-                            $: {
-                                where: {
-                                    userId: userId,
-                                    date: today
-                                }
-                            }
-                        }
+                    
+                    const today = new Date().toISOString().split('T')[0];
+                    const query = { 
+                        dailyLimitDownloadsMangas: { 
+                            $: { 
+                                where: { 
+                                    userId: this.userId, 
+                                    date: today 
+                                } 
+                            } 
+                        } 
                     };
 
-                    this._db.subscribe(query, (resp) => {
-                         if (resp.data && resp.data.dailyLimitDownloadsMangas && resp.data.dailyLimitDownloadsMangas.length > 0) {
-                             const record = resp.data.dailyLimitDownloadsMangas[0];
-                             this.dailyDownloads = record.count;
-                             this.dailyLimitRowId = record.id; // Save the ID for updates
-                         } else {
-                             this.dailyDownloads = 0;
-                             this.dailyLimitRowId = null;
-                         }
-                         this.updateRemainingDownloads();
-                    });
-                },
-
-                updateRemainingDownloads() {
-                    this.remainingDownloads = Math.max(0, this.maxDailyDownloads - this.dailyDownloads);
-                },
-
-                updateResetTimer() {
-                    const now = new Date();
-                    const tomorrow = new Date(now);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    tomorrow.setHours(0, 0, 0, 0);
-                    const diff = tomorrow - now;
-
-                    const hours = Math.floor(diff / (1000 * 60 * 60));
-                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-                    this.timeUntilReset = `${hours}h ${minutes}m ${seconds}s`;
-                },
-
-                async incrementDailyDownloads(count = 1) {
-                    if (!this._db) return false;
-                    const userId = this.getUserId();
-                    const today = this.getTodayDate();
-                    
-                    let rowId = this.dailyLimitRowId;
-                    if (!rowId) {
-                        rowId = window.InstantDB.id(); // Generate a new ID
+                    try {
+                        const subscribeFunc = this._db.subscribeQuery || this._db.subscribe;
+                        if (typeof subscribeFunc === 'function') {
+                            subscribeFunc.call(this._db, query, (resp) => {
+                                if (resp.error) {
+                                    console.error('InstantDB Error:', resp.error);
+                                    return;
+                                }
+                                const data = resp.data;
+                                if (data && data.dailyLimitDownloadsMangas && data.dailyLimitDownloadsMangas.length > 0) {
+                                    const record = data.dailyLimitDownloadsMangas[0];
+                                    this.dailyDownloads = record.count || 0;
+                                    this.dailyLimitRowId = record.id;
+                                } else {
+                                    this.dailyDownloads = 0;
+                                    this.dailyLimitRowId = null;
+                                }
+                            });
+                        } else {
+                            console.error('InstantDB subscribe method not found on _db instance');
+                        }
+                    } catch (e) {
+                        console.error('Error subscribing to InstantDB:', e);
                     }
+                },
+
+                async checkDailyLimit() {
+                    // Check local state first for immediate feedback
+                    if (this.dailyDownloads >= this.maxDailyDownloads) {
+                        return false;
+                    }
+                    return true;
+                },
+
+                async incrementDailyLimit(count = 1) {
+                    if (!this._db) return false;
+                    
+                    const today = new Date().toISOString().split('T')[0];
+                    // Use stored ID or generate a new one
+                    const id = this.dailyLimitRowId || window.InstantDB.id();
                     
                     try {
-                        // Optimistic update
-                        this.dailyDownloads += count;
-                        this.updateRemainingDownloads();
-
                         await this._db.transact(
-                            this._db.tx.dailyLimitDownloadsMangas[rowId].update({
-                                userId: userId,
-                                date: today,
-                                count: this.dailyDownloads // This might be race-prone if we rely on local state, but we are inside a specific client.
-                                // Better: if we had the previous value from DB, but we are inside a subscription.
-                                // Actually, `update` will overwrite. Ideally we want atomic increment but InstantDB might not support it directly in `update` without reading?
-                                // Actually, since we are the only one writing for this user (usually), it's fine.
-                                // But to be safe, we should use the value we believe is true.
-                            })
+                             this._db.tx.dailyLimitDownloadsMangas[id].update({
+                                 userId: this.userId,
+                                 date: today,
+                                 count: this.dailyDownloads + count
+                             })
                         );
                         return true;
                     } catch (e) {
                         console.error('DB Update Error', e);
-                        // Revert optimistic update
-                         this.dailyDownloads -= count;
-                         this.updateRemainingDownloads();
                         return false;
                     }
                 },
+
 
                 setupInactivityTracking() {
                     this.resetInactivityCountdown();
@@ -18665,12 +18667,6 @@
                 },
 
                 startMangaQueue() {
-                    // Check daily limit
-                    if (this.remainingDownloads <= 0) {
-                        alert(`عذراً، لقد استهلكت حد التحميل اليومي (${this.maxDailyDownloads}). سيتم إعادة التعيين بعد: ${this.timeUntilReset}`);
-                        return;
-                    }
-
                     // Prevent starting if retry queue is running
                     if (this.isRetryAllFailedRunning) {
                         return;
@@ -18692,6 +18688,12 @@
 
                     if (this.mangaQueue.length === 0) {
                         alert('لا توجد مانغا في النطاق المحدد');
+                        return;
+                    }
+
+                    // Check daily limit
+                    if (this.mangaQueue.length > this.remainingDownloads) {
+                        alert(`عذراً، لا يمكنك تحميل أكثر من ${this.remainingDownloads} فصل اليوم.`);
                         return;
                     }
 
@@ -18763,14 +18765,6 @@
                             return;
                         }
 
-                        // Check daily limit during processing
-                        if (this.remainingDownloads <= 0) {
-                            this.finishMangaQueue();
-                            // Optional: Show a toast or alert, but maybe not alert to avoid blocking if tab is background?
-                            // But user interaction is expected.
-                            return;
-                        }
-
                         // Check if pause was requested - wait for current send to complete
                         if (this.isMangaQueuePauseRequested && !this.isMangaQueueSending) {
                             this.isMangaQueuePaused = true;
@@ -18799,13 +18793,21 @@
                         this.mangaQueueStats.waiting = this.mangaQueue.length - currentIndex - 1;
 
                         try {
+                            // Check daily limit before sending
+                            const canDownload = await this.checkDailyLimit();
+                            if (!canDownload) {
+                                throw new Error(`Daily download limit of ${this.maxDailyDownloads} reached.`);
+                            }
+
                             await this.sendMangaResponse(manga.MangaFileID, this.buildMangaCaption(manga.MangaNumber, manga.MangaFileSize));
                             // Only increment if we're still on the same index (prevent duplicates)
                             if (this.mangaQueueIndex === currentIndex) {
+                                // Increment daily limit on success
+                                await this.incrementDailyLimit();
+
                                 this.mangaQueueCurrent.status = 'success';
                                 this.recordMangaSuccess(manga);
                                 this.mangaQueueStats.sent++;
-                                this.incrementDailyDownloads(1);
                                 this.mangaQueueIndex++;
                                 // Update waiting count after increment
                                 this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
@@ -19425,6 +19427,7 @@
             },
 
             mounted() {
+                // Initialize InstantDB
                 this.initInstantDB();
 
                 const enableDebug = false; // Set to true to enable debug logging
