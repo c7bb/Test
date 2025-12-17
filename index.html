@@ -1422,7 +1422,15 @@
             <div v-if="showLimitModal" class="fixed z-[60] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="bg-cyan-900 text-slate-200 font-bold rounded-lg p-6 max-w-md text-center">
                     <h3 class="text-xl mb-4 text-red-400">عذرًا</h3>
-                    <p class="mb-6 text-lg">متبقي لديك <span class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span> فصل لهذا اليوم.</p>
+                    <p v-if="remainingDownloads === 0" class="mb-6 text-lg">
+                        تم استهلاك الحدّ اليومي، وسيُعاد التعيين خلال
+                        <span class="text-yellow-300 font-bold text-xl">{{ timeUntilReset }}</span>
+                    </p>
+                    <p v-else class="mb-6 text-lg">
+                        متبقي لديك 
+                        <span class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span>
+                        {{ remainingDownloadsLabel }} لهذا اليوم.
+                    </p>
                     <button 
                         @click="showLimitModal = false" 
                         class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
@@ -7803,6 +7811,13 @@
             computed: {
                 remainingDownloads() {
                     return Math.max(0, this.maxDailyDownloads - this.dailyDownloads);
+                },
+                remainingDownloadsLabel() {
+                    const n = this.remainingDownloads;
+                    if (n === 1) return 'فصل';
+                    if (n === 2) return 'فصلين';
+                    if (n >= 3 && n <= 10) return 'فصول';
+                    return 'فصل';
                 },
                 timeUntilReset() {
                     // Calculate time until next UTC midnight (00:00 UTC)
