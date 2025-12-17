@@ -1264,7 +1264,7 @@
                                         step="1"
                                         @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
-                                        :placeholder="`ابدأ من (${minMangaNumber})`"
+                                        :placeholder="`${minMangaNumber}`"
                                     />
                                 </div>
                                 <div class="flex-1">
@@ -1277,7 +1277,7 @@
                                         step="1"
                                         @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
-                                        :placeholder="`انتهي عند (${maxMangaNumber})`"
+                                        :placeholder="`${maxMangaNumber}`"
                                     />
                                 </div>
                             </div>
@@ -14657,12 +14657,23 @@
                             console.log('InstantDB SDK loaded, initializing...');
                             // Assign to a non-reactive property
                             this._db = instantDB.init({ appId: APP_ID });
-                            this.subscribeToDailyDownloads();
                             
-                            // Update timer for reset every second
-                            setInterval(() => {
-                                 this.now = Date.now();
-                            }, 1000);
+                            // Check if the database connection was successful
+                            if (this._db) {
+                                console.log('InstantDB initialized successfully');
+                                console.log('InstantDB object:', this._db);
+                                console.log('Available methods:', Object.keys(this._db));
+                                
+                                this.subscribeToDailyDownloads();
+                                
+                                // Update timer for reset every second
+                                setInterval(() => {
+                                     this.now = Date.now();
+                                }, 1000);
+                            } else {
+                                console.error('Failed to initialize InstantDB');
+                                setTimeout(initialize, 1000);
+                            }
                         } else {
                             console.log('Waiting for InstantDB SDK...');
                             // Retry up to a certain point or indefinitely?
@@ -14683,22 +14694,57 @@
 
                     const today = new Date().toISOString().split('T')[0];
                     
-                    // Subscribe to today's downloads for this user
-                    this._db.subscribe(
-                        this._db.query('dailyLimitDownloadsMangas')
-                            .where({ userId: userId, date: today })
-                            .limit(1),
-                        (result) => {
-                            if (result.data && result.data.length > 0) {
-                                const record = result.data[0];
-                                this.dailyDownloads = record.count || 0;
-                                this.dailyDownloadRecordId = result.data[0].id;
-                            } else {
-                                this.dailyDownloads = 0;
-                                this.dailyDownloadRecordId = null;
+                    // Try multiple approaches to handle different InstantDB versions
+                    const trySubscribe = () => {
+                        try {
+                            // Approach 1: Standard InstantDB v0.22.90 API
+                            if (this._db.query && this._db.subscribe) {
+                                const query = this._db.query('dailyLimitDownloadsMangas')
+                                    .where({ userId: userId, date: today })
+                                    .limit(1);
+                                
+                                this._db.subscribe(query, (result) => {
+                                    console.log('Daily downloads subscription result:', result);
+                                    if (result.data && result.data.length > 0) {
+                                        const record = result.data[0];
+                                        this.dailyDownloads = record.count || 0;
+                                        this.dailyDownloadRecordId = record.id;
+                                    } else {
+                                        this.dailyDownloads = 0;
+                                        this.dailyDownloadRecordId = null;
+                                    }
+                                });
+                                return;
                             }
+                            
+                            // Approach 2: Direct subscription if query method doesn't exist
+                            if (this._db.subscribe) {
+                                this._db.subscribe('dailyLimitDownloadsMangas', (data) => {
+                                    const todayRecords = data.filter(record => 
+                                        record.userId === userId && record.date === today
+                                    );
+                                    if (todayRecords.length > 0) {
+                                        this.dailyDownloads = todayRecords[0].count || 0;
+                                        this.dailyDownloadRecordId = todayRecords[0].id;
+                                    } else {
+                                        this.dailyDownloads = 0;
+                                        this.dailyDownloadRecordId = null;
+                                    }
+                                });
+                                return;
+                            }
+                            
+                            console.error('No suitable subscription method found');
+                            
+                        } catch (error) {
+                            console.error('Error in subscribeToDailyDownloads:', error);
+                            // Set defaults on error
+                            this.dailyDownloads = 0;
+                            this.dailyDownloadRecordId = null;
                         }
-                    );
+                    };
+                    
+                    trySubscribe();
                 },
 
                 setupInactivityTracking() {
@@ -17917,41 +17963,91 @@
                     const userId = webApp?.initDataUnsafe?.user?.id;
                     if (!userId) return;
 
+                    // Safety check: if InstantDB isn't working, skip tracking but allow the download
+                    if (!this._db) {
+                        console.warn('InstantDB not initialized, skipping download tracking');
+                        return;
+                    }
+
                     const today = new Date().toISOString().split('T')[0];
                     const id = this.dailyDownloadRecordId;
                     
-                    try {
-                        if (id) {
-                            // Update existing record
-                            await this._db.transact(
-                                this._db.tx.dailyLimitDownloadsMangas[id].update({
-                                    userId: userId,
-                                    date: today,
-                                    count: this.dailyDownloads + 1
-                                })
-                            );
-                        } else {
-                            // Create new record
-                            const newId = this._db.id();
-                            await this._db.transact(
-                                this._db.tx.dailyLimitDownloadsMangas[newId].update({
-                                    userId: userId,
-                                    date: today,
-                                    count: 1
-                                })
-                            );
-                            this.dailyDownloadRecordId = newId;
+                    const tryIncrement = async () => {
+                        try {
+                            // Method 1: Standard transaction approach
+                            if (this._db.transact && this._db.tx) {
+                                if (id) {
+                                    // Update existing record
+                                    await this._db.transact([
+                                        this._db.tx.dailyLimitDownloadsMangas[id].update({
+                                            count: this.dailyDownloads + 1
+                                        })
+                                    ]);
+                                } else {
+                                    // Create new record
+                                    const newId = this._db.id();
+                                    await this._db.transact([
+                                        this._db.tx.dailyLimitDownloadsMangas[newId].update({
+                                            userId: userId,
+                                            date: today,
+                                            count: 1
+                                        })
+                                    ]);
+                                    this.dailyDownloadRecordId = newId;
+                                }
+                                this.dailyDownloads++;
+                                console.log(`Successfully incremented daily download count to: ${this.dailyDownloads}`);
+                                return;
+                            }
+                            
+                            // Method 2: Direct API approach
+                            if (this._db.update && this._db.create) {
+                                if (id) {
+                                    // Update existing record using direct API
+                                    await this._db.update('dailyLimitDownloadsMangas', id, {
+                                        count: this.dailyDownloads + 1
+                                    });
+                                } else {
+                                    // Create new record using direct API
+                                    const newId = this._db.id();
+                                    await this._db.create('dailyLimitDownloadsMangas', {
+                                        id: newId,
+                                        userId: userId,
+                                        date: today,
+                                        count: 1
+                                    });
+                                    this.dailyDownloadRecordId = newId;
+                                }
+                                this.dailyDownloads++;
+                                console.log(`Successfully incremented daily download count with direct API: ${this.dailyDownloads}`);
+                                return;
+                            }
+                            
+                            // Method 3: Simple increment (local only, no persistence)
+                            console.warn('No suitable transaction method found, incrementing locally only');
+                            this.dailyDownloads++;
+                            console.log(`Incremented daily download count locally: ${this.dailyDownloads}`);
+                            
+                        } catch (error) {
+                            console.error('Error in incrementDailyDownloadOnSuccess:', error);
+                            // Still increment locally to maintain some tracking
+                            this.dailyDownloads++;
+                            console.log(`Incremented daily download count after error: ${this.dailyDownloads}`);
                         }
-                        this.dailyDownloads++;
-                        console.log(`Successfully incremented daily download count to: ${this.dailyDownloads}`);
-                    } catch (e) {
-                        console.error('Failed to increment daily download count:', e);
-                    }
+                    };
+                    
+                    await tryIncrement();
                 },
 
                 async checkDailyDownloadLimit() {
                     const userId = webApp?.initDataUnsafe?.user?.id;
                     if (!userId) return false;
+
+                    // Safety check: if InstantDB isn't working, allow downloads but log the issue
+                    if (!this._db) {
+                        console.warn('InstantDB not initialized, allowing download without tracking');
+                        return true;
+                    }
 
                     // Check if daily limit has been reached
                     if (this.dailyDownloads >= 100) {
