@@ -1247,7 +1247,7 @@
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
                                     <span>المتبقي: {{ remainingDownloads }}</span>
-                                    <span>🔄️ {{ timeUntilReset() }}</span>
+                                    <span>🔄️ {{ timeUntilReset }}</span>
                                 </div>
                             </div>
                         </div>
@@ -6952,6 +6952,7 @@
                     now: Date.now(),
                     _db: null,
                     userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test-user', // Fallback for testing if not in Telegram
+                    nowIntervalId: null,
                     
                     // Time Synchronization
                     serverTimeOffset: 0,
@@ -18309,7 +18310,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -19526,6 +19527,10 @@
 
                 const enableDebug = false; // Set to true to enable debug logging
                 
+                this.nowIntervalId = setInterval(() => {
+                    this.now = Date.now();
+                }, 1000);
+                
                 // Hide loading spinner when Vue is ready
                 document.body.classList.add('vue-ready');
 
@@ -19648,6 +19653,7 @@
                 if (this.intervalZikrId) clearInterval(this.intervalZikrId);
                 if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
                 if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
+                if (this.nowIntervalId) clearInterval(this.nowIntervalId);
                 if (this.countdownInterval) clearInterval(this.countdownInterval);
                 if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
                 if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
