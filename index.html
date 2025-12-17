@@ -1409,11 +1409,9 @@
                         </div>
                         <div v-else class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2" dir="ltr">
                             <button
-                                v-for="entry in mangaSentLog"
+                                v-for="entry in sortedMangaSentLog"
                                 :key="entry.chapter"
                                 class="bg-gray-800 text-yellow-300 px-2 py-1 rounded underline underline-offset-4 hover:bg-gray-700 transition-all duration-100 active:scale-90"
-                                @click="copyText(entry.chapter)"
-                                :title="'انسخ: ' + entry.chapter"
                             >
                                 {{ entry.chapter }}
                             </button>
@@ -7870,6 +7868,19 @@
 
                 allFailedMangaRowsSucceeded() {
                     return this.mangaFailedLog.length > 0 && this.mangaFailedLog.every(e => e.status === 'success');
+                },
+
+                sortedMangaSentLog() {
+                    // Sort by chapter number (ascending: lower to upper)
+                    return [...this.mangaSentLog].sort((a, b) => {
+                        const numA = parseFloat(a.chapter);
+                        const numB = parseFloat(b.chapter);
+                        if (isNaN(numA) || isNaN(numB)) {
+                            // Fallback to string comparison if not numeric
+                            return String(a.chapter).localeCompare(String(b.chapter));
+                        }
+                        return numA - numB;
+                    });
                 },
 
                 minMangaNumber() {
