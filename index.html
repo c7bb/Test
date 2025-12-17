@@ -7807,6 +7807,7 @@
                 timeUntilReset() {
                     // Calculate time until next UTC midnight (00:00 UTC)
                     // Matches Cloudflare Workers & Pages Functions reset time (UTC+0)
+                    const tick = this.now;
                     const now = this.getTrustedDate();
                     const tomorrow = new Date(now);
                     tomorrow.setUTCHours(24, 0, 0, 0); // Sets to 00:00:00 UTC of the next day
