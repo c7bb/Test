@@ -1247,7 +1247,7 @@
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
                                     <span>المتبقي: {{ remainingDownloads }}</span>
-                                    <span>🔄️ {{ timeUntilReset }}</span>
+                                    <span>🔄️ {{ timeUntilReset() }}</span>
                                 </div>
                             </div>
                         </div>
@@ -18309,7 +18309,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
