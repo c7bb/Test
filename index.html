@@ -6863,7 +6863,7 @@
 
     <script>
         const webApp = window.Telegram?.WebApp || null;
-        const { createApp } = Vue;
+        const { createApp, markRaw } = Vue;
     
         const app = createApp({
             data() {
@@ -14660,7 +14660,7 @@
                         const instantDB = getInstantDB();
                         if (instantDB && instantDB.init) {
                             console.log('InstantDB SDK loaded, initializing...');
-                            this._db = instantDB.init({ appId: APP_ID });
+                            this._db = markRaw(instantDB.init({ appId: APP_ID }));
                             this.subscribeToDailyDownloads();
 
                             // Update timer for reset every second
@@ -18227,7 +18227,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
