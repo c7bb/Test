@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/dist/standalone/index.min.js"></script>
+    <script type="module">
+        import { init, id } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
+        window.InstantDB = { init, id };
+    </script>
     <script>
         // Immediate cleanup function
         (function() {
@@ -14722,6 +14725,12 @@
                 async checkAndIncrementDownload(count = 1) {
                     const userId = webApp?.initDataUnsafe?.user?.id;
                     if (!userId) return true; 
+
+                    const instantDB = window.InstantDB || window.instantdb;
+                    if (!instantDB || !instantDB.id) {
+                         alert('جارٍ تحميل النظام، يرجى الانتظار قليلاً...');
+                         return false;
+                    }
                     
                     if (this.dailyDownloads + count > this.maxDailyDownloads) {
                         alert(`عذراً، لقد وصلت للحد اليومي للتحميل (${this.maxDailyDownloads}).\nالمتبقي لك: ${this.remainingDownloads}\nسيتم إعادة التعيين بعد: ${this.timeUntilReset}`);
@@ -14732,7 +14741,6 @@
                     let id = this.dailyDownloadRecordId;
                     
                     if (!id) {
-                        const instantDB = window.InstantDB || window.instantdb;
                         id = instantDB.id();
                     }
 
