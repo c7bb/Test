@@ -1217,15 +1217,15 @@
                             <div class="flex justify-around">
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
                                     <input type="radio" v-model="selectedCategory" value="episodes" class="ml-2" disabled>
-                                    حلقات
+                                    حلقات 🚀
                                 </label>
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
                                     <input type="radio" v-model="selectedCategory" value="movies" class="ml-2" disabled>
-                                    أفلام
+                                    أفلام 🚀
                                 </label>
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
                                     <input type="radio" v-model="selectedCategory" value="mangas" class="ml-2" :disabled="isMangaQueueRunning">
-                                    مانغا
+                                    مانغا 🚀
                                 </label>
                             </div>
                         </fieldset>
@@ -1264,7 +1264,7 @@
                                         step="1"
                                         @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
-                                        :placeholder="`ابدأ من (${minMangaNumber})`"
+                                        :placeholder="`${minMangaNumber}`"
                                     />
                                 </div>
                                 <div class="flex-1">
@@ -1277,7 +1277,7 @@
                                         step="1"
                                         @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
-                                        :placeholder="`انتهي عند (${maxMangaNumber})`"
+                                        :placeholder="`${maxMangaNumber}`"
                                     />
                                 </div>
                             </div>
@@ -7784,18 +7784,15 @@
                     return Math.max(0, this.maxDailyDownloads - this.dailyDownloads);
                 },
                 timeUntilReset() {
-                    // Reset is at midnight local time? Or UTC? 
-                    // Usually daily limits reset at 00:00 UTC or user local time.
-                    // Let's assume user local time since we use Date.now() and no timezone info.
-                    // Or standard UTC. Let's use local midnight for simplicity unless specified.
-                    // InstantDB user snippet used `today = new Date().toISOString().split('T')[0]`, which is UTC date.
-                    // So reset should be next UTC midnight.
-                    
+                    // Calculate time until next UTC midnight (00:00 UTC)
+                    // Matches Cloudflare Workers & Pages Functions reset time (UTC+0)
                     const now = new Date(this.now);
                     const tomorrow = new Date(now);
-                    tomorrow.setUTCHours(24, 0, 0, 0);
+                    tomorrow.setUTCHours(24, 0, 0, 0); // Sets to 00:00:00 UTC of the next day
                     const diff = tomorrow - now;
                     
+                    if (diff < 0) return "00:00:00"; // Should not happen with setUTCHours(24)
+
                     const hours = Math.floor(diff / (1000 * 60 * 60));
                     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -18693,7 +18690,7 @@
 
                     // Check daily limit
                     if (this.mangaQueue.length > this.remainingDownloads) {
-                        alert(`عذراً، لا يمكنك تحميل أكثر من ${this.remainingDownloads} فصل اليوم.`);
+                        alert(`عذرًا، متبقي لديك ${this.remainingDownloads} فصل لهذا اليوم.`);
                         return;
                     }
 
