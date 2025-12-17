@@ -18699,7 +18699,7 @@
 
                 async retryAllFailedMangas() {
                     // Prevent starting if main queue is running
-                    if (this.isMangaQueueRunning) return;
+                    if (this.isMangaQueueRunning && !this.isMangaQueuePaused) return;
                     if (this.isRetryAllFailedRunning) return;
                     const retryables = this.mangaFailedLog.filter(e => e.status !== 'success');
                     if (!retryables.length) return;
