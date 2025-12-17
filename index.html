@@ -6938,6 +6938,12 @@
                     now: Date.now(),
                     _db: null,
                     userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test-user', // Fallback for testing if not in Telegram
+                    
+                    // Time Synchronization
+                    serverTimeOffset: 0,
+                    lastServerSync: 0,
+                    trustedToday: null,
+                    unsubscribeDaily: null,
 
                     replacementDict: {
                     "سينشي": ["شينتشي", "سينشي"],
@@ -7786,7 +7792,7 @@
                 timeUntilReset() {
                     // Calculate time until next UTC midnight (00:00 UTC)
                     // Matches Cloudflare Workers & Pages Functions reset time (UTC+0)
-                    const now = new Date(this.now);
+                    const now = this.getTrustedDate();
                     const tomorrow = new Date(now);
                     tomorrow.setUTCHours(24, 0, 0, 0); // Sets to 00:00:00 UTC of the next day
                     const diff = tomorrow - now;
@@ -14649,9 +14655,59 @@
             },
             methods: {
                 // InstantDB Methods
+                async syncServerTime() {
+                    try {
+                        const start = performance.now();
+                        // Try current origin first (likely to have Date header)
+                        // Or use a lightweight HEAD request to a reliable public server if local fails
+                        const response = await fetch(window.location.href, { method: 'HEAD', cache: 'no-store' });
+                        const dateHeader = response.headers.get('date');
+                        
+                        if (dateHeader) {
+                            const serverTime = new Date(dateHeader).getTime();
+                            const end = performance.now();
+                            const latency = (end - start) / 2;
+                            // Calculate offset: Server Time - (Local Time at request start + latency)
+                            // But simpler: Server Time - (Date.now() roughly)
+                            // More precise: 
+                            // trustedNow = Date.now() + offset
+                            // offset = serverTime - Date.now()
+                            // We adjust for latency to be slightly more accurate
+                            this.serverTimeOffset = serverTime - (Date.now() + latency);
+                            this.lastServerSync = Date.now();
+                            console.log('Time synced with server. Offset:', this.serverTimeOffset, 'ms');
+                        } else {
+                            console.warn('No Date header in response, using local time fallback.');
+                        }
+                    } catch (e) {
+                        console.error('Failed to sync time:', e);
+                        // Fallback: try worldtimeapi if origin fails (e.g. file://)
+                        try {
+                             const r = await fetch('https://worldtimeapi.org/api/timezone/Etc/UTC');
+                             const data = await r.json();
+                             const serverTime = new Date(data.utc_datetime).getTime();
+                             this.serverTimeOffset = serverTime - Date.now();
+                             console.log('Time synced with WorldTimeAPI. Offset:', this.serverTimeOffset, 'ms');
+                        } catch (e2) {
+                            console.warn('All time sync failed, defaulting to local time.');
+                        }
+                    }
+                },
+
+                getTrustedDate() {
+                    return new Date(Date.now() + this.serverTimeOffset);
+                },
+
+                getTrustedTodayISO() {
+                    return this.getTrustedDate().toISOString().split('T')[0];
+                },
+
                 initInstantDB() {
                     const APP_ID = '4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3';
                     const getInstantDB = () => window.InstantDB || window.instantdb;
+
+                    // Sync time immediately
+                    this.syncServerTime();
 
                     const initialize = () => {
                         const instantDB = getInstantDB();
@@ -14660,9 +14716,16 @@
                             this._db = markRaw(instantDB.init({ appId: APP_ID }));
                             this.subscribeToDailyDownloads();
 
-                            // Update timer for reset every second
+                            // Update timer for reset every second and check for date change
                             setInterval(() => {
                                 this.now = Date.now();
+                                
+                                // Check if date changed (midnight crossing)
+                                const currentToday = this.getTrustedTodayISO();
+                                if (this.trustedToday !== currentToday) {
+                                    console.log('Date changed from', this.trustedToday, 'to', currentToday, '- Resubscribing...');
+                                    this.subscribeToDailyDownloads();
+                                }
                             }, 1000);
                         } else {
                             console.log('Waiting for InstantDB SDK...');
@@ -14675,7 +14738,15 @@
                 subscribeToDailyDownloads() {
                     if (!this._db) return;
                     
-                    const today = new Date().toISOString().split('T')[0];
+                    // Unsubscribe previous if exists
+                    if (this.unsubscribeDaily) {
+                        this.unsubscribeDaily();
+                        this.unsubscribeDaily = null;
+                    }
+
+                    const today = this.getTrustedTodayISO();
+                    this.trustedToday = today; // Track current subscription date
+
                     const query = { 
                         dailyLimitDownloadsMangas: { 
                             $: { 
@@ -14690,7 +14761,7 @@
                     try {
                         const subscribeFunc = this._db.subscribeQuery || this._db.subscribe;
                         if (typeof subscribeFunc === 'function') {
-                            subscribeFunc.call(this._db, query, (resp) => {
+                            this.unsubscribeDaily = subscribeFunc.call(this._db, query, (resp) => {
                                 if (resp.error) {
                                     console.error('InstantDB Error:', resp.error);
                                     return;
@@ -14724,7 +14795,7 @@
                 async incrementDailyLimit(count = 1) {
                     if (!this._db) return false;
                     
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = this.getTrustedTodayISO();
                     // Use stored ID or generate a new one
                     const id = this.dailyLimitRowId || window.InstantDB.id();
                     
