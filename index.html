@@ -14768,6 +14768,32 @@
                     }
                 },
 
+                async refundDailyDownload(count = 1) {
+                    const userId = webApp?.initDataUnsafe?.user?.id;
+                    if (!userId) return;
+
+                    const id = this.dailyDownloadRecordId;
+                    if (!id) return; // Should not happen if we just incremented, but safe check
+
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    try {
+                        // Calculate new count, ensuring we don't go below zero
+                        const newCount = Math.max(0, this.dailyDownloads - count);
+                        
+                        await this._db.transact(
+                            this._db.tx.daily_downloads[id].update({
+                                userId: userId,
+                                date: today,
+                                count: newCount
+                            })
+                        );
+                        console.log(`Refunded ${count} downloads. New count: ${newCount}`);
+                    } catch (e) {
+                        console.error('DB Refund Error', e);
+                    }
+                },
+
 
 
 
@@ -18065,6 +18091,9 @@
                         this.startCountdownForManga(index);
                         this.errorMessage = "";
                     } catch (error) {
+                        // Refund download limit on error
+                        await this.refundDailyDownload(1);
+                        
                         this.selectedEpisode.EpisodeMangasIDs[index].status = 'error';
                         this.errorMessage = error.message;
                         if (this.selectedEpisode.EpisodeMangasIDs.some(manga => manga.status === "error")) {
@@ -18153,6 +18182,9 @@
                         this.startCountdownForMangaD();
                         this.errorMessage = "";
                     } catch (error) {
+                        // Refund download limit on error
+                        await this.refundDailyDownload(1);
+
                         this.selectedManga.status = 'error';
                         this.errorMessage = error.message;
                         if (this.selectedManga.status === "error") return;
@@ -18665,6 +18697,9 @@
                         // also record as success
                         this.recordMangaSuccess({ MangaNumber: entry.chapter, MangaFileID: entry.fileId });
                     } catch (error) {
+                        // Refund download limit on error
+                        await this.refundDailyDownload(1);
+
                         entry.status = 'failed';
                         entry.error = String(error?.message ?? error ?? 'Unknown error'); // overwrite
                     }
@@ -18877,6 +18912,9 @@
                             // console.error(error);
                             // Only increment if we're still on the same index
                             if (this.mangaQueueIndex === currentIndex) {
+                                // Refund download limit on error
+                                await this.refundDailyDownload(1);
+                                
                                 this.mangaQueueCurrent.status = 'failed';
                                 this.mangaQueueCurrent.error = String(error?.message ?? error ?? 'Unknown error');
                                 this.recordMangaFailure(manga, error);
