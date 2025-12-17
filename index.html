@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
+    <script src="https://www.unpkg.com/@instantdb/core@latest/dist/standalone/index.umd.cjs"></script>
     <script>
         // Immediate cleanup function
         (function() {
@@ -1225,6 +1226,27 @@
                                 </label>
                             </div>
                         </fieldset>
+                    </div>
+
+                    <div v-if="userId" class="bg-gray-800 p-4 rounded-lg mb-4 text-center">
+                        <div class="text-yellow-300 font-bold mb-2">حالة التحميلات اليومية</div>
+                        <div class="flex justify-center items-center gap-4">
+                            <div class="text-sm">
+                                <div>عدد التحميلات: {{ downloadStats.count }} / {{ downloadStats.limit }}</div>
+                                <div>الوقت المتبقي لإعادة التعيين: {{ getTimeUntilReset() }}</div>
+                            </div>
+                            <div class="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                    class="h-full transition-all duration-300"
+                                    :class="{
+                                    'bg-green-500': downloadStats.count < 50,
+                                    'bg-yellow-500': downloadStats.count >= 50 && downloadStats.count < 80,
+                                    'bg-red-500': downloadStats.count >= 80
+                                    }"
+                                    :style="{ width: (downloadStats.count / downloadStats.limit * 100) + '%' }"
+                                ></div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Manga Bulk Send Content -->
@@ -6845,6 +6867,15 @@
         const app = createApp({
             data() {
                 return {
+                    userId: null,
+                    downloadStats: {
+                        count: 0,
+                        limit: 100,
+                        lastReset: null,
+                        nextReset: null
+                    },
+                    instantDb: null,
+                    isCheckingLimit: false,
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -14597,6 +14628,135 @@
             },
             methods: {
 
+                async initInstantDB() {
+                    try {
+                    // Initialize InstantDB with your public app ID
+                    this.instantDb = new InstantDB('4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3');
+                    
+                    // Get or create user ID
+                    this.userId = this.webApp?.initDataUnsafe?.user?.id || 'anonymous';
+                    
+                    // Load user's download stats
+                    await this.loadDownloadStats();
+                    
+                    // Set up daily reset check
+                    this.setupDailyReset();
+                    } catch (error) {
+                    console.error('Error initializing InstantDB:', error);
+                    }
+                },
+                async loadDownloadStats() {
+                    if (!this.instantDb || !this.userId) return;
+                    
+                    try {
+                    this.isCheckingLimit = true;
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    
+                    // Get user's download record
+                    const result = await this.instantDb.get('user_downloads', this.userId) || {
+                        userId: this.userId,
+                        dailyCount: 0,
+                        lastDownloadDate: today,
+                        totalDownloads: 0
+                    };
+                    
+                    // Check if we need to reset the counter (new day)
+                    if (result.lastDownloadDate !== today) {
+                        result.dailyCount = 0;
+                        result.lastDownloadDate = today;
+                        await this.instantDb.set('user_downloads', this.userId, result);
+                    }
+                    
+                    // Calculate next reset time (next day at midnight)
+                    const nextReset = new Date(now);
+                    nextReset.setDate(nextReset.getDate() + 1);
+                    nextReset.setHours(0, 0, 0, 0);
+                    
+                    this.downloadStats = {
+                        count: result.dailyCount,
+                        limit: 100,
+                        lastReset: result.lastDownloadDate,
+                        nextReset: nextReset.getTime()
+                    };
+                    
+                    return this.downloadStats;
+                    } catch (error) {
+                    console.error('Error loading download stats:', error);
+                    return null;
+                    } finally {
+                    this.isCheckingLimit = false;
+                    }
+                },
+                async trackDownload() {
+                    if (!this.instantDb || !this.userId) return false;
+                    
+                    try {
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    
+                    // Get current stats with optimistic locking
+                    const result = await this.instantDb.transaction('user_downloads', this.userId, async (current) => {
+                        if (!current) {
+                        current = {
+                            userId: this.userId,
+                            dailyCount: 0,
+                            lastDownloadDate: today,
+                            totalDownloads: 0
+                        };
+                        }
+                        
+                        // Reset counter if it's a new day
+                        if (current.lastDownloadDate !== today) {
+                        current.dailyCount = 0;
+                        current.lastDownloadDate = today;
+                        }
+                        
+                        // Check download limit
+                        if (current.dailyCount >= 100) {
+                        throw new Error('Daily download limit reached');
+                        }
+                        
+                        // Increment counters
+                        current.dailyCount++;
+                        current.totalDownloads++;
+                        
+                        return current;
+                    });
+                    
+                    // Update local state
+                    this.downloadStats.count = result.dailyCount;
+                    return true;
+                    } catch (error) {
+                    console.error('Error tracking download:', error);
+                    return false;
+                    }
+                },
+                setupDailyReset() {
+                    // Check every minute if we've crossed into a new day
+                    setInterval(async () => {
+                    const now = new Date();
+                    const today = now.toISOString().split('T')[0];
+                    
+                    if (this.downloadStats.lastReset !== today) {
+                        await this.loadDownloadStats();
+                    }
+                    }, 60000); // Check every minute
+                },
+                getTimeUntilReset() {
+                    if (!this.downloadStats.nextReset) return '';
+                    
+                    const now = new Date().getTime();
+                    const diff = this.downloadStats.nextReset - now;
+                    
+                    if (diff <= 0) return 'قريباً';
+                    
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    
+                    return `${hours} ساعة و ${minutes} دقيقة`;
+                },
+
                 setupInactivityTracking() {
                     this.resetInactivityCountdown();
                     this.registerInactivityListeners();
@@ -18516,78 +18676,102 @@
                     this[field] = Math.round(clamped);
                 },
 
-                startMangaQueue() {
-                    // Prevent starting if retry queue is running
-                    if (this.isRetryAllFailedRunning) {
-                        return;
-                    }
-                    if (this.mangaStartNumber === null || this.mangaStartNumber === undefined || 
-                        this.mangaEndNumber === null || this.mangaEndNumber === undefined || 
-                        this.mangaStartNumber > this.mangaEndNumber) {
-                        return;
-                    }
-
-                    // Get all mangas
-                    const allMangas = this.groupedMangas.flatMap(group => group.items);
-                    
-                    // Filter mangas in range (handles "0" as valid manga number)
-                    this.mangaQueue = allMangas.filter(manga => {
-                        const num = parseFloat(manga.MangaNumber);
-                        return !isNaN(num) && num >= this.mangaStartNumber && num <= this.mangaEndNumber;
-                    }).sort((a, b) => parseFloat(a.MangaNumber) - parseFloat(b.MangaNumber));
-
-                    if (this.mangaQueue.length === 0) {
-                        alert('لا توجد مانغا في النطاق المحدد');
-                        return;
-                    }
-
-                    // Initialize queue
-                    this.mangaQueueIndex = 0;
-                    this.isMangaQueueRunning = true;
-                    this.isMangaQueuePaused = false;
-                    this.isMangaQueueSending = false;
-                    this.isMangaQueuePauseRequested = false;
-                    this.mangaQueueStartTime = Date.now();
-                    this.mangaQueuePausedTime = 0;
-                    this.mangaQueueTotalPausedTime = 0;
-                    this.mangaQueueStats = {
-                        total: this.mangaQueue.length,
-                        sent: 0,
-                        failed: 0,
-                        waiting: this.mangaQueue.length,
-                        elapsedTime: 0,
-                        remainingTime: this.mangaQueue.length * (this.fastingStatusClearTimeout / 1000)
-                    };
-
-                    // Clear any existing process
-                    if (this.mangaQueueTimeoutId !== null) {
-                        clearTimeout(this.mangaQueueTimeoutId);
-                        this.mangaQueueTimeoutId = null;
-                    }
-                    this.mangaQueueProcessId = null;
-
-                    // Start timer
-                    this.mangaQueueInterval = setInterval(() => {
-                        if (this.isMangaQueueRunning && !this.isMangaQueuePaused) {
-                            const now = Date.now();
-                            const elapsed = Math.floor((now - this.mangaQueueStartTime - this.mangaQueueTotalPausedTime) / 1000);
-                            // Calculate remaining time based on actual remaining items
-                            const remainingItems = this.mangaQueueStats.waiting;
-                            const estimatedTimePerItem = this.fastingStatusClearTimeout / 1000;
-                            // If no items waiting, remaining time should be 0
-                            const remaining = remainingItems > 0 ? Math.max(0, remainingItems * estimatedTimePerItem) : 0;
-                            this.mangaQueueStats.elapsedTime = elapsed;
-                            this.mangaQueueStats.remainingTime = remaining;
-                        } else if (!this.isMangaQueueRunning && this.mangaQueueStats.total > 0) {
-                            // When finished, ensure remaining time is 0
-                            if (this.mangaQueueStats.waiting === 0) {
-                                this.mangaQueueStats.remainingTime = 0;
-                            }
+                async startMangaQueue() {
+                    try {
+                        // Prevent starting if retry queue is running
+                        if (this.isRetryAllFailedRunning) {
+                            return;
                         }
-                    }, 1000);
 
-                    // Start processing
-                    this.processMangaQueue();
+                        // Validate range
+                        if (
+                            this.mangaStartNumber === null || this.mangaStartNumber === undefined ||
+                            this.mangaEndNumber === null || this.mangaEndNumber === undefined ||
+                            this.mangaStartNumber > this.mangaEndNumber
+                        ) {
+                            return;
+                        }
+
+                        // 🔐 Check daily download limit
+                        const chaptersToDownload = this.mangaEndNumber - this.mangaStartNumber + 1;
+                        const remainingDownloads = this.downloadStats.limit - this.downloadStats.count;
+
+                        if (chaptersToDownload > remainingDownloads) {
+                            alert(`لقد تجاوزت الحد المسموح به من التحميلات اليومية. يمكنك تحميل ${remainingDownloads} فصول إضافية فقط.`);
+                            return;
+                        }
+
+                        // Get all mangas
+                        const allMangas = this.groupedMangas.flatMap(group => group.items);
+
+                        // Filter mangas in range
+                        this.mangaQueue = allMangas
+                            .filter(manga => {
+                                const num = parseFloat(manga.MangaNumber);
+                                return !isNaN(num) &&
+                                    num >= this.mangaStartNumber &&
+                                    num <= this.mangaEndNumber;
+                            })
+                            .sort((a, b) =>
+                                parseFloat(a.MangaNumber) - parseFloat(b.MangaNumber)
+                            );
+
+                        if (this.mangaQueue.length === 0) {
+                            alert('لا توجد مانغا في النطاق المحدد');
+                            return;
+                        }
+
+                        // Initialize queue state
+                        this.mangaQueueIndex = 0;
+                        this.isMangaQueueRunning = true;
+                        this.isMangaQueuePaused = false;
+                        this.isMangaQueueSending = false;
+                        this.isMangaQueuePauseRequested = false;
+
+                        this.mangaQueueStartTime = Date.now();
+                        this.mangaQueuePausedTime = 0;
+                        this.mangaQueueTotalPausedTime = 0;
+
+                        this.mangaQueueStats = {
+                            total: this.mangaQueue.length,
+                            sent: 0,
+                            failed: 0,
+                            waiting: this.mangaQueue.length,
+                            elapsedTime: 0,
+                            remainingTime: this.mangaQueue.length * (this.fastingStatusClearTimeout / 1000)
+                        };
+
+                        // Clear old timers
+                        if (this.mangaQueueTimeoutId !== null) {
+                            clearTimeout(this.mangaQueueTimeoutId);
+                            this.mangaQueueTimeoutId = null;
+                        }
+                        this.mangaQueueProcessId = null;
+
+                        // ⏱ Timer for elapsed & remaining time
+                        this.mangaQueueInterval = setInterval(() => {
+                            if (this.isMangaQueueRunning && !this.isMangaQueuePaused) {
+                                const now = Date.now();
+                                const elapsed = Math.floor(
+                                    (now - this.mangaQueueStartTime - this.mangaQueueTotalPausedTime) / 1000
+                                );
+
+                                const remainingItems = this.mangaQueueStats.waiting;
+                                const estimatedTimePerItem = this.fastingStatusClearTimeout / 1000;
+
+                                this.mangaQueueStats.elapsedTime = elapsed;
+                                this.mangaQueueStats.remainingTime =
+                                    remainingItems > 0 ? remainingItems * estimatedTimePerItem : 0;
+                            }
+                        }, 1000);
+
+                        // ▶️ Start processing queue
+                        this.processMangaQueue();
+
+                    } catch (error) {
+                        console.error('Error in download queue:', error);
+                        alert(error.message || 'حدث خطأ أثناء التحميل');
+                    }
                 },
 
                 async processMangaQueue() {
@@ -18598,10 +18782,10 @@
                     const processNext = async (processId) => {
                         // Verify this is still the active process
                         if (this.mangaQueueProcessId !== processId) {
-                            return; // Another process has started, exit
+                            return;
                         }
 
-                        // Check if we should continue
+                        // Stop conditions
                         if (!this.isMangaQueueRunning || this.mangaQueueIndex >= this.mangaQueue.length) {
                             if (this.mangaQueueIndex >= this.mangaQueue.length) {
                                 this.finishMangaQueue();
@@ -18609,16 +18793,15 @@
                             return;
                         }
 
-                        // Check if pause was requested - wait for current send to complete
+                        // Pause handling
                         if (this.isMangaQueuePauseRequested && !this.isMangaQueueSending) {
                             this.isMangaQueuePaused = true;
                             this.isMangaQueuePauseRequested = false;
-                            this.mangaQueuePausedTime = Date.now(); // Record when pause started
+                            this.mangaQueuePausedTime = Date.now();
                             this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), 100);
                             return;
                         }
 
-                        // Wait if paused (but not if pause is just being requested)
                         if (this.isMangaQueuePaused && !this.isMangaQueuePauseRequested) {
                             this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), 100);
                             return;
@@ -18626,64 +18809,84 @@
 
                         // Mark as sending
                         this.isMangaQueueSending = true;
+
                         const currentIndex = this.mangaQueueIndex;
                         const manga = this.mangaQueue[currentIndex];
-                        // Show only the current chapter status
+
+                        // UI state
                         this.mangaQueueCurrent.chapter = manga?.MangaNumber ?? null;
                         this.mangaQueueCurrent.status = 'sending';
                         this.mangaQueueCurrent.error = null;
-                        
-                        // Update waiting count before sending
+
+                        // Update waiting count
                         this.mangaQueueStats.waiting = this.mangaQueue.length - currentIndex - 1;
 
                         try {
-                            await this.sendMangaResponse(manga.MangaFileID, this.buildMangaCaption(manga.MangaNumber, manga.MangaFileSize));
-                            // Only increment if we're still on the same index (prevent duplicates)
+                            /* 🔐 DAILY LIMIT CHECK (safety net) */
+                            if (this.downloadStats.count >= this.downloadStats.limit) {
+                                throw new Error('تم الوصول إلى الحد الأقصى للتحميلات اليومية');
+                            }
+
+                            /* 🔍 Track download */
+                            const tracked = await this.trackDownload();
+                            if (!tracked) {
+                                throw new Error('فشل في تتبع التحميل');
+                            }
+
+                            /* ⬇️ Actual send */
+                            await this.sendMangaResponse(
+                                manga.MangaFileID,
+                                this.buildMangaCaption(
+                                    manga.MangaNumber,
+                                    manga.MangaFileSize
+                                )
+                            );
+
+                            // Success
                             if (this.mangaQueueIndex === currentIndex) {
                                 this.mangaQueueCurrent.status = 'success';
                                 this.recordMangaSuccess(manga);
                                 this.mangaQueueStats.sent++;
                                 this.mangaQueueIndex++;
-                                // Update waiting count after increment
-                                this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
-                                // If no more items, set remaining time to 0 immediately
-                                if (this.mangaQueueStats.waiting === 0) {
-                                    this.mangaQueueStats.remainingTime = 0;
-                                }
                             }
+
                         } catch (error) {
-                            // console.error(error);
-                            // Only increment if we're still on the same index
                             if (this.mangaQueueIndex === currentIndex) {
                                 this.mangaQueueCurrent.status = 'failed';
-                                this.mangaQueueCurrent.error = String(error?.message ?? error ?? 'Unknown error');
+                                this.mangaQueueCurrent.error =
+                                    String(error?.message ?? error ?? 'Unknown error');
+
                                 this.recordMangaFailure(manga, error);
                                 this.mangaQueueStats.failed++;
                                 this.mangaQueueIndex++;
-                                // Update waiting count after increment
-                                this.mangaQueueStats.waiting = this.mangaQueue.length - this.mangaQueueIndex;
-                                // If no more items, set remaining time to 0 immediately
-                                if (this.mangaQueueStats.waiting === 0) {
-                                    this.mangaQueueStats.remainingTime = 0;
-                                }
                             }
                         }
 
-                        // Mark as not sending
+                        // Update waiting count after processing
+                        this.mangaQueueStats.waiting =
+                            this.mangaQueue.length - this.mangaQueueIndex;
+
+                        if (this.mangaQueueStats.waiting === 0) {
+                            this.mangaQueueStats.remainingTime = 0;
+                        }
+
                         this.isMangaQueueSending = false;
 
-                        // Check if pause was requested during send
+                        // Pause requested during send
                         if (this.isMangaQueuePauseRequested) {
                             this.isMangaQueuePaused = true;
                             this.isMangaQueuePauseRequested = false;
-                            this.mangaQueuePausedTime = Date.now(); // Record when pause started
+                            this.mangaQueuePausedTime = Date.now();
                             return;
                         }
 
-                        // Wait before next send
+                        // Continue or finish
                         if (this.isMangaQueueRunning && this.mangaQueueIndex < this.mangaQueue.length) {
-                            this.mangaQueueTimeoutId = setTimeout(() => processNext(processId), this.fastingStatusClearTimeout);
-                        } else if (this.mangaQueueIndex >= this.mangaQueue.length) {
+                            this.mangaQueueTimeoutId = setTimeout(
+                                () => processNext(processId),
+                                this.fastingStatusClearTimeout
+                            );
+                        } else {
                             this.finishMangaQueue();
                         }
                     };
@@ -19273,6 +19476,7 @@
                 // Initialize zikr rotation
                 this.shuffleZikr();
                 this.intervalZikrId = setInterval(this.shuffleZikr, 3000);
+                this.initInstantDB();
                 
                 this.closeEmptyPopup();
                 document.addEventListener("click", this.closeMenu);
