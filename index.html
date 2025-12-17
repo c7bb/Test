@@ -14639,10 +14639,39 @@
                 async initInstantDB() {
                     try {
                     // Initialize InstantDB with your public app ID
-                    this.instantDb = new InstantDB('4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3');
+                    const appId = '4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3';
+                    let instantDb = null;
+
+                    for (let i = 0; i < 50 && !window.InstantDB && !(window.instantdbcore && window.instantdbcore.init); i++) {
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+
+                    if (typeof window.InstantDB === 'function') {
+                        try {
+                            instantDb = new window.InstantDB(appId);
+                        } catch (e) {
+                            instantDb = window.InstantDB(appId);
+                        }
+                    }
+
+                    if (!instantDb) {
+                        if (window.instantdbcore && typeof window.instantdbcore.init === 'function') {
+                            instantDb = window.instantdbcore.init({ appId });
+                        } else {
+                            const instantdbcore = await import('https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm');
+                            window.instantdbcore = instantdbcore;
+                            window.InstantDB = window.InstantDB || function InstantDBShim(appConfig) {
+                                const config = typeof appConfig === 'string' ? { appId: appConfig } : (appConfig || {});
+                                return instantdbcore.init(config);
+                            };
+                            instantDb = instantdbcore.init({ appId });
+                        }
+                    }
+
+                    this.instantDb = instantDb;
                     
                     // Get or create user ID
-                    this.userId = this.webApp?.initDataUnsafe?.user?.id || 'anonymous';
+                    this.userId = webApp?.initDataUnsafe?.user?.id || 'anonymous';
                     
                     // Load user's download stats
                     await this.loadDownloadStats();
