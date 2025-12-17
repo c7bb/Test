@@ -1239,7 +1239,6 @@
                                         :min="minMangaNumber"
                                         :max="maxMangaNumber"
                                         step="1"
-                                        @input="handleMangaNumberInput('mangaStartNumber')"
                                         @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`ابدأ من (${minMangaNumber})`"
@@ -1253,7 +1252,6 @@
                                         :min="minMangaNumber"
                                         :max="maxMangaNumber"
                                         step="1"
-                                        @input="handleMangaNumberInput('mangaEndNumber')"
                                         @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`انتهي عند (${maxMangaNumber})`"
@@ -1434,7 +1432,7 @@
                         </button>
                     </div>
                     <div class="p-4 overflow-y-auto flex-1 always-visible-scrollbar space-y-3">
-                        <div class="flex gap-3 items-center justify-center flex-wrap">
+                        <div v-if="!allFailedMangaRowsSucceeded" class="flex gap-3 items-center justify-center flex-wrap">
                             <button
                                 @click="retryAllFailedMangas"
                                 :disabled="isRetryAllFailedRunning || !mangaFailedLog.some(e => e.status !== 'success')"
@@ -18427,7 +18425,12 @@
                     try {
                         await this.sendMangaResponse(entry.fileId, this.buildMangaCaption(entry.chapter, entry.fileSize));
                         entry.status = 'success';
-                        entry.error = entry.error || '';
+                        entry.error = '';
+                        // Move this chapter from failed → sent in the aggregate stats
+                        if (this.mangaQueueStats.failed > 0) {
+                            this.mangaQueueStats.failed -= 1;
+                        }
+                        this.mangaQueueStats.sent += 1;
                         // also record as success
                         this.recordMangaSuccess({ MangaNumber: entry.chapter, MangaFileID: entry.fileId });
                     } catch (error) {
