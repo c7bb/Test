@@ -6871,7 +6871,7 @@
             data() {
                 return {
                     // InstantDB
-                    db: null,
+                    // db: null, // Removed to prevent Proxying of SDK instance
                     dailyDownloads: 0,
                     maxDailyDownloads: 100,
                     nextResetTime: null,
@@ -14653,7 +14653,8 @@
                         const instantDB = getInstantDB();
                         if (instantDB && instantDB.init) {
                             console.log('InstantDB SDK loaded, initializing...');
-                            this.db = instantDB.init({ appId: APP_ID });
+                            // Assign to a non-reactive property
+                            this._db = instantDB.init({ appId: APP_ID });
                             this.subscribeToDailyDownloads();
                             
                             // Update timer for reset every second
@@ -14669,6 +14670,102 @@
                     };
                     
                     initialize();
+                },
+
+                subscribeToDailyDownloads() {
+                    if (!this._db) return;
+                    
+                    const userId = webApp?.initDataUnsafe?.user?.id;
+                    if (!userId) {
+                        // console.warn('No user ID found, skipping download tracking');
+                        // Allow for testing if needed, or just return.
+                        return;
+                    }
+
+                    const today = new Date().toISOString().split('T')[0];
+                    const query = { 
+                        daily_downloads: { 
+                            $: { 
+                                where: { 
+                                    userId: userId, 
+                                    date: today 
+                                } 
+                            } 
+                        } 
+                    };
+
+                    this._db.subscribeQuery(query, (resp) => {
+                        if (resp.error) {
+                            console.error('InstantDB subscription error:', resp.error);
+                            return;
+                        }
+                        
+                        const records = resp.data?.daily_downloads || [];
+                        if (records.length > 0) {
+                            this.dailyDownloads = records[0].count;
+                            this.dailyDownloadRecordId = records[0].id;
+                        } else {
+                            this.dailyDownloads = 0;
+                            this.dailyDownloadRecordId = null;
+                        }
+                        this.updateRemainingDownloads();
+                    });
+                    
+                    // Set next reset time (Midnight UTC to match ISO date split)
+                    // new Date().toISOString() uses UTC. So '2023-10-27' is UTC day.
+                    // Reset happens at 00:00 UTC.
+                    const now = new Date();
+                    const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+                    this.nextResetTime = tomorrow.getTime();
+                },
+
+                updateRemainingDownloads() {
+                    this.remainingDownloads = Math.max(0, this.maxDailyDownloads - this.dailyDownloads);
+                },
+
+                async checkAndIncrementDownload(count = 1) {
+                    const userId = webApp?.initDataUnsafe?.user?.id;
+                    if (!userId) return true; 
+
+                    const instantDB = window.InstantDB || window.instantdb;
+                    if (!instantDB || !instantDB.id) {
+                         alert('جارٍ تحميل النظام، يرجى الانتظار قليلاً...');
+                         return false;
+                    }
+                    
+                    if (this.dailyDownloads + count > this.maxDailyDownloads) {
+                        alert(`عذراً، لقد وصلت للحد اليومي للتحميل (${this.maxDailyDownloads}).\nالمتبقي لك: ${this.remainingDownloads}\nسيتم إعادة التعيين بعد: ${this.timeUntilReset}`);
+                        return false;
+                    }
+
+                    const today = new Date().toISOString().split('T')[0];
+                    let id = this.dailyDownloadRecordId;
+                    
+                    if (!id) {
+                        id = instantDB.id();
+                        // If creating new row, ensure count starts correctly
+                        // But since we use update, we need to be careful.
+                        // Ideally we should have one row per user per day.
+                    }
+
+                    try {
+                        // Use atomic increment if possible or rely on optimistic update from dailyDownloads
+                        // Better approach: Since we have the ID, we update that specific row.
+                        // If ID was null (new row), we create it.
+                        
+                        // We use `update` which serves as upsert if ID is new.
+                        await this._db.transact(
+                            this._db.tx.daily_downloads[id].update({
+                                userId: userId,
+                                date: today,
+                                count: this.dailyDownloads + count
+                            })
+                        );
+                        return true;
+                    } catch (e) {
+                        console.error('DB Update Error', e);
+                        return false;
+                    }
                 },
 
                 subscribeToDailyDownloads() {
