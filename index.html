@@ -14642,19 +14642,30 @@
                 // InstantDB Methods
                 initInstantDB() {
                     const APP_ID = '4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3';
-                    if (!window.InstantDB || !window.InstantDB.init) {
-                        console.error('InstantDB SDK not loaded');
-                        return;
-                    }
-                    this.db = window.InstantDB.init({ appId: APP_ID });
-                    this.subscribeToDailyDownloads();
                     
-                    // Update timer for reset every second
-                    setInterval(() => {
-                         // Just trigger reactivity if needed, but timeUntilReset is computed based on Date.now() 
-                         // which is not reactive unless we store `now` in data.
-                         this.now = Date.now();
-                    }, 1000);
+                    // Helper to check for SDK presence (supports both naming conventions)
+                    const getInstantDB = () => window.InstantDB || window.instantdb;
+
+                    const initialize = () => {
+                        const instantDB = getInstantDB();
+                        if (instantDB && instantDB.init) {
+                            console.log('InstantDB SDK loaded, initializing...');
+                            this.db = instantDB.init({ appId: APP_ID });
+                            this.subscribeToDailyDownloads();
+                            
+                            // Update timer for reset every second
+                            setInterval(() => {
+                                 this.now = Date.now();
+                            }, 1000);
+                        } else {
+                            console.log('Waiting for InstantDB SDK...');
+                            // Retry up to a certain point or indefinitely? 
+                            // Indefinitely is safer for slow networks, but maybe log periodically
+                            setTimeout(initialize, 500);
+                        }
+                    };
+                    
+                    initialize();
                 },
 
                 subscribeToDailyDownloads() {
@@ -14721,7 +14732,8 @@
                     let id = this.dailyDownloadRecordId;
                     
                     if (!id) {
-                        id = window.InstantDB.id();
+                        const instantDB = window.InstantDB || window.instantdb;
+                        id = instantDB.id();
                     }
 
                     try {
@@ -19631,4 +19643,3 @@
     </style>
 </body>
 </html>
-
