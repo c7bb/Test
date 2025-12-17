@@ -17674,7 +17674,7 @@
 
                         if (!response.ok) {
                             const status = data?.status || response.status;
-                            throw new Error(`Telegram Error: (${status})\n\n` + (data.description || text) + `\n\n(${webApp?.initDataUnsafe?.user?.id})`);
+                            throw new Error(`Telegram Error: (${status}) ` + (data.description || text) + ` (${webApp?.initDataUnsafe?.user?.id})`);
                         }
 
                     } catch (error) {
@@ -17917,7 +17917,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
