@@ -636,9 +636,9 @@
                     <button @click="openDirectWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">أفلام</button>
                     <button @click="openDirectWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا</button>
                     <hr class="my-2 border-gray-600">
-                    <button @click="openFastingWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>حلقات</button>
-                    <button @click="openFastingWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا</button>
-                    <button @click="openFastingWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>أفلام</button>
+                    <button @click="openFastingWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>حلقات 🚀</button>
+                    <button @click="openFastingWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا 🚀</button>
+                    <button @click="openFastingWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>أفلام 🚀</button>
                 </div>
             </div>
 
@@ -1217,15 +1217,15 @@
                             <div class="flex justify-around">
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
                                     <input type="radio" v-model="selectedCategory" value="episodes" class="ml-2" disabled>
-                                    حلقات 🚀
+                                    حلقات
                                 </label>
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
                                     <input type="radio" v-model="selectedCategory" value="movies" class="ml-2" disabled>
-                                    أفلام 🚀
+                                    أفلام
                                 </label>
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
                                     <input type="radio" v-model="selectedCategory" value="mangas" class="ml-2" :disabled="isMangaQueueRunning">
-                                    مانغا 🚀
+                                    مانغا
                                 </label>
                             </div>
                         </fieldset>
@@ -1415,6 +1415,19 @@
                             لا
                         </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Limit Reached Modal -->
+            <div v-if="showLimitModal" class="fixed z-[60] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="bg-cyan-900 text-slate-200 font-bold rounded-lg p-6 max-w-md text-center">
+                    <h3 class="text-xl mb-4 text-red-400">عذرًا</h3>
+                    <p class="mb-6 text-lg">متبقي لديك <span class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span> فصل لهذا اليوم.</p>
+                    <button 
+                        @click="showLimitModal = false" 
+                        class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
+                        حسنًا
+                    </button>
                 </div>
             </div>
 
@@ -6886,6 +6899,7 @@
                     mangaQueueProcessId: null,
                     mangaQueueTimeoutId: null,
                     showStopConfirmation: false,
+                    showLimitModal: false,
                     showMangaSentLogModal: false,
                     showMangaFailedLogModal: false,
                     mangaQueueCurrent: {
@@ -18761,7 +18775,7 @@
 
                     // Check daily limit
                     if (this.mangaQueue.length > this.remainingDownloads) {
-                        alert(`عذرًا، متبقي لديك ${this.remainingDownloads} فصل لهذا اليوم.`);
+                        this.showLimitModal = true;
                         return;
                     }
 
