@@ -1272,7 +1272,6 @@
                         <div v-if="isMangaQueueRunning || mangaQueueStats.total > 0" class="space-y-4 mt-4">
                             <!-- Current Chapter Status (only current, not full list) -->
                             <div v-if="mangaQueueCurrent && mangaQueueCurrent.chapter !== null" class="bg-gray-800 p-3 rounded flex items-center justify-between">
-                                <div class="text-gray-400 text-sm">الفصل الحالي</div>
                                 <div class="flex items-center gap-3" dir="ltr">
                                     <span class="text-lg font-bold text-yellow-300">{{ mangaQueueCurrent.chapter }}</span>
                                     <span v-if="mangaQueueCurrent.status === 'sending'" class="inline-flex items-center">
@@ -1401,7 +1400,7 @@
             <div v-if="showMangaSentLogModal" class="fixed z-[70] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-11/12 md:w-2/3 lg:w-1/2 max-h-[85vh] overflow-hidden flex flex-col">
                     <div class="sticky top-0 bg-cyan-900 p-4 flex justify-between items-center border-b border-cyan-700">
-                        <div class="text-lg">سجل الفصول المرسلة ({{ mangaSentLog.length }})</div>
+                        <div class="text-lg">سجل المُرسل ({{ mangaSentLog.length }})</div>
                         <button @click="showMangaSentLogModal = false" class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
                             <span class="text-2xl font-black">✕</span>
                         </button>
@@ -1472,11 +1471,11 @@
                                     <tr v-for="entry in mangaFailedLog" :key="entry.chapter" class="bg-gray-800">
                                         <td class="p-2 border border-cyan-700 text-center text-yellow-300" dir="ltr">
                                             <span class="font-bold">{{ entry.chapter }}</span>
-                                            <span v-if="entry.status === 'success'" class="ml-1">✅</span>
+                                            <span v-if="entry.status === 'success'" class="ml-1"></span>
                                             <span v-else-if="entry.status === 'retrying'" class="ml-1">
                                                 <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
                                             </span>
-                                            <span v-else class="ml-1 text-red-400">❌</span>
+                                            <span v-else class="ml-1 text-red-400"></span>
                                         </td>
                                         <td class="p-2 border border-cyan-700 align-top">
                                             <div class="text-xs text-gray-100 whitespace-pre-wrap break-words max-h-28 overflow-y-auto">
@@ -1491,9 +1490,8 @@
                                             >
                                                 <span v-if="entry.status === 'retrying'" class="inline-flex items-center gap-2">
                                                     <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                                                    جاري...
                                                 </span>
-                                                <span v-else-if="entry.status === 'success'">تم ✅</span>
+                                                <span v-else-if="entry.status === 'success'">✅</span>
                                                 <span v-else>إعادة</span>
                                             </button>
                                         </td>
@@ -18067,7 +18065,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
