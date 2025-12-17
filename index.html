@@ -1428,7 +1428,7 @@
                     </p>
                     <p v-else class="mb-6 text-lg">
                         متبقي لديك 
-                        <span class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span>
+                        <span v-if="remainingDownloads > 2" class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span>
                         {{ remainingDownloadsLabel }} لهذا اليوم.
                     </p>
                     <button 
@@ -18326,7 +18326,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
