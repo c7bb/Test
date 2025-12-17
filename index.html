@@ -1270,6 +1270,19 @@
 
                         <!-- Queue Progress Display -->
                         <div v-if="isMangaQueueRunning || mangaQueueStats.total > 0" class="space-y-4 mt-4">
+                            <!-- Current Chapter Status (only current, not full list) -->
+                            <div v-if="mangaQueueCurrent && mangaQueueCurrent.chapter !== null" class="bg-gray-800 p-3 rounded flex items-center justify-between">
+                                <div class="text-gray-400 text-sm">الفصل الحالي</div>
+                                <div class="flex items-center gap-3" dir="ltr">
+                                    <span class="text-lg font-bold text-yellow-300">{{ mangaQueueCurrent.chapter }}</span>
+                                    <span v-if="mangaQueueCurrent.status === 'sending'" class="inline-flex items-center">
+                                        <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                    </span>
+                                    <span v-else-if="mangaQueueCurrent.status === 'success'" class="text-green-400 text-lg">✅</span>
+                                    <span v-else-if="mangaQueueCurrent.status === 'failed'" class="text-red-400 text-lg">❌</span>
+                                </div>
+                            </div>
+
                             <!-- Progress Bar -->
                             <div class="w-full">
                                 <div class="flex justify-between mb-2 text-sm">
@@ -1298,7 +1311,16 @@
                                 </div>
                                 <div class="bg-gray-800 p-3 rounded">
                                     <div class="text-gray-400">تم الإرسال</div>
-                                    <div class="text-xl font-bold text-green-400">{{ mangaQueueStats.sent }}</div>
+                                    <div class="text-xl font-bold text-green-400">
+                                        <button
+                                            v-if="mangaQueueStats.sent > 0"
+                                            @click="showMangaSentLogModal = true"
+                                            class="underline underline-offset-4 hover:text-green-300 transition-all duration-100 active:scale-90"
+                                        >
+                                            {{ mangaQueueStats.sent }}
+                                        </button>
+                                        <span v-else>{{ mangaQueueStats.sent }}</span>
+                                    </div>
                                 </div>
                                 <div class="bg-gray-800 p-3 rounded">
                                     <div class="text-gray-400">في الانتظار</div>
@@ -1306,7 +1328,16 @@
                                 </div>
                                 <div class="bg-gray-800 p-3 rounded">
                                     <div class="text-gray-400">فشل</div>
-                                    <div class="text-xl font-bold text-red-400">{{ mangaQueueStats.failed }}</div>
+                                    <div class="text-xl font-bold text-red-400">
+                                        <button
+                                            v-if="mangaQueueStats.failed > 0"
+                                            @click="showMangaFailedLogModal = true"
+                                            class="underline underline-offset-4 hover:text-red-300 transition-all duration-100 active:scale-90"
+                                        >
+                                            {{ mangaQueueStats.failed }}
+                                        </button>
+                                        <span v-else>{{ mangaQueueStats.failed }}</span>
+                                    </div>
                                 </div>
                                 <div class="bg-gray-800 p-3 rounded">
                                     <div class="text-gray-400">الوقت المستغرق</div>
@@ -1362,6 +1393,114 @@
                             class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
                             لا
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manga Sent Log Modal -->
+            <div v-if="showMangaSentLogModal" class="fixed z-[70] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-11/12 md:w-2/3 lg:w-1/2 max-h-[85vh] overflow-hidden flex flex-col">
+                    <div class="sticky top-0 bg-cyan-900 p-4 flex justify-between items-center border-b border-cyan-700">
+                        <div class="text-lg">سجل الفصول المرسلة ({{ mangaSentLog.length }})</div>
+                        <button @click="showMangaSentLogModal = false" class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
+                            <span class="text-2xl font-black">✕</span>
+                        </button>
+                    </div>
+                    <div class="p-4 overflow-y-auto flex-1 always-visible-scrollbar">
+                        <div v-if="!mangaSentLog.length" class="text-center text-gray-200">
+                            لا يوجد فصول مرسلة بعد.
+                        </div>
+                        <div v-else class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2" dir="ltr">
+                            <button
+                                v-for="entry in mangaSentLog"
+                                :key="entry.chapter"
+                                class="bg-gray-800 text-yellow-300 px-2 py-1 rounded underline underline-offset-4 hover:bg-gray-700 transition-all duration-100 active:scale-90"
+                                @click="copyText(entry.chapter)"
+                                :title="'انسخ: ' + entry.chapter"
+                            >
+                                {{ entry.chapter }}
+                            </button>
+                        </div>
+                        <div v-if="mangaSentLog.length" class="text-xs text-gray-300 mt-3">
+                            اضغط على رقم الفصل لنسخه.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manga Failed Log Modal -->
+            <div v-if="showMangaFailedLogModal" class="fixed z-[70] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-11/12 md:w-5/6 lg:w-2/3 max-h-[85vh] overflow-hidden flex flex-col">
+                    <div class="sticky top-0 bg-cyan-900 p-4 flex justify-between items-center border-b border-cyan-700">
+                        <div class="text-lg">سجل الفشل ({{ mangaFailedLog.length }})</div>
+                        <button @click="showMangaFailedLogModal = false" class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
+                            <span class="text-2xl font-black">✕</span>
+                        </button>
+                    </div>
+                    <div class="p-4 overflow-y-auto flex-1 always-visible-scrollbar space-y-3">
+                        <div class="flex gap-3 items-center justify-between flex-wrap">
+                            <button
+                                @click="retryAllFailedMangas"
+                                :disabled="isRetryAllFailedRunning || !mangaFailedLog.some(e => e.status !== 'success')"
+                                class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            >
+                                <span v-if="isRetryAllFailedRunning" class="inline-flex items-center gap-2">
+                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                    جاري الإرسال ({{ retryAllFailedProgress.done }}/{{ retryAllFailedProgress.total }})
+                                </span>
+                                <span v-else>إعادة إرسال الكل</span>
+                            </button>
+                            <div class="text-xs text-gray-200">
+                                اضغط على "إعادة" لكل فصل أو "إعادة إرسال الكل".
+                            </div>
+                        </div>
+
+                        <div v-if="!mangaFailedLog.length" class="text-center text-gray-200">
+                            لا يوجد فصول فاشلة.
+                        </div>
+
+                        <div v-else class="overflow-x-auto">
+                            <table class="w-full table-fixed border border-cyan-700 rounded">
+                                <thead class="bg-cyan-800">
+                                    <tr>
+                                        <th class="p-2 border border-cyan-700 w-24">الفصل</th>
+                                        <th class="p-2 border border-cyan-700">الخطأ</th>
+                                        <th class="p-2 border border-cyan-700 w-36">إعادة</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="entry in mangaFailedLog" :key="entry.chapter" class="bg-gray-800">
+                                        <td class="p-2 border border-cyan-700 text-center text-yellow-300" dir="ltr">
+                                            <span class="font-bold">{{ entry.chapter }}</span>
+                                            <span v-if="entry.status === 'success'" class="ml-1">✅</span>
+                                            <span v-else-if="entry.status === 'retrying'" class="ml-1">
+                                                <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                            </span>
+                                            <span v-else class="ml-1 text-red-400">❌</span>
+                                        </td>
+                                        <td class="p-2 border border-cyan-700 align-top">
+                                            <div class="text-xs text-gray-100 whitespace-pre-wrap break-words max-h-28 overflow-y-auto">
+                                                {{ entry.error }}
+                                            </div>
+                                        </td>
+                                        <td class="p-2 border border-cyan-700 text-center">
+                                            <button
+                                                @click="retryFailedManga(entry)"
+                                                :disabled="entry.status === 'success' || entry.status === 'retrying' || isRetryAllFailedRunning"
+                                                class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                            >
+                                                <span v-if="entry.status === 'retrying'" class="inline-flex items-center gap-2">
+                                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                                    جاري...
+                                                </span>
+                                                <span v-else-if="entry.status === 'success'">تم ✅</span>
+                                                <span v-else>إعادة</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -6739,6 +6878,17 @@
                     mangaQueueProcessId: null,
                     mangaQueueTimeoutId: null,
                     showStopConfirmation: false,
+                    showMangaSentLogModal: false,
+                    showMangaFailedLogModal: false,
+                    mangaQueueCurrent: {
+                        chapter: null,
+                        status: null, // 'sending' | 'success' | 'failed'
+                        error: null,
+                    },
+                    mangaSentLog: [], // [{ chapter, fileId, sentAt }]
+                    mangaFailedLog: [], // [{ chapter, fileId, fileSize, error, status, attempts }]
+                    isRetryAllFailedRunning: false,
+                    retryAllFailedProgress: { done: 0, total: 0 },
                     mangaQueueStats: {
                         total: 0,
                         sent: 0,
@@ -18202,6 +18352,117 @@
                     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
                 },
 
+                copyText(text) {
+                    try {
+                        const value = String(text ?? '');
+                        if (!value) return;
+                        if (navigator?.clipboard?.writeText) {
+                            navigator.clipboard.writeText(value);
+                            return;
+                        }
+                        // Fallback
+                        const textarea = document.createElement('textarea');
+                        textarea.value = value;
+                        textarea.style.position = 'fixed';
+                        textarea.style.left = '-9999px';
+                        document.body.appendChild(textarea);
+                        textarea.focus();
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                    } catch (e) {
+                        // best-effort copy
+                    }
+                },
+
+                buildMangaCaption(chapter, fileSize) {
+                    const sizeText = (fileSize !== undefined && fileSize !== null)
+                        ? this.formatFileSize(fileSize, true)
+                        : '';
+                    return sizeText
+                        ? `*الفصل: ${chapter}\nالحجم: ${sizeText}*`
+                        : `*الفصل: ${chapter}*`;
+                },
+
+                recordMangaSuccess(manga) {
+                    const chapter = String(manga?.MangaNumber ?? '');
+                    if (!chapter) return;
+                    const fileId = manga?.MangaFileID;
+
+                    // Mark failed row as success (if exists)
+                    const failedEntry = this.mangaFailedLog.find(e => e.chapter === chapter);
+                    if (failedEntry) {
+                        failedEntry.status = 'success';
+                        failedEntry.error = '';
+                    }
+
+                    // Add to sent log (unique by chapter)
+                    const existing = this.mangaSentLog.find(e => e.chapter === chapter);
+                    if (!existing) {
+                        this.mangaSentLog.push({ chapter, fileId, sentAt: Date.now() });
+                    }
+                },
+
+                recordMangaFailure(manga, error) {
+                    const chapter = String(manga?.MangaNumber ?? '');
+                    if (!chapter) return;
+                    const fileId = manga?.MangaFileID;
+                    const fileSize = manga?.MangaFileSize;
+                    const message = String(error?.message ?? error ?? 'Unknown error');
+
+                    const existing = this.mangaFailedLog.find(e => e.chapter === chapter);
+                    if (existing) {
+                        existing.error = message; // overwrite error
+                        existing.fileId = fileId ?? existing.fileId;
+                        existing.fileSize = fileSize ?? existing.fileSize;
+                        existing.status = 'failed';
+                        existing.attempts = (existing.attempts || 1) + 1;
+                    } else {
+                        this.mangaFailedLog.push({
+                            chapter,
+                            fileId,
+                            fileSize,
+                            error: message,
+                            status: 'failed',
+                            attempts: 1,
+                        });
+                    }
+                },
+
+                async retryFailedManga(entry) {
+                    if (!entry || entry.status === 'success' || entry.status === 'retrying') return;
+                    entry.status = 'retrying';
+                    try {
+                        await this.sendMangaResponse(entry.fileId, this.buildMangaCaption(entry.chapter, entry.fileSize));
+                        entry.status = 'success';
+                        entry.error = entry.error || '';
+                        // also record as success
+                        this.recordMangaSuccess({ MangaNumber: entry.chapter, MangaFileID: entry.fileId });
+                    } catch (error) {
+                        entry.status = 'failed';
+                        entry.error = String(error?.message ?? error ?? 'Unknown error'); // overwrite
+                    }
+                },
+
+                async retryAllFailedMangas() {
+                    if (this.isRetryAllFailedRunning) return;
+                    const retryables = this.mangaFailedLog.filter(e => e.status !== 'success');
+                    if (!retryables.length) return;
+
+                    this.isRetryAllFailedRunning = true;
+                    this.retryAllFailedProgress = { done: 0, total: retryables.length };
+                    try {
+                        for (const entry of retryables) {
+                            await this.retryFailedManga(entry);
+                            this.retryAllFailedProgress.done += 1;
+                            // delay between retries (queue-style)
+                            await new Promise(resolve => setTimeout(resolve, this.fastingStatusClearTimeout));
+                        }
+                    } finally {
+                        this.isRetryAllFailedRunning = false;
+                    }
+                },
+
                 handleMangaNumberFocus(field) {
                     // When focusing on empty field, set to min value
                     if (this[field] === null || this[field] === undefined || this[field] === '') {
@@ -18340,14 +18601,20 @@
                         this.isMangaQueueSending = true;
                         const currentIndex = this.mangaQueueIndex;
                         const manga = this.mangaQueue[currentIndex];
+                        // Show only the current chapter status
+                        this.mangaQueueCurrent.chapter = manga?.MangaNumber ?? null;
+                        this.mangaQueueCurrent.status = 'sending';
+                        this.mangaQueueCurrent.error = null;
                         
                         // Update waiting count before sending
                         this.mangaQueueStats.waiting = this.mangaQueue.length - currentIndex - 1;
 
                         try {
-                            await this.sendMangaResponse(manga.MangaFileID, `*الفصل: ${manga.MangaNumber}\nالحجم: ${this.formatFileSize(manga.MangaFileSize, true)}*`);
+                            await this.sendMangaResponse(manga.MangaFileID, this.buildMangaCaption(manga.MangaNumber, manga.MangaFileSize));
                             // Only increment if we're still on the same index (prevent duplicates)
                             if (this.mangaQueueIndex === currentIndex) {
+                                this.mangaQueueCurrent.status = 'success';
+                                this.recordMangaSuccess(manga);
                                 this.mangaQueueStats.sent++;
                                 this.mangaQueueIndex++;
                                 // Update waiting count after increment
@@ -18361,6 +18628,9 @@
                             console.error(error);
                             // Only increment if we're still on the same index
                             if (this.mangaQueueIndex === currentIndex) {
+                                this.mangaQueueCurrent.status = 'failed';
+                                this.mangaQueueCurrent.error = String(error?.message ?? error ?? 'Unknown error');
+                                this.recordMangaFailure(manga, error);
                                 this.mangaQueueStats.failed++;
                                 this.mangaQueueIndex++;
                                 // Update waiting count after increment
@@ -18438,6 +18708,14 @@
                     this.mangaQueueStartTime = null;
                     this.mangaQueuePausedTime = 0;
                     this.mangaQueueTotalPausedTime = 0;
+                    // Clear UI/log state
+                    this.mangaQueueCurrent = { chapter: null, status: null, error: null };
+                    this.mangaSentLog = [];
+                    this.mangaFailedLog = [];
+                    this.showMangaSentLogModal = false;
+                    this.showMangaFailedLogModal = false;
+                    this.isRetryAllFailedRunning = false;
+                    this.retryAllFailedProgress = { done: 0, total: 0 };
                     document.body.style.overflow = '';
                 },
 
