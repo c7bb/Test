@@ -1260,7 +1260,7 @@
                             </div>
                             <button 
                                 @click="startMangaQueue" 
-                                :disabled="mangaStartNumber === null || mangaStartNumber === undefined || mangaEndNumber === null || mangaEndNumber === undefined || mangaStartNumber > mangaEndNumber || mangaStartNumber < minMangaNumber || mangaEndNumber > maxMangaNumber"
+                                :disabled="mangaStartNumber === null || mangaStartNumber === undefined || mangaEndNumber === null || mangaEndNumber === undefined || mangaStartNumber > mangaEndNumber || mangaStartNumber < minMangaNumber || mangaEndNumber > maxMangaNumber || isRetryAllFailedRunning"
                                 class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
                                 إرسال المانغا
                             </button>
@@ -1365,7 +1365,8 @@
                             <div v-if="!isMangaQueueRunning && mangaQueueStats.total > 0" class="flex gap-4 mt-4">
                                 <button 
                                     @click="resetMangaQueue" 
-                                    class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 transition-all duration-100 active:scale-90 font-bold">
+                                    :disabled="isAnyMangaQueueRunning"
+                                    class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
                                     إرسال جديد
                                 </button>
                             </div>
@@ -1433,7 +1434,7 @@
                         <div v-if="!allFailedMangaRowsSucceeded" class="flex gap-3 items-center justify-center flex-wrap">
                             <button
                                 @click="retryAllFailedMangas"
-                                :disabled="isRetryAllFailedRunning || !mangaFailedLog.some(e => e.status !== 'success')"
+                                :disabled="isRetryAllFailedRunning || !mangaFailedLog.some(e => e.status !== 'success') || isMangaQueueRunning"
                                 class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                             >
                                 <span v-if="isRetryAllFailedRunning" class="inline-flex items-center gap-2">
@@ -1472,7 +1473,7 @@
                                             <button
                                                 v-else
                                                 @click="retryFailedManga(entry)"
-                                                :disabled="entry.status === 'retrying' || isRetryAllFailedRunning"
+                                                :disabled="entry.status === 'retrying' || isRetryAllFailedRunning || isMangaQueueRunning"
                                                 class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                                             >
                                                 <span v-if="entry.status === 'retrying'" class="inline-flex items-center gap-2">
@@ -7868,6 +7869,10 @@
 
                 allFailedMangaRowsSucceeded() {
                     return this.mangaFailedLog.length > 0 && this.mangaFailedLog.every(e => e.status === 'success');
+                },
+
+                isAnyMangaQueueRunning() {
+                    return this.isMangaQueueRunning || this.isRetryAllFailedRunning;
                 },
 
                 sortedMangaSentLog() {
@@ -14617,6 +14622,10 @@
 
                 updateInactivityCountdown() {
                     if (this.inactivityModal) return;
+                    // Pause countdown when any manga queue is running
+                    if (this.isAnyMangaQueueRunning) {
+                        return;
+                    }
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - this.lastActivityAt) / 1000);
                     const remaining = this.inactivityDurationSeconds - elapsedSeconds;
@@ -18457,6 +18466,8 @@
                 },
 
                 async retryAllFailedMangas() {
+                    // Prevent starting if main queue is running
+                    if (this.isMangaQueueRunning) return;
                     if (this.isRetryAllFailedRunning) return;
                     const retryables = this.mangaFailedLog.filter(e => e.status !== 'success');
                     if (!retryables.length) return;
@@ -18506,6 +18517,10 @@
                 },
 
                 startMangaQueue() {
+                    // Prevent starting if retry queue is running
+                    if (this.isRetryAllFailedRunning) {
+                        return;
+                    }
                     if (this.mangaStartNumber === null || this.mangaStartNumber === undefined || 
                         this.mangaEndNumber === null || this.mangaEndNumber === undefined || 
                         this.mangaStartNumber > this.mangaEndNumber) {
