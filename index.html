@@ -18681,7 +18681,19 @@
                     if (!entry || entry.status === 'success' || entry.status === 'retrying') return;
                     entry.status = 'retrying';
                     try {
+                        // Check daily limit before attempting resend
+                        const canDownload = await this.checkDailyLimit();
+                        if (!canDownload) {
+                            entry.status = 'failed';
+                            entry.error = `لقد وصلت للحد اليومي (${this.maxDailyDownloads}). المتبقي: ${this.remainingDownloads}.`;
+                            this.showLimitModal = true;
+                            return;
+                        }
+                        
                         await this.sendMangaResponse(entry.fileId, this.buildMangaCaption(entry.chapter, entry.fileSize));
+                        // Increment daily limit only on success
+                        await this.incrementDailyLimit();
+                        
                         entry.status = 'success';
                         entry.error = '';
                         // Move this chapter from failed → sent in the aggregate stats
