@@ -14693,7 +14693,7 @@
                         } 
                     };
 
-                    this.db.subscribe(query, (resp) => {
+                    this.db.subscribeQuery(query, (resp) => {
                         if (resp.error) {
                             console.error('InstantDB subscription error:', resp.error);
                             return;
@@ -14742,9 +14742,17 @@
                     
                     if (!id) {
                         id = instantDB.id();
+                        // If creating new row, ensure count starts correctly
+                        // But since we use update, we need to be careful.
+                        // Ideally we should have one row per user per day.
                     }
 
                     try {
+                        // Use atomic increment if possible or rely on optimistic update from dailyDownloads
+                        // Better approach: Since we have the ID, we update that specific row.
+                        // If ID was null (new row), we create it.
+                        
+                        // We use `update` which serves as upsert if ID is new.
                         await this.db.transact(
                             this.db.tx.daily_downloads[id].update({
                                 userId: userId,
