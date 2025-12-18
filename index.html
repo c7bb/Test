@@ -1511,7 +1511,7 @@
                             <!-- Queue Controls -->
                              <button
                                 @click="startFailedQueue"
-                                :disabled="checkAnyRetryRunning() || failedMangaQueue.length === 0 || (isMangaQueueRunning && !isMangaQueuePaused)"
+                                :disabled="checkAnyRetryRunning() || failedMangaQueue.length === 0"
                                 class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-80 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                             >
                                 <span v-if="isRetryQueueRunning" class="inline-flex items-center gap-2">
@@ -18959,7 +18959,11 @@
                 },
                 
                 async startFailedQueue() {
-                    if (this.isRetryQueueRunning || this.isMangaQueueRunning || this.isRetryAllFailedRunning) return;
+                    if (this.isRetryQueueRunning || this.isRetryAllFailedRunning) return;
+                    // If main queue is running and NOT paused, we cannot start.
+                    // BUT if it IS paused, we CAN start.
+                    if (this.isMangaQueueRunning && !this.isMangaQueuePaused) return;
+
                     if (this.failedMangaQueue.length === 0) {
                          alert('القائمة فارغة');
                          return;
@@ -19073,7 +19077,9 @@
 
                 // Modified retryFailedManga to check concurrency
                 async retryFailedMangaWrapped(entry) {
-                    if (this.checkAnyRetryRunning()) return;
+                    if (this.isRetryAllFailedRunning || this.isRetryQueueRunning) return;
+                    if (this.isMangaQueueRunning && !this.isMangaQueuePaused) return;
+                    
                     await this.retryFailedManga(entry);
                 },
 
