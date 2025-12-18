@@ -1239,11 +1239,15 @@
                                 <div class="flex justify-between items-center">
                                     <span>التحميلات اليومية:</span>
                                     <span :class="{'text-green-400': remainingDownloads > 20, 'text-yellow-400': remainingDownloads <= 20 && remainingDownloads > 0, 'text-red-500': remainingDownloads === 0}">
-                                        {{ dailyDownloads + pendingDailyIncrements }} / {{ maxDailyDownloads }}
+                                        {{ dailyDownloads }} / {{ maxDailyDownloads }}
+                                        <span v-if="pendingDailyIncrements > 0" class="ml-2 text-cyan-300 text-xs inline-flex items-center gap-1">
+                                            <span class="animate-spin rounded-full h-3 w-3 border-b-2 border-cyan-300"></span>
+                                            +{{ pendingDailyIncrements }}
+                                        </span>
                                     </span>
                                 </div>
                                 <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1">
-                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: ((dailyDownloads + pendingDailyIncrements) / maxDailyDownloads * 100) + '%' }"></div>
+                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (dailyDownloads / maxDailyDownloads * 100) + '%' }"></div>
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
                                     <span>المتبقي: {{ remainingDownloads }}</span>
