@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>
+<head> 
     <script>
         // Immediate cleanup function
         (function() {
@@ -1537,7 +1537,7 @@
                                 v-if="isRetryQueueRunning || isRetryQueuePaused"
                                 @click="toggleRetryQueuePause" 
                                 :disabled="isRetryQueuePauseRequested"
-                                class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                class="bg-yellow-500 text-black px-4 py-2 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
                                 {{ isRetryQueuePauseRequested ? 'جاري الإيقاف...' : (isRetryQueuePaused ? 'استئناف الطابور' : 'إيقاف مؤقت للطابور') }}
                             </button>
 
@@ -18891,6 +18891,16 @@
                     } else {
                         // Remove successful rows from failed log before closing
                         this.mangaFailedLog = this.mangaFailedLog.filter(e => e.status !== 'success');
+                        this.failedMangaQueue = [];
+                        this.failedQueueStats = {
+                            total: 0,
+                            sent: 0,
+                            failed: 0,
+                            waiting: 0,
+                            elapsedTime: 0,
+                            remainingTime: 0
+                        };
+                        this.retryQueueCurrent = { chapter: null, status: null, error: null };
                         this.showMangaFailedLogModal = false;
                     }
                 },
