@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>
     <script>
         // Immediate cleanup function
         (function() {
@@ -19111,6 +19111,18 @@
                 confirmStopAndCloseFailedModal() {
                     this.isRetryAllFailedRunning = false;
                     this.isRetryQueueRunning = false;
+                    this.isRetryQueuePaused = false;
+                    this.isRetryQueuePauseRequested = false;
+                    this.failedMangaQueue = [];
+                    this.failedQueueStats = {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    };
+                    this.retryQueueCurrent = { chapter: null, status: null, error: null };
                     this.showRetryStopConfirmation = false;
                     this.showMangaFailedLogModal = false;
                 },
@@ -19395,22 +19407,6 @@
                     this.showMangaFailedLogModal = false;
                     this.isRetryAllFailedRunning = false;
                     this.retryAllFailedProgress = { done: 0, total: 0 };
-                    // Clear Retry Queue State
-                    this.failedMangaQueue = [];
-                    this.failedQueueStats = {
-                        total: 0,
-                        sent: 0,
-                        failed: 0,
-                        waiting: 0,
-                        elapsedTime: 0,
-                        remainingTime: 0
-                    };
-                    this.retryQueueCurrent = { chapter: null, status: null, error: null };
-                    this.isRetryQueueRunning = false;
-                    this.isRetryQueuePaused = false;
-                    this.isRetryQueuePauseRequested = false;
-                    this.showRetryStopConfirmation = false;
-                    
                     document.body.style.overflow = '';
                 },
 
