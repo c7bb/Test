@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head> 
+<head>
     <script>
         // Immediate cleanup function
         (function() {
@@ -7834,16 +7834,6 @@
                     const diff = target - now;
                     if (diff < 0) return "00:00:00"; // Should not happen with setUTCHours(24)
 
-                    // Trigger reset if timer reached 00:00:00
-                    if (Math.floor(diff / 1000) === 0) {
-                         const currentToday = this.getTrustedTodayISO();
-                         // Only reset if the date has actually advanced or it's a forced test reset
-                         if (this.trustedToday !== currentToday || this.testMinuteReset) {
-                             console.log('Reset timer reached zero - triggering daily reset...');
-                             this.resetDailyLimitForNewDay();
-                         }
-                    }
-
                     const hours = Math.floor(diff / (1000 * 60 * 60));
                     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -14770,7 +14760,30 @@
                     
                     // Force update trustedToday
                     this.trustedToday = this.getTrustedTodayISO();
-                    const id = this.getDailyLimitId();
+                    
+                    // Check if we already have a record for today to avoid duplicates
+                    if (this.dailyLimitRowId && this.dailyLimitDate === this.trustedToday) {
+                         console.log('Daily limit already exists for today:', this.trustedToday);
+                         // Just ensure count is 0 if needed, but usually if date matches, we are good or it's the current record
+                         if (this.dailyDownloads > 0) {
+                             // Reset count on existing record
+                             try {
+                                 await this._db.transact(
+                                     this._db.tx.dailyLimitDownloadsMangas[this.dailyLimitRowId].update({
+                                         count: 0
+                                     })
+                                 );
+                                 this.dailyDownloads = 0;
+                                 console.log('Reset count on existing record for today');
+                             } catch (e) {
+                                 console.error('DB Reset Update Error', e);
+                             }
+                         }
+                         return;
+                    }
+
+                    // Double check subscription data in case local state is stale
+                    // (Though subscription updates should keep local state fresh)
                     
                     // Note: We don't need to update the subscription query because it only filters by userId,
                     // not by date. The subscription will automatically pick up the updated record
@@ -14791,6 +14804,7 @@
                         
                         this.dailyDownloads = 0;
                         this.dailyLimitRowId = newId;
+                        this.dailyLimitDate = this.trustedToday; // Ensure we track the date of the row ID
                         console.log('Daily limit reset successful. New record created for:', this.trustedToday);
                     } catch (e) {
                         console.error('DB Reset Error', e);
@@ -14815,10 +14829,27 @@
                             setInterval(() => {
                                 this.now = Date.now();
                                 
-                                // Check if date changed (midnight crossing)
+                                // Check for reset time (UTC midnight or test reset)
+                                // Use the same logic as timeUntilReset calculation
+                                const tick = this.now;
+                                const now = this.getTrustedDate();
+                                const target = new Date(now);
+                                if (this.testMinuteReset) {
+                                    target.setUTCSeconds(0, 0);
+                                    target.setUTCMinutes(target.getUTCMinutes() + 1);
+                                } else {
+                                    target.setUTCHours(24, 0, 0, 0);
+                                }
+                                const diff = target - now;
+                                
+                                // Check if we hit the reset moment (diff is 0 or very close to it, or we just crossed it)
+                                // Also robustly check if the date string has changed
                                 const currentToday = this.getTrustedTodayISO();
-                                if (this.trustedToday !== currentToday) {
-                                    console.log('Date changed from', this.trustedToday, 'to', currentToday, '- Resetting daily limit on stable row...');
+                                
+                                // Trigger if date changed OR if we hit the explicit timer (for minute tests)
+                                // And avoid duplicate triggers by checking if we already handled this date
+                                if (this.trustedToday !== currentToday || (this.testMinuteReset && Math.floor(diff / 1000) === 0)) {
+                                    console.log('Reset trigger: Date changed or timer hit zero. Old:', this.trustedToday, 'New:', currentToday);
                                     this.resetDailyLimitForNewDay();
                                 }
                             }, 1000);
@@ -18392,7 +18423,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-	
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
