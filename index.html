@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head> 
+<head>  
     <script>
         // Immediate cleanup function
         (function() {
@@ -1239,7 +1239,7 @@
                                 <div class="flex justify-between items-center">
                                     <span>التحميلات اليومية:</span>
                                     <span :class="{'text-green-400': remainingDownloads > 20, 'text-yellow-400': remainingDownloads <= 20 && remainingDownloads > 0, 'text-red-500': remainingDownloads === 0}">
-                                        <span v-if="pendingDailyIncrements > 0" class="mr-2 text-cyan-300 text-xs inline-flex items-center gap-1">+{{ pendingDailyIncrements }}</span>
+                                        <span v-if="pendingDailyIncrements > 0" class="mr-2 text-cyan-300 text-xs inline-flex items-center gap-1">{{ pendingDailyIncrements }}+</span>
                                         {{ dailyDownloads }} / {{ maxDailyDownloads }}
                                     </span>
                                 </div>
