@@ -1418,6 +1418,26 @@
                 </div>
             </div>
 
+            <!-- Retry Stop Confirmation Modal -->
+            <div v-if="showRetryStopConfirmation" class="fixed z-[75] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="bg-cyan-900 text-slate-200 font-bold rounded-lg p-6 max-w-md">
+                    <h3 class="text-xl mb-4">تأكيد الإغلاق والإيقاف</h3>
+                    <p class="mb-6">هناك عمليات جارية (إعادة إرسال/طابور). هل تريد إيقافها وإغلاق النافذة؟</p>
+                    <div class="flex gap-4">
+                        <button 
+                            @click="confirmStopAndCloseFailedModal" 
+                            class="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all duration-100 active:scale-90">
+                            نعم
+                        </button>
+                        <button 
+                            @click="showRetryStopConfirmation = false" 
+                            class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
+                            لا
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Limit Reached Modal -->
             <div v-if="showLimitModal" class="fixed z-[60] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
@@ -1478,17 +1498,44 @@
                         <div v-if="!allFailedMangaRowsSucceeded" class="flex gap-3 items-center justify-center flex-wrap">
                             <button
                                 @click="retryAllFailedMangas"
-                                :disabled="isRetryAllFailedRunning || !mangaFailedLog.some(e => e.status !== 'success') || (isMangaQueueRunning && !isMangaQueuePaused)"
-                                class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                :disabled="checkAnyRetryRunning() || !mangaFailedLog.some(e => e.status !== 'success') || (isMangaQueueRunning && !isMangaQueuePaused)"
+                                class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-80 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                             >
+                                <span v-if="isRetryAllFailedRunning" class="inline-flex items-center gap-2">
+                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                    جاري الإرسال ({{ retryAllFailedProgress.done }}/{{ retryAllFailedProgress.total }})
+                                </span>
                                 <span v-else>إعادة إرسال الكل</span>
                             </button>
-                        </div>
 
-                        <span v-if="isRetryAllFailedRunning" class="inline-flex items-center gap-2">
-                            <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                            جاري الإرسال ({{ retryAllFailedProgress.done }}/{{ retryAllFailedProgress.total }})
-                        </span>
+                            <!-- Queue Controls -->
+                             <button
+                                @click="startFailedQueue"
+                                :disabled="checkAnyRetryRunning() || failedMangaQueue.length === 0 || (isMangaQueueRunning && !isMangaQueuePaused)"
+                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-80 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                            >
+                                <span v-if="isRetryQueueRunning" class="inline-flex items-center gap-2">
+                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                    جاري المعالجة ({{ mangaQueueStats.sent }}/{{ mangaQueueStats.total }})
+                                </span>
+                                <span v-else>بدء الطابور</span>
+                            </button>
+
+                            <button 
+                                v-if="isRetryQueueRunning || isRetryQueuePaused"
+                                @click="toggleRetryQueuePause" 
+                                :disabled="isRetryQueuePauseRequested"
+                                class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                {{ isRetryQueuePauseRequested ? 'جاري الإيقاف...' : (isRetryQueuePaused ? 'استئناف الطابور' : 'إيقاف مؤقت للطابور') }}
+                            </button>
+
+                            <button 
+                                v-if="isRetryQueueRunning || isRetryQueuePaused"
+                                @click="cancelRetryQueue" 
+                                class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all duration-100 active:scale-90 font-bold">
+                                إلغاء الطابور
+                            </button>
+                        </div>
 
                         <div v-if="!mangaFailedLog.length" class="text-center text-gray-200">
                             لا يوجد فصول فاشلة.
@@ -1500,7 +1547,7 @@
                                     <tr>
                                         <th class="p-2 border border-cyan-700 w-24">الفصل</th>
                                         <th v-if="!allFailedMangaRowsSucceeded" class="p-2 border border-cyan-700">الخطأ</th>
-                                        <th class="p-2 border border-cyan-700 w-36">إعادة</th>
+                                        <th class="p-2 border border-cyan-700 w-36">إجراءات</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -1515,17 +1562,27 @@
                                         </td>
                                         <td class="p-2 border border-cyan-700 text-center">
                                             <span v-if="entry.status === 'success'" class="text-green-400 text-xl">✅</span>
-                                            <button
-                                                v-else
-                                                @click="retryFailedManga(entry)"
-                                                :disabled="entry.status === 'retrying' || isRetryAllFailedRunning || (isMangaQueueRunning && !isMangaQueuePaused)"
-                                                class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                            >
-                                                <span v-if="entry.status === 'retrying'" class="inline-flex items-center gap-2">
-                                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                                                </span>
-                                                <span v-else>إعادة</span>
-                                            </button>
+                                            <div v-else class="flex flex-col gap-2">
+                                                <button
+                                                    @click="retryFailedMangaWrapped(entry)"
+                                                    :disabled="entry.status === 'retrying' || checkAnyRetryRunning() || (isMangaQueueRunning && !isMangaQueuePaused)"
+                                                    class="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                                >
+                                                    <span v-if="entry.status === 'retrying'" class="inline-flex items-center gap-2">
+                                                        <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                                    </span>
+                                                    <span v-else>إعادة</span>
+                                                </button>
+                                                
+                                                <button
+                                                    @click="toggleFailedQueue(entry)"
+                                                    :disabled="isRetryQueueRunning || isRetryAllFailedRunning"
+                                                    class="px-3 py-2 rounded transition-all duration-100 active:scale-90 text-sm font-bold"
+                                                    :class="getQueueRank(entry) > 0 ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'bg-gray-600 hover:bg-gray-500 text-gray-200'"
+                                                >
+                                                    {{ getQueueRank(entry) > 0 ? 'ر.ط: ' + getQueueRank(entry) : 'طابور' }}
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -6920,6 +6977,12 @@
                     mangaFailedLog: [], // [{ chapter, fileId, fileSize, error, status, attempts }]
                     isRetryAllFailedRunning: false,
                     retryAllFailedProgress: { done: 0, total: 0 },
+                    // New Queue & Retry States
+                    isRetryQueueRunning: false,
+                    isRetryQueuePaused: false,
+                    isRetryQueuePauseRequested: false,
+                    showRetryStopConfirmation: false,
+                    failedMangaQueue: [], // Array of objects { chapter, ... } reference from mangaFailedLog
                     mangaQueueStats: {
                         total: 0,
                         sent: 0,
@@ -18854,6 +18917,164 @@
                     } finally {
                         this.isRetryAllFailedRunning = false;
                     }
+                },
+
+                // --- Retry Queue & Enhanced Logic ---
+
+                toggleFailedQueue(entry) {
+                    const index = this.failedMangaQueue.findIndex(e => e.chapter === entry.chapter);
+                    if (index === -1) {
+                        this.failedMangaQueue.push(entry);
+                    } else {
+                        this.failedMangaQueue.splice(index, 1);
+                    }
+                },
+
+                getQueueRank(entry) {
+                    const index = this.failedMangaQueue.findIndex(e => e.chapter === entry.chapter);
+                    return index > -1 ? index + 1 : 0;
+                },
+
+                toggleRetryQueuePause() {
+                    if (this.isRetryQueuePaused) {
+                        this.isRetryQueuePaused = false;
+                        this.isRetryQueuePauseRequested = false;
+                        if (this.mangaQueuePausedTime > 0) {
+                             this.mangaQueueTotalPausedTime += (Date.now() - this.mangaQueuePausedTime);
+                             this.mangaQueuePausedTime = 0;
+                        }
+                    } else {
+                        this.isRetryQueuePauseRequested = true;
+                    }
+                },
+
+                cancelRetryQueue() {
+                    this.isRetryQueueRunning = false;
+                    this.isRetryQueuePaused = false;
+                    this.isRetryQueuePauseRequested = false;
+                    this.failedMangaQueue = []; // Clear queue? Or just stop? "Cancel" usually implies stopping.
+                    // "Cancel Queue" -> "إلغاء الطابور". Could mean clear it or just stop processing.
+                    // Given "Start", "Pause", "Cancel", likely means Stop & Clear or Stop.
+                    // I'll just stop it.
+                },
+                
+                async startFailedQueue() {
+                    if (this.isRetryQueueRunning || this.isMangaQueueRunning || this.isRetryAllFailedRunning) return;
+                    if (this.failedMangaQueue.length === 0) {
+                         alert('القائمة فارغة');
+                         return;
+                    }
+
+                    // Check daily limit
+                    if (this.failedMangaQueue.length > this.remainingDownloads) {
+                        this.showLimitModal = true;
+                        return;
+                    }
+
+                    this.isRetryQueueRunning = true;
+                    this.isRetryQueuePaused = false;
+                    this.isRetryQueuePauseRequested = false;
+                    
+                    this.mangaQueueStats = {
+                        total: this.failedMangaQueue.length,
+                        sent: 0,
+                        failed: 0,
+                        waiting: this.failedMangaQueue.length,
+                        elapsedTime: 0,
+                        remainingTime: this.failedMangaQueue.length * (this.fastingStatusClearTimeout / 1000)
+                    };
+                    
+                    this.mangaQueueStartTime = Date.now();
+                    this.mangaQueuePausedTime = 0;
+                    this.mangaQueueTotalPausedTime = 0;
+
+                    this.processFailedQueue();
+                },
+
+                async processFailedQueue() {
+                     // Iterate through the queue
+                     // We use a simpler loop since we don't need to support "jumping" like the main queue
+                     // But we need to handle pause/resume and dynamic removal.
+                     
+                     // We'll process index 0 until queue is empty or stopped
+                     // BUT if we don't remove items, we iterate index.
+                     // Let's iterate index.
+                     
+                     let i = 0;
+                     while (i < this.failedMangaQueue.length && this.isRetryQueueRunning) {
+                         // Check Pause
+                         if (this.isRetryQueuePauseRequested) {
+                             this.isRetryQueuePaused = true;
+                             this.isRetryQueuePauseRequested = false;
+                             this.mangaQueuePausedTime = Date.now();
+                         }
+                         
+                         if (this.isRetryQueuePaused) {
+                             await new Promise(r => setTimeout(r, 100));
+                             continue; // Retry loop to check pause again
+                         }
+
+                         const entry = this.failedMangaQueue[i];
+                         
+                         // Check daily limit again
+                         const canDownload = await this.checkDailyLimit();
+                         if (!canDownload) {
+                             this.showLimitModal = true;
+                             this.isRetryQueueRunning = false;
+                             break;
+                         }
+
+                         try {
+                             entry.status = 'retrying';
+                             const caption = this.buildMangaCaption(entry.chapter, entry.fileSize);
+                             await this.sendMangaResponse(entry.fileId, caption);
+                             
+                             await this.incrementDailyLimit();
+                             this.recordMangaSuccess({ MangaNumber: entry.chapter });
+                             this.mangaQueueStats.sent++;
+                             entry.status = 'success';
+                         } catch (error) {
+                             console.error(error);
+                             entry.status = 'failed';
+                             entry.error = String(error);
+                             this.mangaQueueStats.failed++;
+                         }
+                         
+                         i++;
+                         this.mangaQueueStats.waiting = this.failedMangaQueue.length - i;
+                         
+                         // Delay
+                         if (i < this.failedMangaQueue.length) {
+                             await new Promise(r => setTimeout(r, this.fastingStatusClearTimeout));
+                         }
+                     }
+                     
+                     this.isRetryQueueRunning = false;
+                },
+                
+                checkAnyRetryRunning() {
+                    return this.isRetryAllFailedRunning || this.isRetryQueueRunning || this.mangaFailedLog.some(e => e.status === 'retrying');
+                },
+
+                closeMangaFailedLogModal() {
+                    if (this.checkAnyRetryRunning()) {
+                        this.showRetryStopConfirmation = true;
+                    } else {
+                        this.showMangaFailedLogModal = false;
+                    }
+                },
+                
+                confirmStopAndCloseFailedModal() {
+                    this.isRetryAllFailedRunning = false;
+                    this.isRetryQueueRunning = false;
+                    this.showRetryStopConfirmation = false;
+                    this.showMangaFailedLogModal = false;
+                },
+
+                // Modified retryFailedManga to check concurrency
+                async retryFailedMangaWrapped(entry) {
+                    if (this.checkAnyRetryRunning()) return;
+                    await this.retryFailedManga(entry);
                 },
 
                 handleMangaNumberFocus(field) {
