@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>
+<head> 
     <script>
         // Immediate cleanup function
         (function() {
@@ -7834,6 +7834,16 @@
                     const diff = target - now;
                     if (diff < 0) return "00:00:00"; // Should not happen with setUTCHours(24)
 
+                    // Trigger reset if timer reached 00:00:00
+                    if (Math.floor(diff / 1000) === 0) {
+                         const currentToday = this.getTrustedTodayISO();
+                         // Only reset if the date has actually advanced or it's a forced test reset
+                         if (this.trustedToday !== currentToday || this.testMinuteReset) {
+                             console.log('Reset timer reached zero - triggering daily reset...');
+                             this.resetDailyLimitForNewDay();
+                         }
+                    }
+
                     const hours = Math.floor(diff / (1000 * 60 * 60));
                     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
                     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -14757,19 +14767,31 @@
                 
                 async resetDailyLimitForNewDay() {
                     if (!this._db) return;
+                    
+                    // Force update trustedToday
+                    this.trustedToday = this.getTrustedTodayISO();
                     const id = this.getDailyLimitId();
-                    const today = this.getTrustedTodayISO();
+                    
+                    // Note: We don't need to update the subscription query because it only filters by userId,
+                    // not by date. The subscription will automatically pick up the updated record
+                    // because we sort by date descending.
+                    
                     try {
+                        // Create a new record for the new day instead of updating the old one
+                        // This ensures we have a history and correct daily tracking
+                        const newId = window.InstantDB?.id ? window.InstantDB.id() : crypto.randomUUID();
+                        
                         await this._db.transact(
-                            this._db.tx.dailyLimitDownloadsMangas[id].update({
+                            this._db.tx.dailyLimitDownloadsMangas[newId].update({
                                 userId: this.userId,
-                                date: today,
+                                date: this.trustedToday,
                                 count: 0
                             })
                         );
+                        
                         this.dailyDownloads = 0;
-                        this.dailyLimitRowId = id;
-                        this.trustedToday = today;
+                        this.dailyLimitRowId = newId;
+                        console.log('Daily limit reset successful. New record created for:', this.trustedToday);
                     } catch (e) {
                         console.error('DB Reset Error', e);
                     }
@@ -18370,7 +18392,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+	
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
