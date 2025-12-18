@@ -36,7 +36,7 @@
                 });
             }
         })();
-    </script>    
+    </script> 
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -14738,12 +14738,21 @@
                 },
                 
                 getDailyLimitId() {
-                    const instantDB = window.InstantDB || window.instantdb;
-                    if (instantDB && instantDB.lookup) {
-                         // Use lookup to generate a stable UUID based on userId
-                         return instantDB.lookup('userId', String(this.userId));
+                    // Use existing ID if we have one (from subscription or previous creation)
+                    if (this.dailyLimitRowId) {
+                        return this.dailyLimitRowId;
                     }
-                    return `daily_${this.userId}`;
+                    
+                    // Otherwise generate a new random UUID using InstantDB SDK
+                    const instantDB = window.InstantDB || window.instantdb;
+                    if (instantDB && instantDB.id) {
+                        const newId = instantDB.id();
+                        this.dailyLimitRowId = newId;
+                        return newId;
+                    }
+                    
+                    // Fallback (should not happen if SDK loaded)
+                    return crypto.randomUUID();
                 },
                 
                 async resetDailyLimitForNewDay() {
@@ -14830,17 +14839,16 @@
                                     return;
                                 }
                                 const data = resp.data;
-                                const stableId = this.getDailyLimitId();
                                 if (data && data.dailyLimitDownloadsMangas && data.dailyLimitDownloadsMangas.length > 0) {
-                                    // Prefer stable record if exists, else pick latest by date
+                                    // Use the first record found for this user (sorted by date descending)
                                     const records = data.dailyLimitDownloadsMangas;
-                                    const stable = records.find(r => r.id === stableId);
-                                    const record = stable || records.sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+                                    const record = records.sort((a, b) => (a.date < b.date ? 1 : -1))[0];
                                     this.dailyDownloads = record?.count || 0;
-                                    this.dailyLimitRowId = stableId;
+                                    this.dailyLimitRowId = record.id;
                                 } else {
                                     this.dailyDownloads = 0;
-                                    this.dailyLimitRowId = stableId;
+                                    // Do NOT reset dailyLimitRowId here, as we might have just generated it 
+                                    // and it hasn't synced yet.
                                 }
                             });
                         } else {
