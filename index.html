@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -1239,11 +1239,11 @@
                                 <div class="flex justify-between items-center">
                                     <span>التحميلات اليومية:</span>
                                     <span :class="{'text-green-400': remainingDownloads > 20, 'text-yellow-400': remainingDownloads <= 20 && remainingDownloads > 0, 'text-red-500': remainingDownloads === 0}">
-                                        {{ dailyDownloads }} / {{ maxDailyDownloads }}
+                                        {{ dailyDownloads + pendingDailyIncrements }} / {{ maxDailyDownloads }}
                                     </span>
                                 </div>
                                 <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1">
-                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (dailyDownloads / maxDailyDownloads * 100) + '%' }"></div>
+                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: ((dailyDownloads + pendingDailyIncrements) / maxDailyDownloads * 100) + '%' }"></div>
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
                                     <span>المتبقي: {{ remainingDownloads }}</span>
@@ -7043,6 +7043,9 @@
                     mangaCh: 1155,
                     // Daily Limit Data
                     dailyDownloads: 0,
+                    pendingDailyIncrements: 0,
+                    dailyLimitRetryTimer: null,
+                    dailyLimitRetryAttempts: 0,
                     dailyLimitRowId: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
@@ -7899,7 +7902,7 @@
             },
             computed: {
                 remainingDownloads() {
-                    return Math.max(0, this.maxDailyDownloads - this.dailyDownloads);
+                    return Math.max(0, this.maxDailyDownloads - (this.dailyDownloads + this.pendingDailyIncrements));
                 },
                 remainingDownloadsLabel() {
                     const n = this.remainingDownloads;
@@ -14862,6 +14865,7 @@
                                      })
                                  );
                                  this.dailyDownloads = 0;
+                                 this.pendingDailyIncrements = 0;
                                  console.log('Reset count on existing record for today');
                              } catch (e) {
                                  console.error('DB Reset Update Error', e);
@@ -14879,13 +14883,14 @@
                                      date: this.trustedToday,
                                      count: 0
                                  })
-                             );
-                             this.dailyDownloads = 0;
-                             this.dailyLimitDate = this.trustedToday;
-                             console.log('Daily limit reset successful (Reused Row).');
-                         } catch (e) {
-                             console.error('DB Reset Reuse Error', e);
-                         }
+                         );
+                         this.dailyDownloads = 0;
+                         this.pendingDailyIncrements = 0;
+                         this.dailyLimitDate = this.trustedToday;
+                         console.log('Daily limit reset successful (Reused Row).');
+                     } catch (e) {
+                         console.error('DB Reset Reuse Error', e);
+                     }
                          return;
                     }
                     
@@ -14899,16 +14904,17 @@
                                 userId: this.userId,
                                 date: this.trustedToday,
                                 count: 0
-                            })
-                        );
-                        
-                        this.dailyDownloads = 0;
-                        this.dailyLimitRowId = newId;
-                        this.dailyLimitDate = this.trustedToday;
-                        console.log('Daily limit reset successful. Created FIRST record for:', this.trustedToday);
-                    } catch (e) {
-                        console.error('DB Reset Create Error', e);
-                    }
+                         })
+                     );
+                     
+                     this.dailyDownloads = 0;
+                     this.pendingDailyIncrements = 0;
+                     this.dailyLimitRowId = newId;
+                     this.dailyLimitDate = this.trustedToday;
+                     console.log('Daily limit reset successful. Created FIRST record for:', this.trustedToday);
+                 } catch (e) {
+                     console.error('DB Reset Create Error', e);
+                 }
                 },
 
                 initInstantDB() {
@@ -15014,34 +15020,53 @@
 
                 async checkDailyLimit() {
                     // Check local state first for immediate feedback
-                    if (this.dailyDownloads >= this.maxDailyDownloads) {
+                    if ((this.dailyDownloads + this.pendingDailyIncrements) >= this.maxDailyDownloads) {
                         return false;
                     }
                     return true;
                 },
 
                 async incrementDailyLimit(count = 1) {
+                    this.pendingDailyIncrements += count;
+                    this.flushDailyLimitPending();
+                    return true;
+                },
+
+                async flushDailyLimitPending() {
                     if (!this._db) return false;
+                    if (this.pendingDailyIncrements <= 0) return true;
                     
                     const today = this.getTrustedTodayISO();
-                    // Always use stable id per user to avoid new rows
                     const id = this.getDailyLimitId();
+                    const targetCount = this.dailyDownloads + this.pendingDailyIncrements;
                     
                     try {
                         await this._db.transact(
-                             this._db.tx.dailyLimitDownloadsMangas[id].update({
-                                 userId: this.userId,
-                                 date: today,
-                                 count: this.dailyDownloads + count
-                             })
+                            this._db.tx.dailyLimitDownloadsMangas[id].update({
+                                userId: this.userId,
+                                date: today,
+                                count: targetCount
+                            })
                         );
+                        this.pendingDailyIncrements = 0;
+                        this.dailyLimitRetryAttempts = 0;
+                        if (this.dailyLimitRetryTimer) {
+                            clearTimeout(this.dailyLimitRetryTimer);
+                            this.dailyLimitRetryTimer = null;
+                        }
                         return true;
                     } catch (e) {
                         console.error('DB Update Error', e);
+                        // retry with backoff, up to 5 attempts
+                        this.dailyLimitRetryAttempts = Math.min(this.dailyLimitRetryAttempts + 1, 5);
+                        const delay = Math.min(1000 * this.dailyLimitRetryAttempts, 5000);
+                        if (this.dailyLimitRetryTimer) {
+                            clearTimeout(this.dailyLimitRetryTimer);
+                        }
+                        this.dailyLimitRetryTimer = setTimeout(() => this.flushDailyLimitPending(), delay);
                         return false;
                     }
                 },
-
 
                 setupInactivityTracking() {
                     this.resetInactivityCountdown();
