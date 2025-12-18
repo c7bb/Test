@@ -1481,13 +1481,14 @@
                                 :disabled="isRetryAllFailedRunning || !mangaFailedLog.some(e => e.status !== 'success') || (isMangaQueueRunning && !isMangaQueuePaused)"
                                 class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                             >
-                                <span v-if="isRetryAllFailedRunning" class="inline-flex items-center gap-2">
-                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                                    جاري الإرسال ({{ retryAllFailedProgress.done }}/{{ retryAllFailedProgress.total }})
-                                </span>
                                 <span v-else>إعادة إرسال الكل</span>
                             </button>
                         </div>
+
+                        <span v-if="isRetryAllFailedRunning" class="inline-flex items-center gap-2">
+                            <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                            جاري الإرسال ({{ retryAllFailedProgress.done }}/{{ retryAllFailedProgress.total }})
+                        </span>
 
                         <div v-if="!mangaFailedLog.length" class="text-center text-gray-200">
                             لا يوجد فصول فاشلة.
