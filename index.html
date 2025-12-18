@@ -14764,9 +14764,8 @@
                     // Check if we already have a record for today to avoid duplicates
                     if (this.dailyLimitRowId && this.dailyLimitDate === this.trustedToday) {
                          console.log('Daily limit already exists for today:', this.trustedToday);
-                         // Just ensure count is 0 if needed, but usually if date matches, we are good or it's the current record
+                         // Just ensure count is 0 if needed
                          if (this.dailyDownloads > 0) {
-                             // Reset count on existing record
                              try {
                                  await this._db.transact(
                                      this._db.tx.dailyLimitDownloadsMangas[this.dailyLimitRowId].update({
@@ -14782,16 +14781,28 @@
                          return;
                     }
 
-                    // Double check subscription data in case local state is stale
-                    // (Though subscription updates should keep local state fresh)
+                    // If we have an existing row ID, REUSE IT (Update "One Row For Life")
+                    if (this.dailyLimitRowId) {
+                         console.log('Resetting existing daily limit row (Reuse Strategy):', this.dailyLimitRowId, 'New Date:', this.trustedToday);
+                         try {
+                             await this._db.transact(
+                                 this._db.tx.dailyLimitDownloadsMangas[this.dailyLimitRowId].update({
+                                     date: this.trustedToday,
+                                     count: 0
+                                 })
+                             );
+                             this.dailyDownloads = 0;
+                             this.dailyLimitDate = this.trustedToday;
+                             console.log('Daily limit reset successful (Reused Row).');
+                         } catch (e) {
+                             console.error('DB Reset Reuse Error', e);
+                         }
+                         return;
+                    }
                     
-                    // Note: We don't need to update the subscription query because it only filters by userId,
-                    // not by date. The subscription will automatically pick up the updated record
-                    // because we sort by date descending.
-                    
+                    // Fallback: Create a new record ONLY if we have absolutely no history/rowId locally
+                    // This should rarely happen if subscription is working
                     try {
-                        // Create a new record for the new day instead of updating the old one
-                        // This ensures we have a history and correct daily tracking
                         const newId = window.InstantDB?.id ? window.InstantDB.id() : crypto.randomUUID();
                         
                         await this._db.transact(
@@ -14804,10 +14815,10 @@
                         
                         this.dailyDownloads = 0;
                         this.dailyLimitRowId = newId;
-                        this.dailyLimitDate = this.trustedToday; // Ensure we track the date of the row ID
-                        console.log('Daily limit reset successful. New record created for:', this.trustedToday);
+                        this.dailyLimitDate = this.trustedToday;
+                        console.log('Daily limit reset successful. Created FIRST record for:', this.trustedToday);
                     } catch (e) {
-                        console.error('DB Reset Error', e);
+                        console.error('DB Reset Create Error', e);
                     }
                 },
 
