@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -7077,6 +7077,10 @@
                     tabBroadcast: null,
                     tabLockOwnerId: null,
                     isTabOwner: false,
+                    sharedWorkerPort: null,
+                    sharedWorkerId: null,
+                    lockHeld: false,
+                    lockReleaseResolve: null,
                     ep: 1185,
                     mangaCh: 1155,
                     // Daily Limit Data
@@ -15236,13 +15240,6 @@
                 },
 
                 initTabLock() {
-                    this.tabId = crypto.randomUUID();
-                    this.tabLockOwnerId = localStorage.getItem('tabLockOwnerId');
-                    if (!this.tabLockOwnerId) {
-                        localStorage.setItem('tabLockOwnerId', this.tabId);
-                        this.tabLockOwnerId = this.tabId;
-                    }
-                    this.isTabOwner = this.tabLockOwnerId === this.tabId;
                     try {
                         this.tabBroadcast = new BroadcastChannel('tabLock');
                         this.tabBroadcast.onmessage = (ev) => {
@@ -15254,14 +15251,66 @@
                     } catch (e) {
                         this.tabBroadcast = null;
                     }
-                    if (!this.isTabOwner) {
-                        this.tabLockModal = true;
-                        this.tabLockCountdown = 10;
-                        this.startTabLockCountdown();
-                        if (this.tabBroadcast) {
-                            this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
-                        }
+                    this.connectSharedWorker();
+                },
+                connectSharedWorker() {
+                    try {
+                        const sw = new SharedWorker('tab-shared-worker.js', { name: 'tabLockWorker' });
+                        this.sharedWorkerPort = sw.port;
+                        this.sharedWorkerPort.onmessage = (ev) => {
+                            const msg = ev.data || {};
+                            if (!msg || !msg.type) return;
+                            if (msg.type === 'connected') {
+                                this.sharedWorkerId = msg.id;
+                                this.acquireTabLock();
+                            } else if (msg.type === 'requestOwnerRefresh' && this.isTabOwner) {
+                                this.refreshSession();
+                            } else if (msg.type === 'ownerReleased') {
+                                if (!this.lockHeld) {
+                                    this.acquireTabLock();
+                                }
+                            }
+                        };
+                        this.sharedWorkerPort.start();
+                        this.sharedWorkerPort.postMessage({ type: 'hello' });
+                    } catch (e) {
+                        this.sharedWorkerPort = null;
+                        this.acquireTabLock();
                     }
+                },
+                acquireTabLock() {
+                    const name = 'dcrefbot-tab-lock';
+                    const locks = navigator.locks;
+                    if (!locks || !locks.request) {
+                        this.handleLockUnavailable();
+                        return;
+                    }
+                    locks.request(name, { mode: 'exclusive', ifAvailable: true }, async lock => {
+                        if (!lock) {
+                            this.isTabOwner = false;
+                            this.tabLockModal = true;
+                            this.tabLockCountdown = 10;
+                            this.startTabLockCountdown();
+                            if (this.tabBroadcast) this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
+                            if (this.sharedWorkerPort) this.sharedWorkerPort.postMessage({ type: 'requestOwnerRefresh' });
+                            return;
+                        }
+                        this.isTabOwner = true;
+                        this.lockHeld = true;
+                        if (this.sharedWorkerPort && this.sharedWorkerId) {
+                            this.sharedWorkerPort.postMessage({ type: 'claimOwner', id: this.sharedWorkerId });
+                        }
+                        await new Promise(resolve => { this.lockReleaseResolve = resolve; });
+                        this.lockHeld = false;
+                    });
+                },
+                handleLockUnavailable() {
+                    this.isTabOwner = false;
+                    this.tabLockModal = true;
+                    this.tabLockCountdown = 10;
+                    this.startTabLockCountdown();
+                    if (this.tabBroadcast) this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
+                    if (this.sharedWorkerPort) this.sharedWorkerPort.postMessage({ type: 'requestOwnerRefresh' });
                 },
                 startTabLockCountdown() {
                     if (this.tabLockIntervalId) {
@@ -15281,6 +15330,20 @@
                     try { window.close(); } catch (e) {}
                     try { window.open('', '_self'); window.close(); } catch (e2) {}
                     this.tabLockModal = true;
+                },
+                releaseTabLock() {
+                    try {
+                        if (this.lockReleaseResolve) {
+                            this.lockReleaseResolve();
+                            this.lockReleaseResolve = null;
+                        }
+                        if (this.sharedWorkerPort && this.sharedWorkerId) {
+                            this.sharedWorkerPort.postMessage({ type: 'releaseOwner', id: this.sharedWorkerId });
+                        }
+                        if (this.sharedWorkerPort && this.sharedWorkerId) {
+                            this.sharedWorkerPort.postMessage({ type: 'disconnect', id: this.sharedWorkerId });
+                        }
+                    } catch (e) {}
                 },
 
                 setBodyScrollLock(lock) {
@@ -20206,6 +20269,8 @@
                 this.nextMangaIntervalId = setInterval(() => {
                     this.refreshNextMangaState();
                 }, 60000);
+                
+                window.addEventListener('beforeunload', this.releaseTabLock);
             },
 
             unmounted() {
@@ -20229,7 +20294,10 @@
                 window.removeEventListener('resize', this.updateFontSize);
                 if (this.tabLockIntervalId) clearInterval(this.tabLockIntervalId);
                 if (this.tabBroadcast) this.tabBroadcast.close();
-                if (localStorage.getItem('tabLockOwnerId') === this.tabId) localStorage.removeItem('tabLockOwnerId');
+                this.releaseTabLock();
+                if (this.sharedWorkerPort) {
+                    try { this.sharedWorkerPort.close && this.sharedWorkerPort.close(); } catch (e) {}
+                }
                 this.setBodyScrollLock(false);
             }
 
