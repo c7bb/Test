@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head> 
+<head>  
     <script>
         // Immediate cleanup function
         (function() {
@@ -611,6 +611,28 @@
                     class="px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400 transition-all duration-100 active:scale-95"
                 >
                     تحديث الجلسة
+                </button>
+            </div>        
+        </div>
+        <div 
+            v-if="tabLockModal" 
+            class="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm flex items-center justify-center"
+        >
+            <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
+                <div class="text-xl -m-3 font-bold">
+                    تم فتح الصفحة في تبويب آخر
+                </div>
+                <div class="text-base">
+                    يسمح الدليل بتبويب واحد فقط لتجنب تعارض المزامنة.
+                </div>
+                <div class="text-base font-bold">
+                    سيتم إغلاق هذا التبويب خلال {{ formattedTabLockCountdown }}
+                </div>
+                <button 
+                    @click="closeSelfNow" 
+                    class="px-4 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-500 transition-all duration-100 active:scale-95"
+                >
+                    إغلاق الآن
                 </button>
             </div>        
         </div>
@@ -1249,8 +1271,12 @@
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
                                     <span>
-                                        المتبقي: {{ effectiveRemainingDownloads }}
-                                        <span v-if="pendingDailyIncrements > 0 && (safeMaxDailyDownloads - dailyDownloads) > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">-{{ Math.min(pendingDailyIncrements, (safeMaxDailyDownloads - dailyDownloads)) }}</span>
+                                        المتبقي:
+                                        <span v-if="!dailyReady" class="text-slate-300 text-xs">جارٍ المزامنة...</span>
+                                        <span v-else>
+                                            <span v-if="pendingDailyIncrements > 0 && (safeMaxDailyDownloads - dailyDownloads) > 0" class="mr-1 text-cyan-300 text-xs inline-flex items-center gap-1">-{{ Math.min(pendingDailyIncrements, (safeMaxDailyDownloads - dailyDownloads)) }}</span>
+                                            {{ effectiveRemainingDownloads }}
+                                        </span>
                                     </span>
                                     <span>🔄️ {{ timeUntilReset }}</span>
                                 </div>
@@ -7044,6 +7070,13 @@
                     inactivityModal: false,
                     inactivityListeners: [],
                     lastActivityAt: Date.now(),
+                    tabId: null,
+                    tabLockModal: false,
+                    tabLockCountdown: 10,
+                    tabLockIntervalId: null,
+                    tabBroadcast: null,
+                    tabLockOwnerId: null,
+                    isTabOwner: false,
                     ep: 1185,
                     mangaCh: 1155,
                     // Daily Limit Data
@@ -7954,6 +7987,15 @@
                         .toString()
                         .padStart(2, '0');
                     const seconds = (this.inactivityCountdown % 60)
+                        .toString()
+                        .padStart(2, '0');
+                    return `${minutes}:${seconds}`;
+                },
+                formattedTabLockCountdown() {
+                    const minutes = Math.floor(this.tabLockCountdown / 60)
+                        .toString()
+                        .padStart(2, '0');
+                    const seconds = (this.tabLockCountdown % 60)
                         .toString()
                         .padStart(2, '0');
                     return `${minutes}:${seconds}`;
@@ -15193,6 +15235,54 @@
                     window.location.reload();
                 },
 
+                initTabLock() {
+                    this.tabId = crypto.randomUUID();
+                    this.tabLockOwnerId = localStorage.getItem('tabLockOwnerId');
+                    if (!this.tabLockOwnerId) {
+                        localStorage.setItem('tabLockOwnerId', this.tabId);
+                        this.tabLockOwnerId = this.tabId;
+                    }
+                    this.isTabOwner = this.tabLockOwnerId === this.tabId;
+                    try {
+                        this.tabBroadcast = new BroadcastChannel('tabLock');
+                        this.tabBroadcast.onmessage = (ev) => {
+                            const msg = ev.data || {};
+                            if (msg && msg.type === 'requestOwnerRefresh' && this.isTabOwner) {
+                                this.refreshSession();
+                            }
+                        };
+                    } catch (e) {
+                        this.tabBroadcast = null;
+                    }
+                    if (!this.isTabOwner) {
+                        this.tabLockModal = true;
+                        this.tabLockCountdown = 10;
+                        this.startTabLockCountdown();
+                        if (this.tabBroadcast) {
+                            this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
+                        }
+                    }
+                },
+                startTabLockCountdown() {
+                    if (this.tabLockIntervalId) {
+                        clearInterval(this.tabLockIntervalId);
+                    }
+                    this.setBodyScrollLock(true);
+                    this.tabLockIntervalId = setInterval(() => {
+                        this.tabLockCountdown -= 1;
+                        if (this.tabLockCountdown <= 0) {
+                            clearInterval(this.tabLockIntervalId);
+                            this.tabLockIntervalId = null;
+                            this.closeSelfNow();
+                        }
+                    }, 1000);
+                },
+                closeSelfNow() {
+                    try { window.close(); } catch (e) {}
+                    try { window.open('', '_self'); window.close(); } catch (e2) {}
+                    this.tabLockModal = true;
+                },
+
                 setBodyScrollLock(lock) {
                     const cls = 'overflow-hidden';
                     document.body.classList.toggle(cls, lock);
@@ -19993,6 +20083,7 @@
             },
 
             mounted() {
+                this.initTabLock();
                 // Initialize InstantDB
                 this.initInstantDB();
 
@@ -20136,6 +20227,10 @@
                 // Clean up event listener to prevent memory leaks
                 document.removeEventListener("click", this.closeMenu);
                 window.removeEventListener('resize', this.updateFontSize);
+                if (this.tabLockIntervalId) clearInterval(this.tabLockIntervalId);
+                if (this.tabBroadcast) this.tabBroadcast.close();
+                if (localStorage.getItem('tabLockOwnerId') === this.tabId) localStorage.removeItem('tabLockOwnerId');
+                this.setBodyScrollLock(false);
             }
 
         });
