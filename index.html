@@ -6959,7 +6959,8 @@
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
-                    userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'test-user', // Fallback for testing if not in Telegram
+                    userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'anonymous-user', // Fallback for testing if not in Telegram
+                    testMinuteReset: true,
                     nowIntervalId: null,
                     
                     // Time Synchronization
@@ -7824,10 +7825,14 @@
                     // Matches Cloudflare Workers & Pages Functions reset time (UTC+0)
                     const tick = this.now;
                     const now = this.getTrustedDate();
-                    const tomorrow = new Date(now);
-                    tomorrow.setUTCHours(24, 0, 0, 0); // Sets to 00:00:00 UTC of the next day
-                    const diff = tomorrow - now;
-                    
+                    const target = new Date(now);
+                    if (this.testMinuteReset) {
+                        target.setUTCSeconds(0, 0);
+                        target.setUTCMinutes(target.getUTCMinutes() + 1);
+                    } else {
+                        target.setUTCHours(24, 0, 0, 0); // Sets to 00:00:00 UTC of the next day
+                    }
+                    const diff = target - now;
                     if (diff < 0) return "00:00:00"; // Should not happen with setUTCHours(24)
 
                     const hours = Math.floor(diff / (1000 * 60 * 60));
@@ -14732,6 +14737,30 @@
                 getTrustedTodayISO() {
                     return this.getTrustedDate().toISOString().split('T')[0];
                 },
+                
+                getDailyLimitId() {
+                    return `daily_${this.userId}`;
+                },
+                
+                async resetDailyLimitForNewDay() {
+                    if (!this._db) return;
+                    const id = this.getDailyLimitId();
+                    const today = this.getTrustedTodayISO();
+                    try {
+                        await this._db.transact(
+                            this._db.tx.dailyLimitDownloadsMangas[id].update({
+                                userId: this.userId,
+                                date: today,
+                                count: 0
+                            })
+                        );
+                        this.dailyDownloads = 0;
+                        this.dailyLimitRowId = id;
+                        this.trustedToday = today;
+                    } catch (e) {
+                        console.error('DB Reset Error', e);
+                    }
+                },
 
                 initInstantDB() {
                     const APP_ID = '4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3';
@@ -14754,8 +14783,8 @@
                                 // Check if date changed (midnight crossing)
                                 const currentToday = this.getTrustedTodayISO();
                                 if (this.trustedToday !== currentToday) {
-                                    console.log('Date changed from', this.trustedToday, 'to', currentToday, '- Resubscribing...');
-                                    this.subscribeToDailyDownloads();
+                                    console.log('Date changed from', this.trustedToday, 'to', currentToday, '- Resetting daily limit on stable row...');
+                                    this.resetDailyLimitForNewDay();
                                 }
                             }, 1000);
                         } else {
@@ -14782,8 +14811,7 @@
                         dailyLimitDownloadsMangas: { 
                             $: { 
                                 where: { 
-                                    userId: this.userId, 
-                                    date: today 
+                                    userId: this.userId
                                 } 
                             } 
                         } 
@@ -14798,13 +14826,17 @@
                                     return;
                                 }
                                 const data = resp.data;
+                                const stableId = this.getDailyLimitId();
                                 if (data && data.dailyLimitDownloadsMangas && data.dailyLimitDownloadsMangas.length > 0) {
-                                    const record = data.dailyLimitDownloadsMangas[0];
-                                    this.dailyDownloads = record.count || 0;
-                                    this.dailyLimitRowId = record.id;
+                                    // Prefer stable record if exists, else pick latest by date
+                                    const records = data.dailyLimitDownloadsMangas;
+                                    const stable = records.find(r => r.id === stableId);
+                                    const record = stable || records.sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+                                    this.dailyDownloads = record?.count || 0;
+                                    this.dailyLimitRowId = stableId;
                                 } else {
                                     this.dailyDownloads = 0;
-                                    this.dailyLimitRowId = null;
+                                    this.dailyLimitRowId = stableId;
                                 }
                             });
                         } else {
@@ -14827,8 +14859,8 @@
                     if (!this._db) return false;
                     
                     const today = this.getTrustedTodayISO();
-                    // Use stored ID or generate a new one
-                    const id = this.dailyLimitRowId || window.InstantDB.id();
+                    // Always use stable id per user to avoid new rows
+                    const id = this.getDailyLimitId();
                     
                     try {
                         await this._db.transact(
