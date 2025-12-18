@@ -1285,7 +1285,7 @@
                                 @click="startMangaQueue" 
                                 :disabled="mangaStartNumber === null || mangaStartNumber === undefined || mangaEndNumber === null || mangaEndNumber === undefined || mangaStartNumber > mangaEndNumber || mangaStartNumber < minMangaNumber || mangaEndNumber > maxMangaNumber || isRetryAllFailedRunning"
                                 class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
-                                إرسال المانغا
+                                إرسال المانغا ({{ (mangaStartNumber !== null && mangaStartNumber !== undefined && mangaEndNumber !== null && mangaEndNumber !== undefined && mangaStartNumber <= mangaEndNumber && mangaStartNumber >= minMangaNumber && mangaEndNumber <= maxMangaNumber) ? (mangaEndNumber - mangaStartNumber + 1) : 0 }})
                             </button>
                         </div>
 
@@ -1374,7 +1374,7 @@
                                 <button 
                                     @click="toggleMangaQueuePause" 
                                     :disabled="isMangaQueuePauseRequested"
-                                    class="flex-1 bg-yellow-500 text-white px-6 py-3 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                    class="flex-1 bg-yellow-500 text-black px-6 py-3 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
                                     {{ isMangaQueuePauseRequested ? 'جاري الإيقاف...' : (isMangaQueuePaused ? 'استئناف' : 'إيقاف مؤقت') }}
                                 </button>
                                 <button 
@@ -1421,8 +1421,8 @@
             <!-- Retry Stop Confirmation Modal -->
             <div v-if="showRetryStopConfirmation" class="fixed z-[75] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
-                    <h3 class="text-xl mb-4">تأكيد الإغلاق والإيقاف</h3>
-                    <p class="mb-6">هناك عمليات جارية (إعادة إرسال/طابور). هل تريد إيقافها وإغلاق النافذة؟</p>
+                    <h3 class="text-xl mb-4">تأكيد الإغلاق</h3>
+                    <p class="mb-6">هناك عمليات جارية. هل تريد إيقافها وإغلاق النافذة؟</p>
                     <div class="flex gap-4">
                         <button 
                             @click="confirmStopAndCloseFailedModal" 
