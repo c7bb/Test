@@ -1238,18 +1238,19 @@
                             <div class="bg-slate-800 rounded p-2 text-sm flex flex-col gap-1 border border-cyan-700">
                                 <div class="flex justify-between items-center">
                                     <span>التحميلات اليومية:</span>
-                                    <span :class="{'text-green-400': effectiveRemainingDownloads > 20, 'text-yellow-400': effectiveRemainingDownloads <= 20 && effectiveRemainingDownloads > 0, 'text-red-500': effectiveRemainingDownloads === 0}">
-                                        <span v-if="pendingDailyIncrements > 0" class="mr-2 text-cyan-300 text-xs inline-flex items-center gap-1">{{ pendingDailyIncrements }}+</span>
-                                        {{ dailyDownloads }} / {{ maxDailyDownloads }}
+                                    <span v-if="dailyReady" :class="{'text-green-400': effectiveRemainingDownloads > 20, 'text-yellow-400': effectiveRemainingDownloads <= 20 && effectiveRemainingDownloads > 0, 'text-red-500': effectiveRemainingDownloads === 0}">
+                                        <span v-if="pendingDailyIncrements > 0" class="mr-2 text-cyan-300 text-xs inline-flex items-center gap-1">+{{ pendingDailyIncrements }}</span>
+                                        {{ dailyDownloads }} / {{ safeMaxDailyDownloads }}
                                     </span>
+                                    <span v-else class="text-slate-300 text-xs">جارٍ المزامنة...</span>
                                 </div>
                                 <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1">
-                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (Math.min(dailyDownloads, maxDailyDownloads) / maxDailyDownloads * 100) + '%' }"></div>
+                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (effectiveDailyDownloads / safeMaxDailyDownloads * 100) + '%' }"></div>
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
                                     <span>
                                         المتبقي: {{ effectiveRemainingDownloads }}
-                                        <span v-if="pendingDailyIncrements > 0 && (maxDailyDownloads - dailyDownloads) > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">{{ Math.min(pendingDailyIncrements, (maxDailyDownloads - dailyDownloads)) }}-</span>
+                                        <span v-if="pendingDailyIncrements > 0 && (safeMaxDailyDownloads - dailyDownloads) > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">-{{ Math.min(pendingDailyIncrements, (safeMaxDailyDownloads - dailyDownloads)) }}</span>
                                     </span>
                                     <span>🔄️ {{ timeUntilReset }}</span>
                                 </div>
@@ -7047,6 +7048,7 @@
                     mangaCh: 1155,
                     // Daily Limit Data
                     dailyDownloads: 0,
+                    dailyReady: false,
                     pendingDailyIncrements: 0,
                     dailyLimitRetryTimer: null,
                     dailyLimitRetryAttempts: 0,
@@ -7904,12 +7906,15 @@
                     intervalZikrId: null
                 };
             },
-                computed: {
+            computed: {
                 effectiveDailyDownloads() {
-                    return Math.min(this.maxDailyDownloads, this.dailyDownloads);
+                    return Math.min(this.safeMaxDailyDownloads, this.dailyDownloads);
                 },
                 effectiveRemainingDownloads() {
-                    return Math.max(0, this.maxDailyDownloads - this.effectiveDailyDownloads);
+                    return Math.max(0, this.safeMaxDailyDownloads - this.effectiveDailyDownloads);
+                },
+                safeMaxDailyDownloads() {
+                    return this.maxDailyDownloads > 0 ? this.maxDailyDownloads : 100;
                 },
                 remainingDownloads() {
                     return Math.max(0, this.maxDailyDownloads - (this.dailyDownloads + this.pendingDailyIncrements));
@@ -15014,10 +15019,12 @@
                                     const record = records.sort((a, b) => (a.date < b.date ? 1 : -1))[0];
                                     this.dailyDownloads = Math.min(this.maxDailyDownloads, record?.count || 0);
                                     this.dailyLimitRowId = record.id;
+                                    this.dailyReady = true;
                                 } else {
                                     this.dailyDownloads = 0;
                                     // Do NOT reset dailyLimitRowId here, as we might have just generated it 
                                     // and it hasn't synced yet.
+                                    this.dailyReady = true;
                                 }
                             });
                         } else {
