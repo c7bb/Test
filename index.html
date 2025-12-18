@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>
     <script>
         // Immediate cleanup function
         (function() {
@@ -1247,7 +1247,10 @@
                                     <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (dailyDownloads / maxDailyDownloads * 100) + '%' }"></div>
                                 </div>
                                 <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
-                                    <span>المتبقي: {{ remainingDownloads }}</span>
+                                    <span>
+                                        المتبقي: {{ maxDailyDownloads - dailyDownloads }}
+                                        <span v-if="pendingDailyIncrements > 0" class="mr-2 text-cyan-300 text-xs inline-flex items-center gap-1">-{{ pendingDailyIncrements }}</span>
+                                    </span>
                                     <span>🔄️ {{ timeUntilReset }}</span>
                                 </div>
                             </div>
