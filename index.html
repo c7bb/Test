@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -1495,6 +1495,18 @@
                         </button>
                     </div>
                     <div class="p-4 overflow-y-auto flex-1 always-visible-scrollbar space-y-3">
+                        <!-- Current Retry Status -->
+                        <div v-if="retryQueueCurrent && retryQueueCurrent.chapter !== null" class="bg-gray-800 p-3 rounded flex items-center justify-center">
+                            <div class="flex items-center gap-3" dir="ltr">
+                                <span class="text-lg font-bold text-yellow-300">{{ retryQueueCurrent.chapter }}</span>
+                                <span v-if="retryQueueCurrent.status === 'sending'" class="inline-flex items-center">
+                                    <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                </span>
+                                <span v-else-if="retryQueueCurrent.status === 'success'" class="text-green-400 text-lg">✅</span>
+                                <span v-else-if="retryQueueCurrent.status === 'failed'" class="text-red-400 text-lg">❌</span>
+                            </div>
+                        </div>
+
                         <div v-if="!allFailedMangaRowsSucceeded" class="flex gap-3 items-center justify-center flex-wrap">
                             <button
                                 @click="retryAllFailedMangas"
@@ -1515,8 +1527,8 @@
                                 class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-80 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                             >
                                 <span v-if="isRetryQueueRunning" class="inline-flex items-center gap-2">
-                                    <span class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                                    جاري المعالجة ({{ mangaQueueStats.sent }}/{{ mangaQueueStats.total }})
+                                    <span v-if="!isRetryQueuePaused" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                    {{ isRetryQueuePaused ? 'المعالجة موقفة موقتًا' : 'جاري المعالجة' }} ({{ failedQueueStats.sent + failedQueueStats.failed }}/{{ failedQueueStats.total }})
                                 </span>
                                 <span v-else>بدء الطابور</span>
                             </button>
@@ -6983,6 +6995,19 @@
                     isRetryQueuePauseRequested: false,
                     showRetryStopConfirmation: false,
                     failedMangaQueue: [], // Array of objects { chapter, ... } reference from mangaFailedLog
+                    failedQueueStats: {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    },
+                    retryQueueCurrent: {
+                        chapter: null,
+                        status: null, // 'sending' | 'success' | 'failed'
+                        error: null,
+                    },
                     mangaQueueStats: {
                         total: 0,
                         sent: 0,
@@ -18861,20 +18886,34 @@
                 },
 
                 closeMangaFailedLogModal() {
-                    // Remove successful rows from failed log before closing
-                    this.mangaFailedLog = this.mangaFailedLog.filter(e => e.status !== 'success');
-                    this.showMangaFailedLogModal = false;
+                    if (this.checkAnyRetryRunning()) {
+                        this.showRetryStopConfirmation = true;
+                    } else {
+                        // Remove successful rows from failed log before closing
+                        this.mangaFailedLog = this.mangaFailedLog.filter(e => e.status !== 'success');
+                        this.showMangaFailedLogModal = false;
+                    }
                 },
 
                 async retryFailedManga(entry) {
                     if (!entry || entry.status === 'success' || entry.status === 'retrying') return;
                     entry.status = 'retrying';
+                    
+                    // Update Current Status
+                    this.retryQueueCurrent = {
+                        chapter: entry.chapter,
+                        status: 'sending',
+                        error: null
+                    };
+                    
                     try {
                         // Check daily limit before attempting resend
                         const canDownload = await this.checkDailyLimit();
                         if (!canDownload) {
                             entry.status = 'failed';
                             entry.error = `لقد وصلت للحد اليومي (${this.maxDailyDownloads}). المتبقي: ${this.remainingDownloads}.`;
+                            this.retryQueueCurrent.status = 'failed';
+                            this.retryQueueCurrent.error = entry.error;
                             this.showLimitModal = true;
                             return;
                         }
@@ -18885,16 +18924,21 @@
                         
                         entry.status = 'success';
                         entry.error = '';
-                        // Move this chapter from failed → sent in the aggregate stats
+                        this.retryQueueCurrent.status = 'success';
+                        
+                        // Move this chapter from failed → sent in the aggregate stats (MAIN stats)
                         if (this.mangaQueueStats.failed > 0) {
                             this.mangaQueueStats.failed -= 1;
                         }
                         this.mangaQueueStats.sent += 1;
+                        
                         // also record as success
                         this.recordMangaSuccess({ MangaNumber: entry.chapter, MangaFileID: entry.fileId });
                     } catch (error) {
                         entry.status = 'failed';
                         entry.error = String(error?.message ?? error ?? 'Unknown error'); // overwrite
+                        this.retryQueueCurrent.status = 'failed';
+                        this.retryQueueCurrent.error = entry.error;
                     }
                 },
 
@@ -18909,13 +18953,19 @@
                     this.retryAllFailedProgress = { done: 0, total: retryables.length };
                     try {
                         for (const entry of retryables) {
+                            if (!this.isRetryAllFailedRunning) break; // Check stop flag
+                            
                             await this.retryFailedManga(entry);
                             this.retryAllFailedProgress.done += 1;
+                            
+                            if (!this.isRetryAllFailedRunning) break; // Check stop flag
+                            
                             // delay between retries (queue-style)
                             await new Promise(resolve => setTimeout(resolve, this.fastingStatusClearTimeout));
                         }
                     } finally {
                         this.isRetryAllFailedRunning = false;
+                        this.retryQueueCurrent = { chapter: null, status: null, error: null };
                     }
                 },
 
@@ -18939,10 +18989,6 @@
                     if (this.isRetryQueuePaused) {
                         this.isRetryQueuePaused = false;
                         this.isRetryQueuePauseRequested = false;
-                        if (this.mangaQueuePausedTime > 0) {
-                             this.mangaQueueTotalPausedTime += (Date.now() - this.mangaQueuePausedTime);
-                             this.mangaQueuePausedTime = 0;
-                        }
                     } else {
                         this.isRetryQueuePauseRequested = true;
                     }
@@ -18952,10 +18998,8 @@
                     this.isRetryQueueRunning = false;
                     this.isRetryQueuePaused = false;
                     this.isRetryQueuePauseRequested = false;
-                    this.failedMangaQueue = []; // Clear queue? Or just stop? "Cancel" usually implies stopping.
-                    // "Cancel Queue" -> "إلغاء الطابور". Could mean clear it or just stop processing.
-                    // Given "Start", "Pause", "Cancel", likely means Stop & Clear or Stop.
-                    // I'll just stop it.
+                    this.failedMangaQueue = []; // Clear queue as requested
+                    this.retryQueueCurrent = { chapter: null, status: null, error: null };
                 },
                 
                 async startFailedQueue() {
@@ -18979,7 +19023,8 @@
                     this.isRetryQueuePaused = false;
                     this.isRetryQueuePauseRequested = false;
                     
-                    this.mangaQueueStats = {
+                    // Reset stats for this run
+                    this.failedQueueStats = {
                         total: this.failedMangaQueue.length,
                         sent: 0,
                         failed: 0,
@@ -18988,29 +19033,16 @@
                         remainingTime: this.failedMangaQueue.length * (this.fastingStatusClearTimeout / 1000)
                     };
                     
-                    this.mangaQueueStartTime = Date.now();
-                    this.mangaQueuePausedTime = 0;
-                    this.mangaQueueTotalPausedTime = 0;
-
                     this.processFailedQueue();
                 },
 
                 async processFailedQueue() {
-                     // Iterate through the queue
-                     // We use a simpler loop since we don't need to support "jumping" like the main queue
-                     // But we need to handle pause/resume and dynamic removal.
-                     
-                     // We'll process index 0 until queue is empty or stopped
-                     // BUT if we don't remove items, we iterate index.
-                     // Let's iterate index.
-                     
                      let i = 0;
                      while (i < this.failedMangaQueue.length && this.isRetryQueueRunning) {
                          // Check Pause
                          if (this.isRetryQueuePauseRequested) {
                              this.isRetryQueuePaused = true;
                              this.isRetryQueuePauseRequested = false;
-                             this.mangaQueuePausedTime = Date.now();
                          }
                          
                          if (this.isRetryQueuePaused) {
@@ -19030,44 +19062,52 @@
 
                          try {
                              entry.status = 'retrying';
+                             this.retryQueueCurrent = {
+                                 chapter: entry.chapter,
+                                 status: 'sending',
+                                 error: null
+                             };
+
                              const caption = this.buildMangaCaption(entry.chapter, entry.fileSize);
                              await this.sendMangaResponse(entry.fileId, caption);
                              
                              await this.incrementDailyLimit();
                              this.recordMangaSuccess({ MangaNumber: entry.chapter });
+                             
+                             this.failedQueueStats.sent++;
+                             // Update main stats too
+                             if (this.mangaQueueStats.failed > 0) this.mangaQueueStats.failed--;
                              this.mangaQueueStats.sent++;
+
                              entry.status = 'success';
+                             this.retryQueueCurrent.status = 'success';
                          } catch (error) {
                              console.error(error);
                              entry.status = 'failed';
                              entry.error = String(error);
-                             this.mangaQueueStats.failed++;
+                             
+                             this.failedQueueStats.failed++;
+                             this.retryQueueCurrent.status = 'failed';
+                             this.retryQueueCurrent.error = entry.error;
                          }
                          
                          i++;
-                         this.mangaQueueStats.waiting = this.failedMangaQueue.length - i;
+                         this.failedQueueStats.waiting = this.failedMangaQueue.length - i;
                          
                          // Delay
-                         if (i < this.failedMangaQueue.length) {
+                         if (i < this.failedMangaQueue.length && this.isRetryQueueRunning) {
                              await new Promise(r => setTimeout(r, this.fastingStatusClearTimeout));
                          }
                      }
                      
                      this.isRetryQueueRunning = false;
+                     this.retryQueueCurrent = { chapter: null, status: null, error: null };
                 },
                 
                 checkAnyRetryRunning() {
                     return this.isRetryAllFailedRunning || this.isRetryQueueRunning || this.mangaFailedLog.some(e => e.status === 'retrying');
                 },
 
-                closeMangaFailedLogModal() {
-                    if (this.checkAnyRetryRunning()) {
-                        this.showRetryStopConfirmation = true;
-                    } else {
-                        this.showMangaFailedLogModal = false;
-                    }
-                },
-                
                 confirmStopAndCloseFailedModal() {
                     this.isRetryAllFailedRunning = false;
                     this.isRetryQueueRunning = false;
