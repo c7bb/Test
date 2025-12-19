@@ -7,6 +7,15 @@ function broadcast(message) {
   });
 }
 
+function setOwner(newOwnerId) {
+  ownerPortId = newOwnerId || null;
+  if (ownerPortId) {
+    broadcast({ type: 'ownerChanged', id: ownerPortId });
+  } else {
+    broadcast({ type: 'ownerReleased' });
+  }
+}
+
 onconnect = function (event) {
   const port = event.ports[0];
   const id = Math.random().toString(36).slice(2);
@@ -15,24 +24,29 @@ onconnect = function (event) {
 
   port.postMessage({ type: 'connected', id });
   port.postMessage({ type: 'ownerStatus', ownerPortId });
+  if (!ownerPortId) {
+    setOwner(id);
+  }
 
   port.onmessage = function (ev) {
     const msg = ev.data || {};
     if (!msg || !msg.type) return;
 
     if (msg.type === 'claimOwner') {
-      ownerPortId = msg.id;
-      broadcast({ type: 'ownerChanged', id: ownerPortId });
+      const exists = ports.some(p => p.id === msg.id);
+      if (exists) {
+        setOwner(msg.id);
+      }
     } else if (msg.type === 'releaseOwner') {
       if (ownerPortId === msg.id) {
-        ownerPortId = null;
-        broadcast({ type: 'ownerReleased' });
+        const nextOwnerId = ports.find(p => p.id !== msg.id)?.id || null;
+        setOwner(nextOwnerId);
       }
     } else if (msg.type === 'disconnect') {
       ports = ports.filter(p => p.port !== port);
       if (ownerPortId === msg.id) {
-        ownerPortId = null;
-        broadcast({ type: 'ownerReleased' });
+        const nextOwnerId = ports[0]?.id || null;
+        setOwner(nextOwnerId);
       }
     }
   };
