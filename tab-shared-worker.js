@@ -28,8 +28,6 @@ onconnect = function (event) {
         ownerPortId = null;
         broadcast({ type: 'ownerReleased' });
       }
-    } else if (msg.type === 'requestOwnerRefresh') {
-      broadcast({ type: 'requestOwnerRefresh' });
     } else if (msg.type === 'disconnect') {
       ports = ports.filter(p => p.port !== port);
       if (ownerPortId === msg.id) {
