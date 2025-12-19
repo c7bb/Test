@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -619,8 +619,8 @@
             class="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm flex items-center justify-center"
         >
             <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
-                <div class="text-xl -m-3 font-bold">
-                    تم فتح الصفحة في تبويب آخر
+                <div class="text-xl text-red-500 -m-3 font-bold">
+                    عذرًا، الدليل مفتوح في تبويب آخر
                 </div>
                 <div class="text-base">
                     يسمح الدليل بتبويب واحد فقط لتجنب تعارض المزامنة.
@@ -15224,12 +15224,18 @@
                 },
 
                 initTabLock() {
-                    try {
-                        this.tabBroadcast = new BroadcastChannel('tabLock');
-                    } catch (e) {
-                        this.tabBroadcast = null;
-                    }
+                    this.tabBroadcast = null;
                     this.connectSharedWorker();
+                },
+                applyTabOwnership(ownerId) {
+                    this.tabLockOwnerId = ownerId || null;
+                    const isOwner = !!(this.sharedWorkerId && this.tabLockOwnerId && this.tabLockOwnerId === this.sharedWorkerId);
+                    this.isTabOwner = isOwner;
+                    this.tabLockModal = !isOwner;
+                    this.setBodyScrollLock(!isOwner);
+                    if (isOwner && this.userJoined && this.episodes.length === 0 && this.mangas.length === 0) {
+                        this.loadData();
+                    }
                 },
                 connectSharedWorker() {
                     try {
@@ -15240,11 +15246,12 @@
                             if (!msg || !msg.type) return;
                             if (msg.type === 'connected') {
                                 this.sharedWorkerId = msg.id;
-                                this.acquireTabLock();
+                            } else if (msg.type === 'ownerStatus') {
+                                this.applyTabOwnership(msg.ownerPortId);
+                            } else if (msg.type === 'ownerChanged') {
+                                this.applyTabOwnership(msg.id);
                             } else if (msg.type === 'ownerReleased') {
-                                if (!this.lockHeld) {
-                                    this.acquireTabLock();
-                                }
+                                this.applyTabOwnership(null);
                             }
                         };
                         this.sharedWorkerPort.start();
@@ -15255,6 +15262,9 @@
                     }
                 },
                 acquireTabLock() {
+                    if (this.sharedWorkerPort) {
+                        return;
+                    }
                     const name = 'dcrefbot-tab-lock';
                     const locks = navigator.locks;
                     if (!locks || !locks.request) {
@@ -15283,9 +15293,12 @@
                     });
                 },
                 handleLockUnavailable() {
-                    this.isTabOwner = false;
-                    this.tabLockModal = true;
-                    this.setBodyScrollLock(true);
+                    this.isTabOwner = true;
+                    this.tabLockModal = false;
+                    this.setBodyScrollLock(false);
+                    if (this.userJoined && this.episodes.length === 0 && this.mangas.length === 0) {
+                        this.loadData();
+                    }
                 },
                 releaseTabLock() {
                     try {
