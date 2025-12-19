@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>   
+<head>  
     <script>
         // Immediate cleanup function
         (function() {
@@ -15226,12 +15226,6 @@
                 initTabLock() {
                     try {
                         this.tabBroadcast = new BroadcastChannel('tabLock');
-                        this.tabBroadcast.onmessage = (ev) => {
-                            const msg = ev.data || {};
-                            if (msg && msg.type === 'requestOwnerRefresh' && this.isTabOwner) {
-                                this.refreshSession();
-                            }
-                        };
                     } catch (e) {
                         this.tabBroadcast = null;
                     }
@@ -15247,8 +15241,6 @@
                             if (msg.type === 'connected') {
                                 this.sharedWorkerId = msg.id;
                                 this.acquireTabLock();
-                            } else if (msg.type === 'requestOwnerRefresh' && this.isTabOwner) {
-                                this.refreshSession();
                             } else if (msg.type === 'ownerReleased') {
                                 if (!this.lockHeld) {
                                     this.acquireTabLock();
@@ -15274,8 +15266,6 @@
                             this.isTabOwner = false;
                             this.tabLockModal = true;
                             this.setBodyScrollLock(true);
-                            if (this.tabBroadcast) this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
-                            if (this.sharedWorkerPort) this.sharedWorkerPort.postMessage({ type: 'requestOwnerRefresh' });
                             return;
                         }
                         this.isTabOwner = true;
@@ -15296,8 +15286,6 @@
                     this.isTabOwner = false;
                     this.tabLockModal = true;
                     this.setBodyScrollLock(true);
-                    if (this.tabBroadcast) this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
-                    if (this.sharedWorkerPort) this.sharedWorkerPort.postMessage({ type: 'requestOwnerRefresh' });
                 },
                 releaseTabLock() {
                     try {
@@ -16577,7 +16565,10 @@
                                 return;
                             }
 
-                            fetch(this.jsonUrl)
+                            // Append a cache-busting query parameter
+                            const urlWithCacheBust = `${this.jsonUrl}?t=${new Date().getTime()}`;
+
+                            fetch(urlWithCacheBust, { cache: 'no-store' })
                                 .then(response => {
                                     if (response.status === 429) {
                                         // If rate-limited, parse the JSON response
