@@ -625,15 +625,6 @@
                 <div class="text-base">
                     يسمح الدليل بتبويب واحد فقط لتجنب تعارض المزامنة.
                 </div>
-                <div class="text-base font-bold">
-                    سيتم إغلاق هذا التبويب خلال {{ formattedTabLockCountdown }}
-                </div>
-                <button 
-                    @click="closeSelfNow" 
-                    class="px-4 py-2 bg-red-600 text-white font-bold rounded hover:bg-red-500 transition-all duration-100 active:scale-95"
-                >
-                    إغلاق الآن
-                </button>
             </div>        
         </div>
 
@@ -7072,8 +7063,6 @@
                     lastActivityAt: Date.now(),
                     tabId: null,
                     tabLockModal: false,
-                    tabLockCountdown: 10,
-                    tabLockIntervalId: null,
                     tabBroadcast: null,
                     tabLockOwnerId: null,
                     isTabOwner: false,
@@ -7991,15 +7980,6 @@
                         .toString()
                         .padStart(2, '0');
                     const seconds = (this.inactivityCountdown % 60)
-                        .toString()
-                        .padStart(2, '0');
-                    return `${minutes}:${seconds}`;
-                },
-                formattedTabLockCountdown() {
-                    const minutes = Math.floor(this.tabLockCountdown / 60)
-                        .toString()
-                        .padStart(2, '0');
-                    const seconds = (this.tabLockCountdown % 60)
                         .toString()
                         .padStart(2, '0');
                     return `${minutes}:${seconds}`;
@@ -14834,7 +14814,9 @@
 
                 jsonUrl() {
                     // Automatically refetch data when jsonUrl changes
-                    this.loadData();
+                    if (this.isTabOwner) {
+                        this.loadData();
+                    }
                 },
 
                 pageSize(newSize) {
@@ -14979,6 +14961,8 @@
                 },
 
                 initInstantDB() {
+                    this.dailyReady = true;
+                    return;
                     const APP_ID = '4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3';
                     const getInstantDB = () => window.InstantDB || window.instantdb;
 
@@ -15289,16 +15273,20 @@
                         if (!lock) {
                             this.isTabOwner = false;
                             this.tabLockModal = true;
-                            this.tabLockCountdown = 10;
-                            this.startTabLockCountdown();
+                            this.setBodyScrollLock(true);
                             if (this.tabBroadcast) this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
                             if (this.sharedWorkerPort) this.sharedWorkerPort.postMessage({ type: 'requestOwnerRefresh' });
                             return;
                         }
                         this.isTabOwner = true;
                         this.lockHeld = true;
+                        this.tabLockModal = false;
+                        this.setBodyScrollLock(false);
                         if (this.sharedWorkerPort && this.sharedWorkerId) {
                             this.sharedWorkerPort.postMessage({ type: 'claimOwner', id: this.sharedWorkerId });
+                        }
+                        if (this.userJoined && this.episodes.length === 0 && this.mangas.length === 0) {
+                            this.loadData();
                         }
                         await new Promise(resolve => { this.lockReleaseResolve = resolve; });
                         this.lockHeld = false;
@@ -15307,29 +15295,9 @@
                 handleLockUnavailable() {
                     this.isTabOwner = false;
                     this.tabLockModal = true;
-                    this.tabLockCountdown = 10;
-                    this.startTabLockCountdown();
+                    this.setBodyScrollLock(true);
                     if (this.tabBroadcast) this.tabBroadcast.postMessage({ type: 'requestOwnerRefresh' });
                     if (this.sharedWorkerPort) this.sharedWorkerPort.postMessage({ type: 'requestOwnerRefresh' });
-                },
-                startTabLockCountdown() {
-                    if (this.tabLockIntervalId) {
-                        clearInterval(this.tabLockIntervalId);
-                    }
-                    this.setBodyScrollLock(true);
-                    this.tabLockIntervalId = setInterval(() => {
-                        this.tabLockCountdown -= 1;
-                        if (this.tabLockCountdown <= 0) {
-                            clearInterval(this.tabLockIntervalId);
-                            this.tabLockIntervalId = null;
-                            this.closeSelfNow();
-                        }
-                    }, 1000);
-                },
-                closeSelfNow() {
-                    try { window.close(); } catch (e) {}
-                    try { window.open('', '_self'); window.close(); } catch (e2) {}
-                    this.tabLockModal = true;
                 },
                 releaseTabLock() {
                     try {
@@ -16583,6 +16551,13 @@
                             }
                         }, 50);
 
+                        if (this.userJoined && !this.isTabOwner) {
+                            clearInterval(this.progressInterval);
+                            this.loadProgress = 0;
+                            reject('Not tab owner');
+                            return;
+                        }
+
                         if (this.userJoined) {
                             // Reset states before attempting to fetch
                             this.episodes = [];
@@ -16602,10 +16577,7 @@
                                 return;
                             }
 
-                            // Append a cache-busting query parameter
-                            const urlWithCacheBust = `${this.jsonUrl}?t=${new Date().getTime()}`;
-
-                            fetch(urlWithCacheBust, { cache: 'no-store' })
+                            fetch(this.jsonUrl)
                                 .then(response => {
                                     if (response.status === 429) {
                                         // If rate-limited, parse the JSON response
@@ -18416,6 +18388,9 @@
                 },
 
                 async sendVideoResponse(fileId, caption) {
+                    if (!this.isTabOwner) {
+                        return;
+                    }
                     const payload = new URLSearchParams();
                     payload.append("method", "sendVideo");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -18451,6 +18426,9 @@
                 },
 
                 async sendMangaResponse(fileId, caption) {
+                    if (!this.isTabOwner) {
+                        return;
+                    }
                     const payload = new URLSearchParams();
                     payload.append("method", "sendDocument");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -20139,10 +20117,6 @@
             async created() {
                 // Run the Telegram check before mounting the app.
                 await this.checkTelegram();
-                // If the user is valid, immediately load data.
-                if (this.userJoined) {
-                    this.loadData();
-                }
             },
 
             mounted() {
@@ -20273,31 +20247,30 @@
                 window.addEventListener('beforeunload', this.releaseTabLock);
             },
 
-            unmounted() {
+                unmounted() {
 
-                // Clear any app-specific intervals/timeouts
-                if (this.intervalId) clearInterval(this.intervalId);
-                if (this.intervalZikrId) clearInterval(this.intervalZikrId);
-                if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
-                if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
-                if (this.nowIntervalId) clearInterval(this.nowIntervalId);
-                if (this.countdownInterval) clearInterval(this.countdownInterval);
-                if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
-                if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
-                if (this.timeoutId) clearTimeout(this.timeoutId);
-                if (this.nextEpisodeIntervalId) clearInterval(this.nextEpisodeIntervalId);
-                if (this.nextMangaIntervalId) clearInterval(this.nextMangaIntervalId);
-                this.clearInactivityTracking();
+                    // Clear any app-specific intervals/timeouts
+                    if (this.intervalId) clearInterval(this.intervalId);
+                    if (this.intervalZikrId) clearInterval(this.intervalZikrId);
+                    if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
+                    if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
+                    if (this.nowIntervalId) clearInterval(this.nowIntervalId);
+                    if (this.countdownInterval) clearInterval(this.countdownInterval);
+                    if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
+                    if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
+                    if (this.timeoutId) clearTimeout(this.timeoutId);
+                    if (this.nextEpisodeIntervalId) clearInterval(this.nextEpisodeIntervalId);
+                    if (this.nextMangaIntervalId) clearInterval(this.nextMangaIntervalId);
+                    this.clearInactivityTracking();
 
-                // Clean up event listener to prevent memory leaks
-                document.removeEventListener("click", this.closeMenu);
-                window.removeEventListener('resize', this.updateFontSize);
-                if (this.tabLockIntervalId) clearInterval(this.tabLockIntervalId);
-                if (this.tabBroadcast) this.tabBroadcast.close();
-                this.releaseTabLock();
-                if (this.sharedWorkerPort) {
-                    try { this.sharedWorkerPort.close && this.sharedWorkerPort.close(); } catch (e) {}
-                }
+                    // Clean up event listener to prevent memory leaks
+                    document.removeEventListener("click", this.closeMenu);
+                    window.removeEventListener('resize', this.updateFontSize);
+                    if (this.tabBroadcast) this.tabBroadcast.close();
+                    this.releaseTabLock();
+                    if (this.sharedWorkerPort) {
+                        try { this.sharedWorkerPort.close && this.sharedWorkerPort.close(); } catch (e) {}
+                    }
                 this.setBodyScrollLock(false);
             }
 
