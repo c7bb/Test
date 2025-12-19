@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>   
+<head> 
     <script>
         // Immediate cleanup function
         (function() {
@@ -612,19 +612,6 @@
                 >
                     تحديث الجلسة
                 </button>
-            </div>        
-        </div>
-        <div 
-            v-if="tabLockModal" 
-            class="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm flex items-center justify-center"
-        >
-            <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
-                <div class="text-xl text-red-500 -m-3 font-bold">
-                    عذرًا، الدليل مفتوح في تبويب آخر
-                </div>
-                <div class="text-base">
-                    يسمح الدليل بتبويب واحد فقط لتجنب تعارض المزامنة.
-                </div>
             </div>        
         </div>
 
@@ -1505,6 +1492,21 @@
                         </div>
                     </div>    
                 </div>
+            </div>
+
+            <!-- Tab Lock Modal -->
+            <div 
+                v-if="tabLockModal" 
+                class="fixed inset-0 z-[130] bg-black/80 backdrop-blur-sm flex items-center justify-center"
+            >
+                <div class="bg-gray-900 text-yellow-200 rounded-lg p-6 shadow-2xl w-11/12 max-w-md text-center space-y-4">
+                    <div class="text-xl text-red-500 -m-3 font-bold">
+                        عذرًا، الدليل مفتوح في تبويب آخر
+                    </div>
+                    <div class="text-base">
+                        يسمح الدليل بتبويب واحد فقط لتجنب تعارض المزامنة.
+                    </div>
+                </div>        
             </div>
 
             <!-- Manga Failed Log Modal -->
@@ -7061,15 +7063,6 @@
                     inactivityModal: false,
                     inactivityListeners: [],
                     lastActivityAt: Date.now(),
-                    tabId: null,
-                    tabLockModal: false,
-                    tabBroadcast: null,
-                    tabLockOwnerId: null,
-                    isTabOwner: false,
-                    sharedWorkerPort: null,
-                    sharedWorkerId: null,
-                    lockHeld: false,
-                    lockReleaseResolve: null,
                     ep: 1185,
                     mangaCh: 1155,
                     // Daily Limit Data
@@ -7091,6 +7084,15 @@
                     lastServerSync: 0,
                     trustedToday: null,
                     unsubscribeDaily: null,
+
+                    // Tab Locking System
+                    tabLockModal: false,
+                    isTabOwner: false,
+                    tabWorkerPort: null,
+                    tabBroadcastChannel: null,
+                    tabLockLock: null,
+                    tabHeartbeatInterval: null,
+                    tabId: null,
 
                     replacementDict: {
                     "سينشي": ["شينتشي", "سينشي"],
@@ -14813,7 +14815,7 @@
 
 
                 jsonUrl() {
-                    // Automatically refetch data when jsonUrl changes
+                    // Automatically refetch data when jsonUrl changes (only if tab owner)
                     if (this.isTabOwner) {
                         this.loadData();
                     }
@@ -14961,8 +14963,12 @@
                 },
 
                 initInstantDB() {
-                    this.dailyReady = true;
-                    return;
+                    // Block InstantDB initialization if this tab is not the owner
+                    if (!this.isTabOwner) {
+                        console.warn('InstantDB initialization blocked: Tab is not the owner');
+                        return;
+                    }
+                    
                     const APP_ID = '4c54b210-15b2-4e56-9d0b-85a9ce2aa6e3';
                     const getInstantDB = () => window.InstantDB || window.instantdb;
 
@@ -15013,6 +15019,12 @@
                 },
 
                 subscribeToDailyDownloads() {
+                    // Block subscription if this tab is not the owner
+                    if (!this.isTabOwner) {
+                        console.warn('InstantDB subscription blocked: Tab is not the owner');
+                        return;
+                    }
+                    
                     if (!this._db) return;
                     
                     // Unsubscribe previous if exists
@@ -15221,98 +15233,6 @@
                 refreshSession() {
                     // this.setBodyScrollLock(false);
                     window.location.reload();
-                },
-
-                initTabLock() {
-                    this.tabBroadcast = null;
-                    this.connectSharedWorker();
-                },
-                applyTabOwnership(ownerId) {
-                    this.tabLockOwnerId = ownerId || null;
-                    const isOwner = !!(this.sharedWorkerId && this.tabLockOwnerId && this.tabLockOwnerId === this.sharedWorkerId);
-                    this.isTabOwner = isOwner;
-                    this.tabLockModal = !isOwner;
-                    this.setBodyScrollLock(!isOwner);
-                    if (isOwner && this.userJoined && this.episodes.length === 0 && this.mangas.length === 0) {
-                        this.loadData();
-                    }
-                },
-                connectSharedWorker() {
-                    try {
-                        const sw = new SharedWorker('tab-shared-worker.js', { name: 'tabLockWorker' });
-                        this.sharedWorkerPort = sw.port;
-                        this.sharedWorkerPort.onmessage = (ev) => {
-                            const msg = ev.data || {};
-                            if (!msg || !msg.type) return;
-                            if (msg.type === 'connected') {
-                                this.sharedWorkerId = msg.id;
-                            } else if (msg.type === 'ownerStatus') {
-                                this.applyTabOwnership(msg.ownerPortId);
-                            } else if (msg.type === 'ownerChanged') {
-                                this.applyTabOwnership(msg.id);
-                            } else if (msg.type === 'ownerReleased') {
-                                this.applyTabOwnership(null);
-                            }
-                        };
-                        this.sharedWorkerPort.start();
-                        this.sharedWorkerPort.postMessage({ type: 'hello' });
-                    } catch (e) {
-                        this.sharedWorkerPort = null;
-                        this.acquireTabLock();
-                    }
-                },
-                acquireTabLock() {
-                    if (this.sharedWorkerPort) {
-                        return;
-                    }
-                    const name = 'dcrefbot-tab-lock';
-                    const locks = navigator.locks;
-                    if (!locks || !locks.request) {
-                        this.handleLockUnavailable();
-                        return;
-                    }
-                    locks.request(name, { mode: 'exclusive', ifAvailable: true }, async lock => {
-                        if (!lock) {
-                            this.isTabOwner = false;
-                            this.tabLockModal = true;
-                            this.setBodyScrollLock(true);
-                            return;
-                        }
-                        this.isTabOwner = true;
-                        this.lockHeld = true;
-                        this.tabLockModal = false;
-                        this.setBodyScrollLock(false);
-                        if (this.sharedWorkerPort && this.sharedWorkerId) {
-                            this.sharedWorkerPort.postMessage({ type: 'claimOwner', id: this.sharedWorkerId });
-                        }
-                        if (this.userJoined && this.episodes.length === 0 && this.mangas.length === 0) {
-                            this.loadData();
-                        }
-                        await new Promise(resolve => { this.lockReleaseResolve = resolve; });
-                        this.lockHeld = false;
-                    });
-                },
-                handleLockUnavailable() {
-                    this.isTabOwner = true;
-                    this.tabLockModal = false;
-                    this.setBodyScrollLock(false);
-                    if (this.userJoined && this.episodes.length === 0 && this.mangas.length === 0) {
-                        this.loadData();
-                    }
-                },
-                releaseTabLock() {
-                    try {
-                        if (this.lockReleaseResolve) {
-                            this.lockReleaseResolve();
-                            this.lockReleaseResolve = null;
-                        }
-                        if (this.sharedWorkerPort && this.sharedWorkerId) {
-                            this.sharedWorkerPort.postMessage({ type: 'releaseOwner', id: this.sharedWorkerId });
-                        }
-                        if (this.sharedWorkerPort && this.sharedWorkerId) {
-                            this.sharedWorkerPort.postMessage({ type: 'disconnect', id: this.sharedWorkerId });
-                        }
-                    } catch (e) {}
                 },
 
                 setBodyScrollLock(lock) {
@@ -16541,6 +16461,13 @@
                 // Method to load data from JSON
                 loadData() {
                     return new Promise((resolve, reject) => {
+                        // Block data loading if this tab is not the owner
+                        if (!this.isTabOwner) {
+                            console.warn('loadData blocked: Tab is not the owner');
+                            reject('Tab is not the owner');
+                            return;
+                        }
+                        
                         // Reset progress and start the progress interval
                         this.loadProgress = 0;
                         if (this.progressInterval) clearInterval(this.progressInterval);
@@ -16551,13 +16478,6 @@
                                 this.loadProgress += 1;
                             }
                         }, 50);
-
-                        if (this.userJoined && !this.isTabOwner) {
-                            clearInterval(this.progressInterval);
-                            this.loadProgress = 0;
-                            reject('Not tab owner');
-                            return;
-                        }
 
                         if (this.userJoined) {
                             // Reset states before attempting to fetch
@@ -16586,7 +16506,10 @@
                                     if (response.status === 429) {
                                         // If rate-limited, parse the JSON response
                                         return response.json().then(data => {
-                                            this.loading = false;
+                                            // Only set loading = false if this tab is the owner
+                                            if (this.isTabOwner) {
+                                                this.loading = false;
+                                            }
                                             clearInterval(this.progressInterval); // Stop progress animation
                                             this.loadProgress = 0; // Reset progress
 
@@ -16620,13 +16543,16 @@
                                         clearInterval(this.progressInterval); // Stop progress animation
                                         this.loadProgress = 100; // Set progress to 100%
                                         setTimeout(() => {
-                                            this.episodes = data.Episodes || [];
-                                            this.mangas = data.Mangas || [];
-                                            this.loading = false;
-                                            localStorage.removeItem('waitTime');
-                                            
-                                            // Update episode time ago after data loads
-                                            this.updateEpisodeTimeAgo();
+                                            // Only update data and set loading = false if this tab is the owner
+                                            if (this.isTabOwner) {
+                                                this.episodes = data.Episodes || [];
+                                                this.mangas = data.Mangas || [];
+                                                this.loading = false;
+                                                localStorage.removeItem('waitTime');
+                                                
+                                                // Update episode time ago after data loads
+                                                this.updateEpisodeTimeAgo();
+                                            }
                                             
                                             resolve();
                                         }, 300); // Delay to show 100% progress
@@ -16635,9 +16561,12 @@
                                 .catch(error => {
                                     clearInterval(this.progressInterval); // Stop progress animation
                                     this.loadProgress = 0; // Reset progress
-                                    this.loading = false;
+                                    // Only set loading = false if this tab is the owner
+                                    if (this.isTabOwner) {
+                                        this.loading = false;
+                                    }
 
-                                    if (!this.error) {
+                                    if (!this.error && this.isTabOwner) {
                                         this.error = 'حدث خطأ أثناء محاولة تحميل البيانات. قد تكون هناك مشكلة مؤقتة في الاتصال أو الخادم. يُرجى التحقق من اتصالك بالإنترنت أو استخدام VPN والمحاولة مرة أخرى.';
                                     }
                                     reject(error);
@@ -16645,7 +16574,10 @@
                         } else {
                             clearInterval(this.progressInterval); // Stop progress animation
                             this.loadProgress = 0; // Reset progress
-                            this.loading = false;
+                            // Only set loading = false if this tab is the owner
+                            if (this.isTabOwner) {
+                                this.loading = false;
+                            }
                             console.log("User not joined, not loading data.");
                             reject('User not joined to the channel');
                         }        
@@ -18392,9 +18324,12 @@
                 },
 
                 async sendVideoResponse(fileId, caption) {
+                    // Block API request if this tab is not the owner
                     if (!this.isTabOwner) {
-                        return;
+                        console.warn('sendVideoResponse blocked: Tab is not the owner');
+                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
+                    
                     const payload = new URLSearchParams();
                     payload.append("method", "sendVideo");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -18430,9 +18365,12 @@
                 },
 
                 async sendMangaResponse(fileId, caption) {
+                    // Block API request if this tab is not the owner
                     if (!this.isTabOwner) {
-                        return;
+                        console.warn('sendMangaResponse blocked: Tab is not the owner');
+                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
+                    
                     const payload = new URLSearchParams();
                     payload.append("method", "sendDocument");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -18467,6 +18405,12 @@
                 },
 
                 async sendMangaToBot(fileId, mangaNumber, index) {
+                    // Block API request if this tab is not the owner
+                    if (!this.isTabOwner) {
+                        console.warn('sendMangaToBot blocked: Tab is not the owner');
+                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
+                    }
+                    
                     if (!this.selectedEpisode?.EpisodeNumber) {
                         return;
                     }
@@ -18552,6 +18496,12 @@
                 },
 
                 async sendMangaToBotD(fileId, mangaNumber, index) {
+                    // Block API request if this tab is not the owner
+                    if (!this.isTabOwner) {
+                        console.warn('sendMangaToBotD blocked: Tab is not the owner');
+                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
+                    }
+                    
                     if (!this.selectedManga?.MangaNumber) return;
 
                     // Set ratelimiting for all other buttons
@@ -19145,6 +19095,12 @@
                 },
 
                 async retryAllFailedMangas() {
+                    // Block API request if this tab is not the owner
+                    if (!this.isTabOwner) {
+                        console.warn('retryAllFailedMangas blocked: Tab is not the owner');
+                        return;
+                    }
+                    
                     // Prevent starting if main queue is running
                     if (this.isMangaQueueRunning && !this.isMangaQueuePaused) return;
                     if (this.isRetryAllFailedRunning) return;
@@ -19368,6 +19324,13 @@
                 },
 
                 startMangaQueue() {
+                    // Block API request if this tab is not the owner
+                    if (!this.isTabOwner) {
+                        console.warn('startMangaQueue blocked: Tab is not the owner');
+                        this.tabLockModal = true;
+                        return;
+                    }
+                    
                     // Prevent starting if retry queue is running
                     if (this.isRetryAllFailedRunning) {
                         return;
@@ -20116,17 +20079,244 @@
                     }, 1000);
                 },
 
+                // Tab Locking System Methods
+                initTabLocking() {
+                    // Generate unique tab ID
+                    this.tabId = `tab-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    
+                    // Try SharedWorker first
+                    try {
+                        if (typeof SharedWorker !== 'undefined') {
+                            const worker = new SharedWorker('./tab-shared-worker.js', { name: this.tabId });
+                            this.tabWorkerPort = worker.port;
+                            
+                            this.tabWorkerPort.onmessage = (event) => {
+                                const { type, isOwner, ownerTabId } = event.data;
+                                
+                                switch (type) {
+                                    case 'ownership-granted':
+                                        this.isTabOwner = true;
+                                        this.tabLockModal = false;
+                                        console.log('Tab ownership granted');
+                                        // Initialize InstantDB and load data when ownership is granted
+                                        if (this.userJoined && !this._db) {
+                                            this.initInstantDB();
+                                        }
+                                        if (this.userJoined && this.episodes.length === 0) {
+                                            this.loadData();
+                                        }
+                                        break;
+                                        
+                                    case 'ownership-denied':
+                                        this.isTabOwner = false;
+                                        this.tabLockModal = true;
+                                        console.log('Tab ownership denied, owner:', ownerTabId);
+                                        break;
+                                        
+                                    case 'ownership-status':
+                                        this.isTabOwner = isOwner;
+                                        if (!isOwner) {
+                                            this.tabLockModal = true;
+                                        }
+                                        break;
+                                        
+                                    case 'heartbeat-request':
+                                        // Respond to heartbeat request
+                                        if (this.tabWorkerPort) {
+                                            this.tabWorkerPort.postMessage({
+                                                type: 'heartbeat',
+                                                tabId: this.tabId
+                                            });
+                                        }
+                                        break;
+                                }
+                            };
+                            
+                            this.tabWorkerPort.start();
+                            
+                            // Request ownership
+                            this.tabWorkerPort.postMessage({
+                                type: 'init',
+                                tabId: this.tabId
+                            });
+                            
+                            // Start heartbeat
+                            this.tabHeartbeatInterval = setInterval(() => {
+                                if (this.tabWorkerPort && this.isTabOwner) {
+                                    this.tabWorkerPort.postMessage({
+                                        type: 'heartbeat',
+                                        tabId: this.tabId
+                                    });
+                                }
+                            }, 2000);
+                        }
+                    } catch (e) {
+                        console.warn('SharedWorker not supported, using BroadcastChannel + Web Locks:', e);
+                    }
+                    
+                    // Fallback: Use BroadcastChannel API
+                    try {
+                        if (typeof BroadcastChannel !== 'undefined') {
+                            this.tabBroadcastChannel = new BroadcastChannel('dcrefbot-tab-broadcast');
+                            
+                            this.tabBroadcastChannel.onmessage = (event) => {
+                                const { type, ownerTabId, tabId } = event.data;
+                                
+                                switch (type) {
+                                    case 'ownership-granted':
+                                        if (tabId === this.tabId) {
+                                            this.isTabOwner = true;
+                                            this.tabLockModal = false;
+                                            // Initialize InstantDB and load data when ownership is granted
+                                            if (this.userJoined && !this._db) {
+                                                this.initInstantDB();
+                                            }
+                                            if (this.userJoined && this.episodes.length === 0) {
+                                                this.loadData();
+                                            }
+                                        } else {
+                                            this.isTabOwner = false;
+                                            this.tabLockModal = true;
+                                        }
+                                        break;
+                                        
+                                    case 'ownership-status':
+                                        if (tabId === this.tabId) {
+                                            this.isTabOwner = true;
+                                            this.tabLockModal = false;
+                                            // Initialize InstantDB and load data when ownership is granted
+                                            if (this.userJoined && !this._db) {
+                                                this.initInstantDB();
+                                            }
+                                            if (this.userJoined && this.episodes.length === 0) {
+                                                this.loadData();
+                                            }
+                                        } else {
+                                            this.isTabOwner = false;
+                                            this.tabLockModal = true;
+                                        }
+                                        break;
+                                        
+                                    case 'ownership-released':
+                                        // Try to claim ownership
+                                        this.tabBroadcastChannel.postMessage({
+                                            type: 'request-ownership',
+                                            tabId: this.tabId,
+                                            timestamp: Date.now()
+                                        });
+                                        break;
+                                }
+                            };
+                            
+                            // Request ownership via BroadcastChannel
+                            this.tabBroadcastChannel.postMessage({
+                                type: 'request-ownership',
+                                tabId: this.tabId,
+                                timestamp: Date.now()
+                            });
+                        }
+                    } catch (e) {
+                        console.warn('BroadcastChannel not supported:', e);
+                    }
+                    
+                    // Use Web Locks API as additional verification
+                    this.acquireTabLock();
+                },
+                
+                async acquireTabLock() {
+                    if (navigator.locks && navigator.locks.request) {
+                        try {
+                            await navigator.locks.request('dcrefbot-tab-lock', { ifAvailable: true }, async (lock) => {
+                                if (lock) {
+                                    // We got the lock, we're the owner
+                                    this.isTabOwner = true;
+                                    this.tabLockModal = false;
+                                    this.tabLockLock = lock;
+                                    
+                                    // Initialize InstantDB and load data when ownership is granted
+                                    if (this.userJoined && !this._db) {
+                                        this.initInstantDB();
+                                    }
+                                    if (this.userJoined && this.episodes.length === 0) {
+                                        this.loadData();
+                                    }
+                                    
+                                    // Keep the lock alive
+                                    const keepAlive = async () => {
+                                        while (this.isTabOwner) {
+                                            await new Promise(resolve => setTimeout(resolve, 1000));
+                                        }
+                                    };
+                                    keepAlive();
+                                } else {
+                                    // Lock is held by another tab
+                                    this.isTabOwner = false;
+                                    this.tabLockModal = true;
+                                }
+                            });
+                        } catch (e) {
+                            console.warn('Web Locks API error:', e);
+                            // Fallback: assume we're the owner if locks fail
+                            if (!this.tabBroadcastChannel && !this.tabWorkerPort) {
+                                this.isTabOwner = true;
+                            }
+                        }
+                    }
+                },
+                
+                releaseTabLock() {
+                    if (this.tabHeartbeatInterval) {
+                        clearInterval(this.tabHeartbeatInterval);
+                        this.tabHeartbeatInterval = null;
+                    }
+                    
+                    if (this.tabWorkerPort) {
+                        this.tabWorkerPort.postMessage({
+                            type: 'release',
+                            tabId: this.tabId
+                        });
+                        this.tabWorkerPort.close();
+                        this.tabWorkerPort = null;
+                    }
+                    
+                    if (this.tabBroadcastChannel) {
+                        this.tabBroadcastChannel.postMessage({
+                            type: 'release-ownership',
+                            tabId: this.tabId,
+                            timestamp: Date.now()
+                        });
+                        this.tabBroadcastChannel.close();
+                        this.tabBroadcastChannel = null;
+                    }
+                    
+                    this.isTabOwner = false;
+                    this.tabLockLock = null;
+                },
+
             },
             
             async created() {
+                // Initialize tab locking system FIRST
+                this.initTabLocking();
+                
                 // Run the Telegram check before mounting the app.
                 await this.checkTelegram();
+                // If the user is valid, immediately load data.
+                if (this.userJoined && this.isTabOwner) {
+                    this.loadData();
+                }
             },
 
             mounted() {
-                this.initTabLock();
-                // Initialize InstantDB
-                this.initInstantDB();
+                // Initialize InstantDB only if this tab is the owner
+                if (this.isTabOwner) {
+                    this.initInstantDB();
+                }
+                
+                // Cleanup on unmount
+                window.addEventListener('beforeunload', () => {
+                    this.releaseTabLock();
+                });
 
                 const enableDebug = false; // Set to true to enable debug logging
                 
@@ -20247,35 +20437,27 @@
                 this.nextMangaIntervalId = setInterval(() => {
                     this.refreshNextMangaState();
                 }, 60000);
-                
-                window.addEventListener('beforeunload', this.releaseTabLock);
             },
 
-                unmounted() {
+            unmounted() {
 
-                    // Clear any app-specific intervals/timeouts
-                    if (this.intervalId) clearInterval(this.intervalId);
-                    if (this.intervalZikrId) clearInterval(this.intervalZikrId);
-                    if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
-                    if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
-                    if (this.nowIntervalId) clearInterval(this.nowIntervalId);
-                    if (this.countdownInterval) clearInterval(this.countdownInterval);
-                    if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
-                    if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
-                    if (this.timeoutId) clearTimeout(this.timeoutId);
-                    if (this.nextEpisodeIntervalId) clearInterval(this.nextEpisodeIntervalId);
-                    if (this.nextMangaIntervalId) clearInterval(this.nextMangaIntervalId);
-                    this.clearInactivityTracking();
+                // Clear any app-specific intervals/timeouts
+                if (this.intervalId) clearInterval(this.intervalId);
+                if (this.intervalZikrId) clearInterval(this.intervalZikrId);
+                if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
+                if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
+                if (this.nowIntervalId) clearInterval(this.nowIntervalId);
+                if (this.countdownInterval) clearInterval(this.countdownInterval);
+                if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
+                if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
+                if (this.timeoutId) clearTimeout(this.timeoutId);
+                if (this.nextEpisodeIntervalId) clearInterval(this.nextEpisodeIntervalId);
+                if (this.nextMangaIntervalId) clearInterval(this.nextMangaIntervalId);
+                this.clearInactivityTracking();
 
-                    // Clean up event listener to prevent memory leaks
-                    document.removeEventListener("click", this.closeMenu);
-                    window.removeEventListener('resize', this.updateFontSize);
-                    if (this.tabBroadcast) this.tabBroadcast.close();
-                    this.releaseTabLock();
-                    if (this.sharedWorkerPort) {
-                        try { this.sharedWorkerPort.close && this.sharedWorkerPort.close(); } catch (e) {}
-                    }
-                this.setBodyScrollLock(false);
+                // Clean up event listener to prevent memory leaks
+                document.removeEventListener("click", this.closeMenu);
+                window.removeEventListener('resize', this.updateFontSize);
             }
 
         });
