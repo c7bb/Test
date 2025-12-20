@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>   
+<head>  
     <script>
         // Immediate cleanup function
         (function() {
@@ -15038,64 +15038,19 @@
 
                     this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
 
-                    this.syncTelegramDailyLimitRowId(id, true);
-                },
-
-                async syncTelegramDailyLimitRowId(id, force = false) {
-                    if (!this.isUuidLike(id)) return;
-
-                    const now = Date.now();
-                    if (!force) {
-                        if (this.dailyLimitTelegramCheckInFlight) return;
-                        if (now - this.dailyLimitTelegramLastCheckAt < 15000) return;
-                    } else {
-                        if (this.dailyLimitTelegramCheckInFlight) return;
-                    }
-
-                    this.dailyLimitTelegramLastCheckAt = now;
-                    this.dailyLimitTelegramCheckInFlight = true;
-
-                    const key = this.getDailyLimitStorageKey();
-
-                    const readValue = (storage) => new Promise(resolve => {
-                        try {
-                            if (!storage || typeof storage.getItem !== 'function') return resolve(null);
-                            storage.getItem(key, (err, value) => {
-                                if (err) return resolve(null);
-                                resolve(value);
-                            });
-                        } catch (e) {
-                            resolve(null);
+                    try {
+                        const ds = window.Telegram?.WebApp?.DeviceStorage;
+                        if (ds && typeof ds.setItem === 'function') {
+                            ds.setItem(this.getDailyLimitStorageKey(), id);
                         }
-                    });
-
-                    const writeValue = (storage) => new Promise(resolve => {
-                        try {
-                            if (!storage || typeof storage.setItem !== 'function') return resolve(false);
-                            storage.setItem(key, id, () => resolve(true));
-                        } catch (e) {
-                            resolve(false);
-                        }
-                    });
+                    } catch (e) {}
 
                     try {
                         const ss = window.Telegram?.WebApp?.SecureStorage;
-                        const ds = window.Telegram?.WebApp?.DeviceStorage;
-
-                        const [ssVal, dsVal] = await Promise.all([
-                            readValue(ss),
-                            readValue(ds)
-                        ]);
-
-                        if (ss && (ssVal !== id)) {
-                            await writeValue(ss);
+                        if (ss && typeof ss.setItem === 'function') {
+                            ss.setItem(this.getDailyLimitStorageKey(), id);
                         }
-                        if (ds && (dsVal !== id)) {
-                            await writeValue(ds);
-                        }
-                    } finally {
-                        this.dailyLimitTelegramCheckInFlight = false;
-                    }
+                    } catch (e) {}
                 },
 
                 getTelegramStoredDailyLimitRowId() {
@@ -15227,7 +15182,18 @@
                             this.setStoredDailyLimitRowId(id);
                         } else {
                             this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
-                            this.syncTelegramDailyLimitRowId(id, false);
+                            try {
+                                const ds = window.Telegram?.WebApp?.DeviceStorage;
+                                if (ds && typeof ds.setItem === 'function') {
+                                    ds.setItem(this.getDailyLimitStorageKey(), id);
+                                }
+                            } catch (e) {}
+                            try {
+                                const ss = window.Telegram?.WebApp?.SecureStorage;
+                                if (ss && typeof ss.setItem === 'function') {
+                                    ss.setItem(this.getDailyLimitStorageKey(), id);
+                                }
+                            } catch (e) {}
                         }
                     }, 1000);
                 },
