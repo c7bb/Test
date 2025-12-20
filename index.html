@@ -1260,12 +1260,10 @@
                                 <div class="flex-1">
                                     <label class="block mb-2 text-sm">من الفصل:</label>
                                     <input
-                                        :value="mangaStartNumber ?? ''"
+                                        v-model="mangaStartNumberModel"
                                         type="text"
                                         inputmode="numeric"
                                         pattern="[0-9٠-٩۰-۹]*"
-                                        @input="handleMangaNumberInput($event, 'mangaStartNumber')"
-                                        @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${minMangaNumber}`"
                                     />
@@ -1273,12 +1271,10 @@
                                 <div class="flex-1">
                                     <label class="block mb-2 text-sm">إلى الفصل:</label>
                                     <input
-                                        :value="mangaEndNumber ?? ''"
+                                        v-model="mangaEndNumberModel"
                                         type="text"
                                         inputmode="numeric"
                                         pattern="[0-9٠-٩۰-۹]*"
-                                        @input="handleMangaNumberInput($event, 'mangaEndNumber')"
-                                        @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${maxMangaNumber}`"
                                     />
@@ -7887,6 +7883,50 @@
                 };
             },
             computed: {
+                mangaStartNumberModel: {
+                    get() {
+                        return this.mangaStartNumber ?? '';
+                    },
+                    set(value) {
+                        const normalized = this.normalizeNumericString(value).trim();
+
+                        if (normalized === '') {
+                            this.mangaStartNumber = null;
+                            return;
+                        }
+
+                        const parsed = parseFloat(normalized);
+                        if (isNaN(parsed)) {
+                            this.mangaStartNumber = null;
+                            return;
+                        }
+
+                        const clamped = Math.min(Math.max(parsed, this.minMangaNumber), this.maxMangaNumber);
+                        this.mangaStartNumber = Math.round(clamped);
+                    }
+                },
+                mangaEndNumberModel: {
+                    get() {
+                        return this.mangaEndNumber ?? '';
+                    },
+                    set(value) {
+                        const normalized = this.normalizeNumericString(value).trim();
+
+                        if (normalized === '') {
+                            this.mangaEndNumber = null;
+                            return;
+                        }
+
+                        const parsed = parseFloat(normalized);
+                        if (isNaN(parsed)) {
+                            this.mangaEndNumber = null;
+                            return;
+                        }
+
+                        const clamped = Math.min(Math.max(parsed, this.minMangaNumber), this.maxMangaNumber);
+                        this.mangaEndNumber = Math.round(clamped);
+                    }
+                },
                 isFailedToFetch() {
                     return (this.errorMessage || '').trim() === 'Failed to fetch';
                 },
