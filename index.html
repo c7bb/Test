@@ -15037,35 +15037,71 @@
 
                     this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
 
+                    this.syncTelegramDailyLimitRowId(id);
+                },
+
+                async syncTelegramDailyLimitRowId(id) {
+                    if (!this.isUuidLike(id)) return;
                     if (this.dailyLimitTelegramCheckInFlight) return;
                     this.dailyLimitTelegramCheckInFlight = true;
 
                     const key = this.getDailyLimitStorageKey();
-                    let pending = 0;
-                    const done = () => {
-                        pending -= 1;
-                        if (pending <= 0) {
-                            this.dailyLimitTelegramCheckInFlight = false;
+
+                    const readValue = (storage) => new Promise(resolve => {
+                        try {
+                            if (!storage || typeof storage.getItem !== 'function') return resolve(null);
+                            let settled = false;
+                            const done = (value) => {
+                                if (settled) return;
+                                settled = true;
+                                resolve(value);
+                            };
+                            const timer = setTimeout(() => done(null), 250);
+                            storage.getItem(key, (err, value) => {
+                                clearTimeout(timer);
+                                if (err) return done(null);
+                                done(value);
+                            });
+                        } catch (e) {
+                            resolve(null);
                         }
-                    };
+                    });
+
+                    const writeValue = (storage) => new Promise(resolve => {
+                        try {
+                            if (!storage || typeof storage.setItem !== 'function') return resolve(false);
+                            let settled = false;
+                            const done = (ok) => {
+                                if (settled) return;
+                                settled = true;
+                                resolve(ok);
+                            };
+                            const timer = setTimeout(() => done(true), 250);
+                            storage.setItem(key, id, () => {
+                                clearTimeout(timer);
+                                done(true);
+                            });
+                        } catch (e) {
+                            resolve(false);
+                        }
+                    });
 
                     try {
                         const ss = window.Telegram?.WebApp?.SecureStorage;
-                        if (ss && typeof ss.setItem === 'function') {
-                            pending += 1;
-                            ss.setItem(key, id, done);
-                        }
-                    } catch (e) {}
-
-                    try {
                         const ds = window.Telegram?.WebApp?.DeviceStorage;
-                        if (ds && typeof ds.setItem === 'function') {
-                            pending += 1;
-                            ds.setItem(key, id, done);
-                        }
-                    } catch (e) {}
 
-                    if (pending === 0) {
+                        const [ssVal, dsVal] = await Promise.all([
+                            readValue(ss),
+                            readValue(ds)
+                        ]);
+
+                        if (ss && (ssVal !== id)) {
+                            await writeValue(ss);
+                        }
+                        if (ds && (dsVal !== id)) {
+                            await writeValue(ds);
+                        }
+                    } finally {
                         this.dailyLimitTelegramCheckInFlight = false;
                     }
                 },
@@ -15197,6 +15233,9 @@
 
                         if (needsWrite) {
                             this.setStoredDailyLimitRowId(id);
+                        } else {
+                            this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
+                            this.syncTelegramDailyLimitRowId(id);
                         }
                     }, 1000);
                 },
