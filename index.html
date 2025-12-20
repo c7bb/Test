@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -1585,7 +1585,7 @@
                                             <span class="font-bold">{{ entry.chapter }}</span>
                                         </td>
                                         <td v-if="!allFailedMangaRowsSucceeded" class="p-2 border border-cyan-700 align-top">
-                                            <div class="text-xs text-gray-100 whitespace-pre-wrap break-words max-h-28 overflow-y-auto">
+                                            <div class="text-xs text-gray-100 whitespace-pre-wrap break-words max-h-28 overflow-y-auto" dir="ltr">
                                                 {{ entry.error }}
                                             </div>
                                         </td>
@@ -18609,7 +18609,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
