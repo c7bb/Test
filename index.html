@@ -19019,7 +19019,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-		
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -21011,6 +21011,73 @@ document.body.innerHTML = `
                 // Clean up event listener to prevent memory leaks
                 document.removeEventListener("click", this.closeMenu);
                 window.removeEventListener('resize', this.updateFontSize);
+            }
+
+        });
+
+            app.directive('tippy', {
+                mounted(el, binding) {
+                    if (typeof tippy !== 'undefined') {
+                    tippy(el, {
+                        content: binding.value,
+                        theme: 'retro',
+                        placement: 'top',
+                        followCursor: 'horizontal',
+                        allowHTML: true,
+                        onMount(instance) {
+                        const popper = instance.popper;
+                        popper.style.display = 'flex';
+                        popper.style.alignItems = 'center';
+                        popper.style.justifyContent = 'center';
+                        popper.style.textAlign = 'center';
+                        popper.style.direction = 'rtl';
+                        }
+                    });
+                    }
+                },
+                updated(el, binding) {
+                    if (el._tippy) el._tippy.setContent(binding.value);
+                },
+                unmounted(el) {
+                    if (el._tippy) el._tippy.destroy();
+                }
+            });
+
+		app.mount('#app');
+    </script>
+    <style scoped>
+        @keyframes borderMove {
+          0% {
+            border-color: #ffdd57;
+          }
+          50% {
+            border-color: #ff0000;
+          }
+          100% {
+            border-color: #ffdd57;
+          }
+        }
+        
+        .animate-borderMove {
+          animation: borderMove 2s infinite alternate;
+        }
+        
+        @keyframes bounce {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-5px);
+          }
+        }
+        
+        .animate-bounce {
+          animation: bounce 1.5s infinite;
+        }
+    </style>
+</body>
+</html>
+Listener('resize', this.updateFontSize);
             }
 
         });
