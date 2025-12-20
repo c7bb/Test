@@ -1264,8 +1264,6 @@
                                         type="text"
                                         inputmode="numeric"
                                         pattern="[0-9٠-٩۰-۹]*"
-                                        @input="handleMangaNumberInput($event, 'mangaStartNumber')"
-                                        @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${minMangaNumber}`"
                                     />
@@ -1277,8 +1275,6 @@
                                         type="text"
                                         inputmode="numeric"
                                         pattern="[0-9٠-٩۰-۹]*"
-                                        @input="handleMangaNumberInput($event, 'mangaEndNumber')"
-                                        @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${maxMangaNumber}`"
                                     />
