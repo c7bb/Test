@@ -7016,12 +7016,10 @@
                     dailyLimitRetryTimer: null,
                     dailyLimitRetryAttempts: 0,
                     dailyLimitRowId: null,
-                    dailyLimitRowIdRam: null,
                     dailyLimitDate: null,
                     dailyLimitDayStartUtcMs: null,
                     dailyLimitInitPromise: null,
                     dailyLimitInitPromiseResolve: null,
-                    dailyLimitRowIdPersistIntervalId: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
@@ -14923,76 +14921,6 @@
                     } catch (e) {}
                 },
 
-                openIndexedDb() {
-                    return new Promise(resolve => {
-                        try {
-                            const idb = window.indexedDB;
-                            if (!idb || typeof idb.open !== 'function') return resolve(null);
-                            const request = idb.open('dcrefbot', 1);
-                            request.onupgradeneeded = () => {
-                                try {
-                                    const db = request.result;
-                                    if (!db.objectStoreNames.contains('kv')) {
-                                        db.createObjectStore('kv', { keyPath: 'k' });
-                                    }
-                                } catch (e) {}
-                            };
-                            request.onsuccess = () => resolve(request.result);
-                            request.onerror = () => resolve(null);
-                        } catch (e) {
-                            resolve(null);
-                        }
-                    });
-                },
-
-                getIndexedDbValue(key) {
-                    return this.openIndexedDb().then(db => {
-                        if (!db) return null;
-                        return new Promise(resolve => {
-                            try {
-                                const tx = db.transaction('kv', 'readonly');
-                                const store = tx.objectStore('kv');
-                                const req = store.get(String(key));
-                                req.onsuccess = () => resolve(req.result ? req.result.v : null);
-                                req.onerror = () => resolve(null);
-                                tx.oncomplete = () => {
-                                    try { db.close(); } catch (e) {}
-                                };
-                                tx.onerror = () => {
-                                    try { db.close(); } catch (e) {}
-                                };
-                            } catch (e) {
-                                try { db.close(); } catch (e2) {}
-                                resolve(null);
-                            }
-                        });
-                    });
-                },
-
-                setIndexedDbValue(key, value) {
-                    return this.openIndexedDb().then(db => {
-                        if (!db) return false;
-                        return new Promise(resolve => {
-                            try {
-                                const tx = db.transaction('kv', 'readwrite');
-                                const store = tx.objectStore('kv');
-                                const req = store.put({ k: String(key), v: String(value) });
-                                req.onsuccess = () => resolve(true);
-                                req.onerror = () => resolve(false);
-                                tx.oncomplete = () => {
-                                    try { db.close(); } catch (e) {}
-                                };
-                                tx.onerror = () => {
-                                    try { db.close(); } catch (e) {}
-                                };
-                            } catch (e) {
-                                try { db.close(); } catch (e2) {}
-                                resolve(false);
-                            }
-                        });
-                    });
-                },
-
                 isUuidLike(value) {
                     return typeof value === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
                 },
@@ -15025,7 +14953,6 @@
 
                 setStoredDailyLimitRowId(id) {
                     if (!this.isUuidLike(id)) return;
-                    this.dailyLimitRowIdRam = id;
                     try {
                         localStorage.setItem(this.getDailyLimitStorageKey(), id);
                     } catch (e) {}
@@ -15033,8 +14960,6 @@
                         sessionStorage.setItem(this.getDailyLimitStorageKey(), id);
                     } catch (e) {}
                     this.setCookieValue(this.getDailyLimitCookieKey(), id);
-
-                    this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
 
                     try {
                         const ds = window.Telegram?.WebApp?.DeviceStorage;
@@ -15097,14 +15022,12 @@
                 
                 getDailyLimitId() {
                     if (this.isUuidLike(this.dailyLimitRowId)) {
-                        this.dailyLimitRowIdRam = this.dailyLimitRowId;
                         return this.dailyLimitRowId;
                     }
 
                     const stored = this.getStoredDailyLimitRowId();
                     if (stored) {
                         this.dailyLimitRowId = stored;
-                        this.dailyLimitRowIdRam = stored;
                         return stored;
                     }
 
@@ -15131,13 +15054,6 @@
                     const existing = this.getDailyLimitId();
                     if (existing) return existing;
 
-                    const idbVal = await this.getIndexedDbValue(this.getDailyLimitStorageKey());
-                    if (this.isUuidLike(idbVal)) {
-                        this.dailyLimitRowId = idbVal;
-                        this.setStoredDailyLimitRowId(idbVal);
-                        return idbVal;
-                    }
-
                     const tgStored = await this.getTelegramStoredDailyLimitRowId();
                     if (tgStored) {
                         this.dailyLimitRowId = tgStored;
@@ -15154,46 +15070,6 @@
                     this.dailyLimitRowId = newId;
                     this.setStoredDailyLimitRowId(newId);
                     return newId;
-                },
-
-                startDailyLimitRowIdPersistence() {
-                    if (this.dailyLimitRowIdPersistIntervalId) return;
-                    this.dailyLimitRowIdPersistIntervalId = setInterval(() => {
-                        const id = this.dailyLimitRowIdRam;
-                        if (!this.isUuidLike(id)) return;
-
-                        let needsWrite = false;
-                        try {
-                            if (localStorage.getItem(this.getDailyLimitStorageKey()) !== id) needsWrite = true;
-                        } catch (e) {
-                            needsWrite = true;
-                        }
-                        try {
-                            if (sessionStorage.getItem(this.getDailyLimitStorageKey()) !== id) needsWrite = true;
-                        } catch (e) {
-                            needsWrite = true;
-                        }
-                        const cookieVal = this.getCookieValue(this.getDailyLimitCookieKey());
-                        if (cookieVal !== id) needsWrite = true;
-
-                        if (needsWrite) {
-                            this.setStoredDailyLimitRowId(id);
-                        } else {
-                            this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
-                            try {
-                                const ds = window.Telegram?.WebApp?.DeviceStorage;
-                                if (ds && typeof ds.setItem === 'function') {
-                                    ds.setItem(this.getDailyLimitStorageKey(), id);
-                                }
-                            } catch (e) {}
-                            try {
-                                const ss = window.Telegram?.WebApp?.SecureStorage;
-                                if (ss && typeof ss.setItem === 'function') {
-                                    ss.setItem(this.getDailyLimitStorageKey(), id);
-                                }
-                            } catch (e) {}
-                        }
-                    }, 1000);
                 },
                 
                 async resetDailyLimitForNewDay() {
