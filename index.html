@@ -20046,7 +20046,7 @@
                     // Try SharedWorker first
                     try {
                         if (typeof SharedWorker !== 'undefined') {
-                            const worker = new SharedWorker('./tab-shared-worker.js', { name: this.tabId });
+                            const worker = new SharedWorker('./tab-shared-worker.js', { name: 'dcrefbot-tab-worker' });
                             this.tabWorkerPort = worker.port;
                             
                             this.tabWorkerPort.onmessage = (event) => {
@@ -20073,10 +20073,8 @@
                                         break;
                                         
                                     case 'ownership-status':
-                                        this.isTabOwner = isOwner;
-                                        if (!isOwner) {
-                                            this.tabLockModal = true;
-                                        }
+                                        this.isTabOwner = !!isOwner;
+                                        this.tabLockModal = !this.isTabOwner;
                                         break;
                                         
                                     case 'heartbeat-request':
@@ -20084,7 +20082,8 @@
                                         if (this.tabWorkerPort) {
                                             this.tabWorkerPort.postMessage({
                                                 type: 'heartbeat',
-                                                tabId: this.tabId
+                                                tabId: this.tabId,
+                                                timestamp: Date.now()
                                             });
                                         }
                                         break;
@@ -20101,13 +20100,16 @@
                             
                             // Start heartbeat
                             this.tabHeartbeatInterval = setInterval(() => {
-                                if (this.tabWorkerPort && this.isTabOwner) {
+                                if (this.tabWorkerPort) {
                                     this.tabWorkerPort.postMessage({
                                         type: 'heartbeat',
-                                        tabId: this.tabId
+                                        tabId: this.tabId,
+                                        timestamp: Date.now()
                                     });
                                 }
                             }, 2000);
+                            
+                            return;
                         }
                     } catch (e) {
                         console.warn('SharedWorker not supported, using BroadcastChannel + Web Locks:', e);
@@ -20231,7 +20233,7 @@
                     
                     if (this.tabWorkerPort) {
                         this.tabWorkerPort.postMessage({
-                            type: 'release',
+                            type: 'disconnect',
                             tabId: this.tabId
                         });
                         this.tabWorkerPort.close();
@@ -20262,13 +20264,16 @@
                 await this.checkTelegram();
                 // If the user is valid, immediately load data.
                 if (this.userJoined && this.isTabOwner) {
+                    if (!this._db) {
+                        this.initInstantDB();
+                    }
                     this.loadData();
                 }
             },
 
             mounted() {
                 // Initialize InstantDB only if this tab is the owner
-                if (this.isTabOwner) {
+                if (this.isTabOwner && !this._db) {
                     this.initInstantDB();
                 }
                 
