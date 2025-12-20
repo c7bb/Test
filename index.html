@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>   
+<head>  
     <script>
         // Immediate cleanup function
         (function() {
@@ -7038,6 +7038,8 @@
                     tabLockLock: null,
                     tabHeartbeatInterval: null,
                     tabId: null,
+                    tabStorageLockInterval: null,
+                    tabStorageLockVisibilityHandler: null,
 
                     replacementDict: {
                     "سينشي": ["شينتشي", "سينشي"],
@@ -20182,6 +20184,7 @@
                     
                     // Use Web Locks API as additional verification
                     this.acquireTabLock();
+                    this.startStorageTabLocking();
                 },
                 
                 async acquireTabLock() {
@@ -20224,6 +20227,79 @@
                         }
                     }
                 },
+
+                startStorageTabLocking() {
+                    const key = 'dcrefbot-tab-owner';
+                    const ttlMs = 9000;
+                    const heartbeatMs = 2000;
+
+                    const safeRead = () => {
+                        try {
+                            const raw = localStorage.getItem(key);
+                            return raw ? JSON.parse(raw) : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    };
+
+                    const safeWrite = (value) => {
+                        try {
+                            localStorage.setItem(key, JSON.stringify(value));
+                            return true;
+                        } catch (e) {
+                            return false;
+                        }
+                    };
+
+                    const step = () => {
+                        const now = Date.now();
+                        const current = safeRead();
+
+                        if (!current || typeof current.expiresAt !== 'number' || !current.tabId || current.expiresAt <= now) {
+                            const ok = safeWrite({ tabId: this.tabId, expiresAt: now + ttlMs });
+                            if (!ok) {
+                                this.isTabOwner = true;
+                                this.tabLockModal = false;
+                                return;
+                            }
+                        } else if (current.tabId === this.tabId) {
+                            safeWrite({ tabId: this.tabId, expiresAt: now + ttlMs });
+                        }
+
+                        const latest = safeRead();
+                        const isOwner = !!latest && latest.tabId === this.tabId && typeof latest.expiresAt === 'number' && latest.expiresAt > now;
+                        const becameOwner = isOwner && !this.isTabOwner;
+
+                        this.isTabOwner = isOwner;
+                        this.tabLockModal = !isOwner;
+
+                        if (becameOwner) {
+                            console.log('Tab ownership granted');
+                            if (this.userJoined && !this._db) {
+                                this.initInstantDB();
+                            }
+                            if (this.userJoined && this.episodes.length === 0) {
+                                this.loadData();
+                            }
+                        }
+                    };
+
+                    if (this.tabStorageLockInterval) {
+                        clearInterval(this.tabStorageLockInterval);
+                    }
+                    this.tabStorageLockInterval = setInterval(step, heartbeatMs);
+
+                    if (!this.tabStorageLockVisibilityHandler) {
+                        this.tabStorageLockVisibilityHandler = () => {
+                            if (!document.hidden) {
+                                step();
+                            }
+                        };
+                        document.addEventListener('visibilitychange', this.tabStorageLockVisibilityHandler);
+                    }
+
+                    step();
+                },
                 
                 releaseTabLock() {
                     if (this.tabHeartbeatInterval) {
@@ -20249,6 +20325,25 @@
                         this.tabBroadcastChannel.close();
                         this.tabBroadcastChannel = null;
                     }
+
+                    if (this.tabStorageLockInterval) {
+                        clearInterval(this.tabStorageLockInterval);
+                        this.tabStorageLockInterval = null;
+                    }
+
+                    if (this.tabStorageLockVisibilityHandler) {
+                        document.removeEventListener('visibilitychange', this.tabStorageLockVisibilityHandler);
+                        this.tabStorageLockVisibilityHandler = null;
+                    }
+
+                    try {
+                        const key = 'dcrefbot-tab-owner';
+                        const raw = localStorage.getItem(key);
+                        const current = raw ? JSON.parse(raw) : null;
+                        if (current && current.tabId === this.tabId) {
+                            localStorage.setItem(key, JSON.stringify({ tabId: this.tabId, expiresAt: 0 }));
+                        }
+                    } catch (e) {}
                     
                     this.isTabOwner = false;
                     this.tabLockLock = null;
@@ -20279,6 +20374,9 @@
                 
                 // Cleanup on unmount
                 window.addEventListener('beforeunload', () => {
+                    this.releaseTabLock();
+                });
+                window.addEventListener('pagehide', () => {
                     this.releaseTabLock();
                 });
 
