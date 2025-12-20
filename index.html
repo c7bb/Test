@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -7016,8 +7016,12 @@
                     dailyLimitRetryTimer: null,
                     dailyLimitRetryAttempts: 0,
                     dailyLimitRowId: null,
+                    dailyLimitRowIdRam: null,
                     dailyLimitDate: null,
                     dailyLimitDayStartUtcMs: null,
+                    dailyLimitInitPromise: null,
+                    dailyLimitInitPromiseResolve: null,
+                    dailyLimitRowIdPersistIntervalId: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
@@ -14893,6 +14897,102 @@
                     return `dcrefbot-dailyLimitRowId:${String(this.userId)}`;
                 },
 
+                getDailyLimitCookieKey() {
+                    return `dcrefbot_dailyLimitRowId_${String(this.userId)}`;
+                },
+
+                getCookieValue(name) {
+                    try {
+                        const needle = `${encodeURIComponent(name)}=`;
+                        const parts = String(document.cookie || '').split(';');
+                        for (const part of parts) {
+                            const trimmed = part.trim();
+                            if (trimmed.startsWith(needle)) {
+                                return decodeURIComponent(trimmed.slice(needle.length));
+                            }
+                        }
+                    } catch (e) {}
+                    return null;
+                },
+
+                setCookieValue(name, value) {
+                    try {
+                        const encodedName = encodeURIComponent(name);
+                        const encodedValue = encodeURIComponent(String(value));
+                        document.cookie = `${encodedName}=${encodedValue}; Path=/; Max-Age=31536000; SameSite=Lax`;
+                    } catch (e) {}
+                },
+
+                openIndexedDb() {
+                    return new Promise(resolve => {
+                        try {
+                            const idb = window.indexedDB;
+                            if (!idb || typeof idb.open !== 'function') return resolve(null);
+                            const request = idb.open('dcrefbot', 1);
+                            request.onupgradeneeded = () => {
+                                try {
+                                    const db = request.result;
+                                    if (!db.objectStoreNames.contains('kv')) {
+                                        db.createObjectStore('kv', { keyPath: 'k' });
+                                    }
+                                } catch (e) {}
+                            };
+                            request.onsuccess = () => resolve(request.result);
+                            request.onerror = () => resolve(null);
+                        } catch (e) {
+                            resolve(null);
+                        }
+                    });
+                },
+
+                getIndexedDbValue(key) {
+                    return this.openIndexedDb().then(db => {
+                        if (!db) return null;
+                        return new Promise(resolve => {
+                            try {
+                                const tx = db.transaction('kv', 'readonly');
+                                const store = tx.objectStore('kv');
+                                const req = store.get(String(key));
+                                req.onsuccess = () => resolve(req.result ? req.result.v : null);
+                                req.onerror = () => resolve(null);
+                                tx.oncomplete = () => {
+                                    try { db.close(); } catch (e) {}
+                                };
+                                tx.onerror = () => {
+                                    try { db.close(); } catch (e) {}
+                                };
+                            } catch (e) {
+                                try { db.close(); } catch (e2) {}
+                                resolve(null);
+                            }
+                        });
+                    });
+                },
+
+                setIndexedDbValue(key, value) {
+                    return this.openIndexedDb().then(db => {
+                        if (!db) return false;
+                        return new Promise(resolve => {
+                            try {
+                                const tx = db.transaction('kv', 'readwrite');
+                                const store = tx.objectStore('kv');
+                                const req = store.put({ k: String(key), v: String(value) });
+                                req.onsuccess = () => resolve(true);
+                                req.onerror = () => resolve(false);
+                                tx.oncomplete = () => {
+                                    try { db.close(); } catch (e) {}
+                                };
+                                tx.onerror = () => {
+                                    try { db.close(); } catch (e) {}
+                                };
+                            } catch (e) {
+                                try { db.close(); } catch (e2) {}
+                                resolve(false);
+                            }
+                        });
+                    });
+                },
+
                 isUuidLike(value) {
                     return typeof value === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
                 },
@@ -14907,14 +15007,79 @@
                             localStorage.removeItem(this.getDailyLimitStorageKey());
                         }
                     } catch (e) {}
+                    try {
+                        const stored = sessionStorage.getItem(this.getDailyLimitStorageKey());
+                        if (this.isUuidLike(stored)) {
+                            return stored;
+                        }
+                        if (stored) {
+                            sessionStorage.removeItem(this.getDailyLimitStorageKey());
+                        }
+                    } catch (e) {}
+                    const cookieVal = this.getCookieValue(this.getDailyLimitCookieKey());
+                    if (this.isUuidLike(cookieVal)) {
+                        return cookieVal;
+                    }
                     return null;
                 },
 
                 setStoredDailyLimitRowId(id) {
                     if (!this.isUuidLike(id)) return;
+                    this.dailyLimitRowIdRam = id;
                     try {
                         localStorage.setItem(this.getDailyLimitStorageKey(), id);
                     } catch (e) {}
+                    try {
+                        sessionStorage.setItem(this.getDailyLimitStorageKey(), id);
+                    } catch (e) {}
+                    this.setCookieValue(this.getDailyLimitCookieKey(), id);
+
+                    this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
+
+                    try {
+                        const ds = window.Telegram?.WebApp?.DeviceStorage;
+                        if (ds && typeof ds.setItem === 'function') {
+                            ds.setItem(this.getDailyLimitStorageKey(), id);
+                        }
+                    } catch (e) {}
+
+                    try {
+                        const ss = window.Telegram?.WebApp?.SecureStorage;
+                        if (ss && typeof ss.setItem === 'function') {
+                            ss.setItem(this.getDailyLimitStorageKey(), id);
+                        }
+                    } catch (e) {}
+                },
+
+                getTelegramStoredDailyLimitRowId() {
+                    const key = this.getDailyLimitStorageKey();
+                    const trySecure = () => new Promise(resolve => {
+                        try {
+                            const ss = window.Telegram?.WebApp?.SecureStorage;
+                            if (!ss || typeof ss.getItem !== 'function') return resolve(null);
+                            ss.getItem(key, (err, value) => {
+                                if (err) return resolve(null);
+                                resolve(this.isUuidLike(value) ? value : null);
+                            });
+                        } catch (e) {
+                            resolve(null);
+                        }
+                    });
+
+                    const tryDevice = () => new Promise(resolve => {
+                        try {
+                            const ds = window.Telegram?.WebApp?.DeviceStorage;
+                            if (!ds || typeof ds.getItem !== 'function') return resolve(null);
+                            ds.getItem(key, (err, value) => {
+                                if (err) return resolve(null);
+                                resolve(this.isUuidLike(value) ? value : null);
+                            });
+                        } catch (e) {
+                            resolve(null);
+                        }
+                    });
+
+                    return trySecure().then(v => v || tryDevice());
                 },
 
                 syncDailyLimitLocalDay() {
@@ -14932,27 +15097,103 @@
                 
                 getDailyLimitId() {
                     if (this.isUuidLike(this.dailyLimitRowId)) {
+                        this.dailyLimitRowIdRam = this.dailyLimitRowId;
                         return this.dailyLimitRowId;
                     }
 
                     const stored = this.getStoredDailyLimitRowId();
                     if (stored) {
                         this.dailyLimitRowId = stored;
+                        this.dailyLimitRowIdRam = stored;
                         return stored;
                     }
 
                     return null;
                 },
 
-                ensureDailyLimitRowId() {
+                initDailyLimitBarrier() {
+                    if (this.dailyLimitInitPromise) return;
+                    this.dailyLimitInitPromise = new Promise(resolve => {
+                        this.dailyLimitInitPromiseResolve = resolve;
+                    });
+                },
+
+                waitForDailyLimitReady(timeoutMs = 2000) {
+                    if (this.dailyReady) return Promise.resolve(true);
+                    this.initDailyLimitBarrier();
+                    return Promise.race([
+                        this.dailyLimitInitPromise.then(() => true),
+                        new Promise(resolve => setTimeout(() => resolve(false), timeoutMs))
+                    ]);
+                },
+
+                async ensureDailyLimitRowIdAsync() {
                     const existing = this.getDailyLimitId();
                     if (existing) return existing;
+
+                    const idbVal = await this.getIndexedDbValue(this.getDailyLimitStorageKey());
+                    if (this.isUuidLike(idbVal)) {
+                        this.dailyLimitRowId = idbVal;
+                        this.setStoredDailyLimitRowId(idbVal);
+                        return idbVal;
+                    }
+
+                    const tgStored = await this.getTelegramStoredDailyLimitRowId();
+                    if (tgStored) {
+                        this.dailyLimitRowId = tgStored;
+                        this.setStoredDailyLimitRowId(tgStored);
+                        return tgStored;
+                    }
+
+                    await this.waitForDailyLimitReady(2500);
+                    const afterSubscribe = this.getDailyLimitId();
+                    if (afterSubscribe) return afterSubscribe;
 
                     const instantDB = window.InstantDB || window.instantdb;
                     const newId = instantDB?.id ? instantDB.id() : crypto.randomUUID();
                     this.dailyLimitRowId = newId;
                     this.setStoredDailyLimitRowId(newId);
                     return newId;
+                },
+
+                startDailyLimitRowIdPersistence() {
+                    if (this.dailyLimitRowIdPersistIntervalId) return;
+                    this.dailyLimitRowIdPersistIntervalId = setInterval(() => {
+                        const id = this.dailyLimitRowIdRam;
+                        if (!this.isUuidLike(id)) return;
+
+                        let needsWrite = false;
+                        try {
+                            if (localStorage.getItem(this.getDailyLimitStorageKey()) !== id) needsWrite = true;
+                        } catch (e) {
+                            needsWrite = true;
+                        }
+                        try {
+                            if (sessionStorage.getItem(this.getDailyLimitStorageKey()) !== id) needsWrite = true;
+                        } catch (e) {
+                            needsWrite = true;
+                        }
+                        const cookieVal = this.getCookieValue(this.getDailyLimitCookieKey());
+                        if (cookieVal !== id) needsWrite = true;
+
+                        if (needsWrite) {
+                            this.setStoredDailyLimitRowId(id);
+                        } else {
+                            this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
+                            try {
+                                const ds = window.Telegram?.WebApp?.DeviceStorage;
+                                if (ds && typeof ds.setItem === 'function') {
+                                    ds.setItem(this.getDailyLimitStorageKey(), id);
+                                }
+                            } catch (e) {}
+                            try {
+                                const ss = window.Telegram?.WebApp?.SecureStorage;
+                                if (ss && typeof ss.setItem === 'function') {
+                                    ss.setItem(this.getDailyLimitStorageKey(), id);
+                                }
+                            } catch (e) {}
+                        }
+                    }, 1000);
                 },
                 
                 async resetDailyLimitForNewDay() {
@@ -14999,6 +15240,7 @@
                             console.log('InstantDB SDK loaded, initializing...');
                             this._db = markRaw(instantDB.init({ appId: APP_ID }));
                             this.subscribeToDailyDownloads();
+                            this.startDailyLimitRowIdPersistence();
 
                             // Update timer for reset every second and check for date change
                             setInterval(() => {
@@ -15044,6 +15286,9 @@
                     }
                     
                     if (!this._db) return;
+
+                    this.dailyReady = false;
+                    this.initDailyLimitBarrier();
                     
                     // Unsubscribe previous if exists
                     if (this.unsubscribeDaily) {
@@ -15132,6 +15377,18 @@
                                     // and it hasn't synced yet.
                                     this.dailyReady = true;
                                 }
+
+                                if (this.dailyLimitRowId) {
+                                    this.dailyLimitRowIdRam = this.dailyLimitRowId;
+                                    this.setStoredDailyLimitRowId(this.dailyLimitRowId);
+                                }
+
+                                if (this.dailyLimitInitPromiseResolve) {
+                                    const resolve = this.dailyLimitInitPromiseResolve;
+                                    this.dailyLimitInitPromiseResolve = null;
+                                    this.dailyLimitInitPromise = null;
+                                    try { resolve(); } catch (e) {}
+                                }
                             });
                         } else {
                             console.error('InstantDB subscribe method not found on _db instance');
@@ -15162,7 +15419,7 @@
                     if (this.pendingDailyIncrements <= 0) return true;
 
                     const { today, dayStartUtcMs, isNewDay } = this.syncDailyLimitLocalDay();
-                    const id = this.ensureDailyLimitRowId();
+                    const id = await this.ensureDailyLimitRowIdAsync();
                     const baseCount = isNewDay ? 0 : this.dailyDownloads;
                     const targetCount = Math.min(this.maxDailyDownloads, baseCount + this.pendingDailyIncrements);
                     
@@ -18718,7 +18975,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -18732,7 +18989,7 @@
                             this.userJoined = false;
 document.body.innerHTML = `
     <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: #23447d; font-family: Tahoma, 'Segoe UI', Geneva, sans-serif; z-index: 99999;">
-        <div style="text-align: center; padding: 30px 20px; border: 2px solid #fff; border-radius: 15px; background-color: #0f141f; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); max-width: 400px; width: 90%; box-sizing: border-box; direction: rtl;">
+        <div style="text-align: center; padding: 30px 20px; border: 2px solid #fff; border-radius: 15px; background-color: #0f141f; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); max-width: 400px; width: 95%; box-sizing: border-box; direction: rtl;">
             
             <!-- العنوان -->
             <div style="margin-bottom: 30px;">
@@ -20698,6 +20955,7 @@ document.body.innerHTML = `
                 if (this.episodeTimeInterval) clearInterval(this.episodeTimeInterval);
                 if (this.mangaTimeInterval) clearInterval(this.mangaTimeInterval);
                 if (this.nowIntervalId) clearInterval(this.nowIntervalId);
+                if (this.dailyLimitRowIdPersistIntervalId) clearInterval(this.dailyLimitRowIdPersistIntervalId);
                 if (this.countdownInterval) clearInterval(this.countdownInterval);
                 if (this.episodeBroadcastCountdownInterval) clearInterval(this.episodeBroadcastCountdownInterval);
                 if (this.movieTimingInterval) clearInterval(this.movieTimingInterval);
