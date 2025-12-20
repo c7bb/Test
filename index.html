@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head> 
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -7022,7 +7022,9 @@
                     dailyLimitInitPromise: null,
                     dailyLimitInitPromiseResolve: null,
                     dailyLimitRowIdPersistIntervalId: null,
+                    dailyLimitTelegramLastCheckAt: 0,
                     dailyLimitTelegramCheckInFlight: false,
+                    dailyLimitTelegramLastSyncedId: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
@@ -15037,12 +15039,19 @@
 
                     this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
 
-                    this.syncTelegramDailyLimitRowId(id);
+                    this.syncTelegramDailyLimitRowId(id, false);
                 },
 
-                async syncTelegramDailyLimitRowId(id) {
+                async syncTelegramDailyLimitRowId(id, force = false) {
                     if (!this.isUuidLike(id)) return;
+
+                    const now = Date.now();
                     if (this.dailyLimitTelegramCheckInFlight) return;
+                    const idChanged = this.dailyLimitTelegramLastSyncedId !== id;
+                    const minIntervalMs = (force || idChanged) ? 2000 : 15000;
+                    if (now - this.dailyLimitTelegramLastCheckAt < minIntervalMs) return;
+
+                    this.dailyLimitTelegramLastCheckAt = now;
                     this.dailyLimitTelegramCheckInFlight = true;
 
                     const key = this.getDailyLimitStorageKey();
@@ -15050,17 +15059,9 @@
                     const readValue = (storage) => new Promise(resolve => {
                         try {
                             if (!storage || typeof storage.getItem !== 'function') return resolve(null);
-                            let settled = false;
-                            const done = (value) => {
-                                if (settled) return;
-                                settled = true;
-                                resolve(value);
-                            };
-                            const timer = setTimeout(() => done(null), 250);
                             storage.getItem(key, (err, value) => {
-                                clearTimeout(timer);
-                                if (err) return done(null);
-                                done(value);
+                                if (err) return resolve(null);
+                                resolve(value);
                             });
                         } catch (e) {
                             resolve(null);
@@ -15070,17 +15071,7 @@
                     const writeValue = (storage) => new Promise(resolve => {
                         try {
                             if (!storage || typeof storage.setItem !== 'function') return resolve(false);
-                            let settled = false;
-                            const done = (ok) => {
-                                if (settled) return;
-                                settled = true;
-                                resolve(ok);
-                            };
-                            const timer = setTimeout(() => done(true), 250);
-                            storage.setItem(key, id, () => {
-                                clearTimeout(timer);
-                                done(true);
-                            });
+                            storage.setItem(key, id, () => resolve(true));
                         } catch (e) {
                             resolve(false);
                         }
@@ -15103,6 +15094,7 @@
                         }
                     } finally {
                         this.dailyLimitTelegramCheckInFlight = false;
+                        this.dailyLimitTelegramLastSyncedId = id;
                     }
                 },
 
@@ -15235,7 +15227,7 @@
                             this.setStoredDailyLimitRowId(id);
                         } else {
                             this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
-                            this.syncTelegramDailyLimitRowId(id);
+                            this.syncTelegramDailyLimitRowId(id, false);
                         }
                     }, 1000);
                 },
@@ -21011,73 +21003,6 @@ document.body.innerHTML = `
                 // Clean up event listener to prevent memory leaks
                 document.removeEventListener("click", this.closeMenu);
                 window.removeEventListener('resize', this.updateFontSize);
-            }
-
-        });
-
-            app.directive('tippy', {
-                mounted(el, binding) {
-                    if (typeof tippy !== 'undefined') {
-                    tippy(el, {
-                        content: binding.value,
-                        theme: 'retro',
-                        placement: 'top',
-                        followCursor: 'horizontal',
-                        allowHTML: true,
-                        onMount(instance) {
-                        const popper = instance.popper;
-                        popper.style.display = 'flex';
-                        popper.style.alignItems = 'center';
-                        popper.style.justifyContent = 'center';
-                        popper.style.textAlign = 'center';
-                        popper.style.direction = 'rtl';
-                        }
-                    });
-                    }
-                },
-                updated(el, binding) {
-                    if (el._tippy) el._tippy.setContent(binding.value);
-                },
-                unmounted(el) {
-                    if (el._tippy) el._tippy.destroy();
-                }
-            });
-
-		app.mount('#app');
-    </script>
-    <style scoped>
-        @keyframes borderMove {
-          0% {
-            border-color: #ffdd57;
-          }
-          50% {
-            border-color: #ff0000;
-          }
-          100% {
-            border-color: #ffdd57;
-          }
-        }
-        
-        .animate-borderMove {
-          animation: borderMove 2s infinite alternate;
-        }
-        
-        @keyframes bounce {
-          0%, 100% {
-            transform: translateY(0);
-          }
-          50% {
-            transform: translateY(-5px);
-          }
-        }
-        
-        .animate-bounce {
-          animation: bounce 1.5s infinite;
-        }
-    </style>
-</body>
-</html>
-Listener('resize', this.updateFontSize);
             }
 
         });
