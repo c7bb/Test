@@ -15240,7 +15240,6 @@
                             console.log('InstantDB SDK loaded, initializing...');
                             this._db = markRaw(instantDB.init({ appId: APP_ID }));
                             this.subscribeToDailyDownloads();
-                            this.startDailyLimitRowIdPersistence();
 
                             // Update timer for reset every second and check for date change
                             setInterval(() => {
@@ -15376,11 +15375,6 @@
                                     // Do NOT reset dailyLimitRowId here, as we might have just generated it 
                                     // and it hasn't synced yet.
                                     this.dailyReady = true;
-                                }
-
-                                if (this.dailyLimitRowId) {
-                                    this.dailyLimitRowIdRam = this.dailyLimitRowId;
-                                    this.setStoredDailyLimitRowId(this.dailyLimitRowId);
                                 }
 
                                 if (this.dailyLimitInitPromiseResolve) {
