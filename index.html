@@ -7022,9 +7022,7 @@
                     dailyLimitInitPromise: null,
                     dailyLimitInitPromiseResolve: null,
                     dailyLimitRowIdPersistIntervalId: null,
-                    dailyLimitTelegramLastCheckAt: 0,
                     dailyLimitTelegramCheckInFlight: false,
-                    dailyLimitTelegramLastSyncedId: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
@@ -15039,19 +15037,12 @@
 
                     this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
 
-                    this.syncTelegramDailyLimitRowId(id, false);
+                    this.syncTelegramDailyLimitRowId(id);
                 },
 
-                async syncTelegramDailyLimitRowId(id, force = false) {
+                async syncTelegramDailyLimitRowId(id) {
                     if (!this.isUuidLike(id)) return;
-
-                    const now = Date.now();
                     if (this.dailyLimitTelegramCheckInFlight) return;
-                    const idChanged = this.dailyLimitTelegramLastSyncedId !== id;
-                    const minIntervalMs = (force || idChanged) ? 2000 : 15000;
-                    if (now - this.dailyLimitTelegramLastCheckAt < minIntervalMs) return;
-
-                    this.dailyLimitTelegramLastCheckAt = now;
                     this.dailyLimitTelegramCheckInFlight = true;
 
                     const key = this.getDailyLimitStorageKey();
@@ -15059,9 +15050,17 @@
                     const readValue = (storage) => new Promise(resolve => {
                         try {
                             if (!storage || typeof storage.getItem !== 'function') return resolve(null);
-                            storage.getItem(key, (err, value) => {
-                                if (err) return resolve(null);
+                            let settled = false;
+                            const done = (value) => {
+                                if (settled) return;
+                                settled = true;
                                 resolve(value);
+                            };
+                            const timer = setTimeout(() => done(null), 250);
+                            storage.getItem(key, (err, value) => {
+                                clearTimeout(timer);
+                                if (err) return done(null);
+                                done(value);
                             });
                         } catch (e) {
                             resolve(null);
@@ -15071,7 +15070,17 @@
                     const writeValue = (storage) => new Promise(resolve => {
                         try {
                             if (!storage || typeof storage.setItem !== 'function') return resolve(false);
-                            storage.setItem(key, id, () => resolve(true));
+                            let settled = false;
+                            const done = (ok) => {
+                                if (settled) return;
+                                settled = true;
+                                resolve(ok);
+                            };
+                            const timer = setTimeout(() => done(true), 250);
+                            storage.setItem(key, id, () => {
+                                clearTimeout(timer);
+                                done(true);
+                            });
                         } catch (e) {
                             resolve(false);
                         }
@@ -15094,7 +15103,6 @@
                         }
                     } finally {
                         this.dailyLimitTelegramCheckInFlight = false;
-                        this.dailyLimitTelegramLastSyncedId = id;
                     }
                 },
 
