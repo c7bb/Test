@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head> 
     <script>
         // Immediate cleanup function
         (function() {
@@ -7018,7 +7018,6 @@
                     dailyLimitRowId: null,
                     dailyLimitDate: null,
                     dailyLimitDayStartUtcMs: null,
-                    dailyLimitIdFallbackMode: false,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
@@ -14894,10 +14893,28 @@
                     return `dcrefbot-dailyLimitRowId:${String(this.userId)}`;
                 },
 
-                getDailyLimitStableId() {
-                    const raw = String(this.userId ?? 'anonymous-user');
-                    const safe = raw.replace(/[^a-zA-Z0-9_-]/g, '_');
-                    return `dailyLimitDownloadsMangas_${safe}`;
+                isUuidLike(value) {
+                    return typeof value === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
+                },
+
+                getStoredDailyLimitRowId() {
+                    try {
+                        const stored = localStorage.getItem(this.getDailyLimitStorageKey());
+                        if (this.isUuidLike(stored)) {
+                            return stored;
+                        }
+                        if (stored) {
+                            localStorage.removeItem(this.getDailyLimitStorageKey());
+                        }
+                    } catch (e) {}
+                    return null;
+                },
+
+                setStoredDailyLimitRowId(id) {
+                    if (!this.isUuidLike(id)) return;
+                    try {
+                        localStorage.setItem(this.getDailyLimitStorageKey(), id);
+                    } catch (e) {}
                 },
 
                 syncDailyLimitLocalDay() {
@@ -14914,24 +14931,28 @@
                 },
                 
                 getDailyLimitId() {
-                    if (this.dailyLimitRowId) {
+                    if (this.isUuidLike(this.dailyLimitRowId)) {
                         return this.dailyLimitRowId;
                     }
 
-                    try {
-                        const stored = localStorage.getItem(this.getDailyLimitStorageKey());
-                        if (stored) {
-                            this.dailyLimitRowId = stored;
-                            return stored;
-                        }
-                    } catch (e) {}
+                    const stored = this.getStoredDailyLimitRowId();
+                    if (stored) {
+                        this.dailyLimitRowId = stored;
+                        return stored;
+                    }
 
-                    const stableId = this.getDailyLimitStableId();
-                    this.dailyLimitRowId = stableId;
-                    try {
-                        localStorage.setItem(this.getDailyLimitStorageKey(), stableId);
-                    } catch (e) {}
-                    return stableId;
+                    return null;
+                },
+
+                ensureDailyLimitRowId() {
+                    const existing = this.getDailyLimitId();
+                    if (existing) return existing;
+
+                    const instantDB = window.InstantDB || window.instantdb;
+                    const newId = instantDB?.id ? instantDB.id() : crypto.randomUUID();
+                    this.dailyLimitRowId = newId;
+                    this.setStoredDailyLimitRowId(newId);
+                    return newId;
                 },
                 
                 async resetDailyLimitForNewDay() {
@@ -14940,6 +14961,7 @@
                     const { today, dayStartUtcMs } = this.syncDailyLimitLocalDay();
                     this.pendingDailyIncrements = 0;
                     const id = this.getDailyLimitId();
+                    if (!id) return;
 
                     try {
                         await this._db.transact(
@@ -14954,31 +14976,6 @@
                         this.dailyLimitDate = today;
                         this.dailyLimitDayStartUtcMs = dayStartUtcMs;
                     } catch (e) {
-                        if (!this.dailyLimitIdFallbackMode) {
-                            this.dailyLimitIdFallbackMode = true;
-                            const instantDB = window.InstantDB || window.instantdb;
-                            const fallbackId = instantDB?.id ? instantDB.id() : crypto.randomUUID();
-                            this.dailyLimitRowId = fallbackId;
-                            try { localStorage.setItem(this.getDailyLimitStorageKey(), fallbackId); } catch (e2) {}
-                            try {
-                                await this._db.transact(
-                                    this._db.tx.dailyLimitDownloadsMangas[fallbackId].update({
-                                        userId: this.userId,
-                                        date: today,
-                                        dayStartUtcMs,
-                                        count: 0
-                                    })
-                                );
-                                this.dailyDownloads = 0;
-                                this.dailyLimitDate = today;
-                                this.dailyLimitDayStartUtcMs = dayStartUtcMs;
-                                return;
-                            } catch (e3) {
-                                console.error('DB Reset Error', e3);
-                                return;
-                            }
-                        }
-
                         console.error('DB Reset Error', e);
                     }
                 },
@@ -15078,11 +15075,7 @@
                                 const data = resp.data;
                                 if (data && data.dailyLimitDownloadsMangas && data.dailyLimitDownloadsMangas.length > 0) {
                                     const records = data.dailyLimitDownloadsMangas;
-                                    const preferredId = this.dailyLimitIdFallbackMode
-                                        ? this.getDailyLimitId()
-                                        : this.getDailyLimitStableId();
-                                    const preferredRecord = records.find(r => r?.id === preferredId);
-                                    const record = preferredRecord || records
+                                    const record = records
                                         .slice()
                                         .sort((a, b) => {
                                             const aKey = Number.isFinite(a?.dayStartUtcMs) ? a.dayStartUtcMs : Date.parse(String(a?.date || ''));
@@ -15090,8 +15083,10 @@
                                             return (bKey || 0) - (aKey || 0);
                                         })[0];
 
-                                    this.dailyLimitRowId = preferredId;
-                                    try { localStorage.setItem(this.getDailyLimitStorageKey(), preferredId); } catch (e) {}
+                                    if (record?.id) {
+                                        this.dailyLimitRowId = record.id;
+                                        this.setStoredDailyLimitRowId(record.id);
+                                    }
 
                                     const { today, dayStartUtcMs } = this.syncDailyLimitLocalDay();
                                     const recordDayStart = Number.isFinite(record?.dayStartUtcMs) ? record.dayStartUtcMs : null;
@@ -15109,6 +15104,27 @@
                                         this.dailyLimitDayStartUtcMs = dayStartUtcMs;
                                     }
                                     this.dailyReady = true;
+
+                                    if (records.length > 1 && record?.id) {
+                                        try {
+                                            const txTable = this._db?.tx?.dailyLimitDownloadsMangas;
+                                            if (txTable) {
+                                                const deletes = records
+                                                    .filter(r => r?.id && r.id !== record.id)
+                                                    .map(r => {
+                                                        const entry = txTable[r.id];
+                                                        if (entry && typeof entry.delete === 'function') return entry.delete();
+                                                        if (entry && typeof entry.remove === 'function') return entry.remove();
+                                                        return null;
+                                                    })
+                                                    .filter(Boolean);
+
+                                                if (deletes.length) {
+                                                    this._db.transact(deletes);
+                                                }
+                                            }
+                                        } catch (e) {}
+                                    }
                                 } else {
                                     this.syncDailyLimitLocalDay();
                                     this.dailyDownloads = 0;
@@ -15146,7 +15162,7 @@
                     if (this.pendingDailyIncrements <= 0) return true;
 
                     const { today, dayStartUtcMs, isNewDay } = this.syncDailyLimitLocalDay();
-                    const id = this.getDailyLimitId();
+                    const id = this.ensureDailyLimitRowId();
                     const baseCount = isNewDay ? 0 : this.dailyDownloads;
                     const targetCount = Math.min(this.maxDailyDownloads, baseCount + this.pendingDailyIncrements);
                     
@@ -15167,33 +15183,6 @@
                         }
                         return true;
                     } catch (e) {
-                        if (!this.dailyLimitIdFallbackMode) {
-                            this.dailyLimitIdFallbackMode = true;
-                            const instantDB = window.InstantDB || window.instantdb;
-                            const fallbackId = instantDB?.id ? instantDB.id() : crypto.randomUUID();
-                            this.dailyLimitRowId = fallbackId;
-                            try { localStorage.setItem(this.getDailyLimitStorageKey(), fallbackId); } catch (e2) {}
-                            try {
-                                await this._db.transact(
-                                    this._db.tx.dailyLimitDownloadsMangas[fallbackId].update({
-                                        userId: this.userId,
-                                        date: today,
-                                        dayStartUtcMs,
-                                        count: targetCount
-                                    })
-                                );
-                                this.pendingDailyIncrements = 0;
-                                this.dailyLimitRetryAttempts = 0;
-                                if (this.dailyLimitRetryTimer) {
-                                    clearTimeout(this.dailyLimitRetryTimer);
-                                    this.dailyLimitRetryTimer = null;
-                                }
-                                return true;
-                            } catch (e3) {
-                                console.error('DB Update Error', e3);
-                            }
-                        }
-
                         console.error('DB Update Error', e);
                         // retry with backoff, up to 5 attempts
                         this.dailyLimitRetryAttempts = Math.min(this.dailyLimitRetryAttempts + 1, 5);
