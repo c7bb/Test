@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -709,13 +709,14 @@
                             </div>
                             
                             <div class="relative">
-                                <input
+                                <textarea
                                 v-model.trim="searchQuery"
                                 @focus="clearJumpHighlight"
-                                type="text"
+                                @keydown.enter.prevent
+                                rows="1"
                                 placeholder="ابحث..."
-                                class="w-full p-2 text-lg bg-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-teal-400"
-                                />
+                                class="w-full p-2 text-lg bg-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none overflow-y-auto whitespace-pre-wrap break-words"
+                                ></textarea>
                                 <button
                                 @click="clearSearch"
                                 class="absolute top-2 left-3 text-xl text-red-600 font-black transition-all duration-100 active:scale-90"
@@ -1258,22 +1259,26 @@
                             <div class="flex gap-4 items-center">
                                 <div class="flex-1">
                                     <label class="block mb-2 text-sm">من الفصل:</label>
-                                    <input 
-                                        v-model.number="mangaStartNumber" 
-                                        type="number" 
-                                        :min="minMangaNumber"
-                                        :max="maxMangaNumber"
+                                    <input
+                                        :value="mangaStartNumber ?? ''"
+                                        type="text"
+                                        inputmode="numeric"
+                                        pattern="[0-9٠-٩۰-۹]*"
+                                        @input="handleMangaNumberInput($event, 'mangaStartNumber')"
+                                        @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${minMangaNumber}`"
                                     />
                                 </div>
                                 <div class="flex-1">
                                     <label class="block mb-2 text-sm">إلى الفصل:</label>
-                                    <input 
-                                        v-model.number="mangaEndNumber" 
-                                        type="number" 
-                                        :min="minMangaNumber"
-                                        :max="maxMangaNumber"
+                                    <input
+                                        :value="mangaEndNumber ?? ''"
+                                        type="text"
+                                        inputmode="numeric"
+                                        pattern="[0-9٠-٩۰-۹]*"
+                                        @input="handleMangaNumberInput($event, 'mangaEndNumber')"
+                                        @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${maxMangaNumber}`"
                                     />
@@ -18611,7 +18616,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -19263,24 +19268,39 @@
                     }
                 },
 
-                handleMangaNumberInput(field) {
-                    const rawValue = this[field];
-                    
-                    // Handle empty/null values - set to min when incrementing
-                    if (rawValue === null || rawValue === undefined || rawValue === '') {
-                        this[field] = this.minMangaNumber;
+                normalizeNumericString(value) {
+                    if (value === null || value === undefined) return '';
+                    const str = String(value);
+                    const map = {
+                        '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+                        '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+                        '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+                        '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9'
+                    };
+                    let out = '';
+                    for (let i = 0; i < str.length; i++) {
+                        const ch = str[i];
+                        out += map[ch] ?? ch;
+                    }
+                    return out;
+                },
+
+                handleMangaNumberInput(event, field) {
+                    const rawValue = event?.target?.value ?? '';
+                    const normalized = this.normalizeNumericString(rawValue).trim();
+
+                    if (normalized === '') {
+                        this[field] = null;
                         return;
                     }
-                    
-                    const parsed = parseFloat(rawValue);
 
+                    const parsed = parseFloat(normalized);
                     if (isNaN(parsed)) {
-                        this[field] = this.minMangaNumber;
+                        this[field] = null;
                         return;
                     }
 
                     const clamped = Math.min(Math.max(parsed, this.minMangaNumber), this.maxMangaNumber);
-                    // Ensure integers since step=1 and arrows should move by whole numbers
                     this[field] = Math.round(clamped);
                 },
 
@@ -20267,7 +20287,7 @@
                 startStorageTabLocking() {
                     const key = 'dcrefbot-tab-owner';
                     const ttlMs = 10000;
-                    const heartbeatMs = 100;
+                    const heartbeatMs = 1000;
 
                     const safeRead = () => {
                         try {
