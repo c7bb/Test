@@ -1264,6 +1264,7 @@
                                         type="text"
                                         inputmode="numeric"
                                         pattern="[0-9٠-٩۰-۹]*"
+                                        @focus="handleMangaNumberFocus('mangaStartNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${minMangaNumber}`"
                                     />
@@ -1275,6 +1276,7 @@
                                         type="text"
                                         inputmode="numeric"
                                         pattern="[0-9٠-٩۰-۹]*"
+                                        @focus="handleMangaNumberFocus('mangaEndNumber')"
                                         class="w-full p-2 bg-gray-700 rounded text-white"
                                         :placeholder="`${maxMangaNumber}`"
                                     />
@@ -18612,7 +18614,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
