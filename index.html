@@ -7022,9 +7022,6 @@
                     dailyLimitInitPromise: null,
                     dailyLimitInitPromiseResolve: null,
                     dailyLimitRowIdPersistIntervalId: null,
-                    dailyLimitTelegramLastCheckAt: 0,
-                    dailyLimitTelegramCheckInFlight: false,
-                    dailyLimitTelegramLastSyncedId: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
@@ -15039,63 +15036,19 @@
 
                     this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
 
-                    this.syncTelegramDailyLimitRowId(id, false);
-                },
-
-                async syncTelegramDailyLimitRowId(id, force = false) {
-                    if (!this.isUuidLike(id)) return;
-
-                    const now = Date.now();
-                    if (this.dailyLimitTelegramCheckInFlight) return;
-                    const idChanged = this.dailyLimitTelegramLastSyncedId !== id;
-                    const minIntervalMs = (force || idChanged) ? 2000 : 15000;
-                    if (now - this.dailyLimitTelegramLastCheckAt < minIntervalMs) return;
-
-                    this.dailyLimitTelegramLastCheckAt = now;
-                    this.dailyLimitTelegramCheckInFlight = true;
-
-                    const key = this.getDailyLimitStorageKey();
-
-                    const readValue = (storage) => new Promise(resolve => {
-                        try {
-                            if (!storage || typeof storage.getItem !== 'function') return resolve(null);
-                            storage.getItem(key, (err, value) => {
-                                if (err) return resolve(null);
-                                resolve(value);
-                            });
-                        } catch (e) {
-                            resolve(null);
+                    try {
+                        const ds = window.Telegram?.WebApp?.DeviceStorage;
+                        if (ds && typeof ds.setItem === 'function') {
+                            ds.setItem(this.getDailyLimitStorageKey(), id);
                         }
-                    });
-
-                    const writeValue = (storage) => new Promise(resolve => {
-                        try {
-                            if (!storage || typeof storage.setItem !== 'function') return resolve(false);
-                            storage.setItem(key, id, () => resolve(true));
-                        } catch (e) {
-                            resolve(false);
-                        }
-                    });
+                    } catch (e) {}
 
                     try {
                         const ss = window.Telegram?.WebApp?.SecureStorage;
-                        const ds = window.Telegram?.WebApp?.DeviceStorage;
-
-                        const [ssVal, dsVal] = await Promise.all([
-                            readValue(ss),
-                            readValue(ds)
-                        ]);
-
-                        if (ss && (ssVal !== id)) {
-                            await writeValue(ss);
+                        if (ss && typeof ss.setItem === 'function') {
+                            ss.setItem(this.getDailyLimitStorageKey(), id);
                         }
-                        if (ds && (dsVal !== id)) {
-                            await writeValue(ds);
-                        }
-                    } finally {
-                        this.dailyLimitTelegramCheckInFlight = false;
-                        this.dailyLimitTelegramLastSyncedId = id;
-                    }
+                    } catch (e) {}
                 },
 
                 getTelegramStoredDailyLimitRowId() {
@@ -15227,7 +15180,18 @@
                             this.setStoredDailyLimitRowId(id);
                         } else {
                             this.setIndexedDbValue(this.getDailyLimitStorageKey(), id);
-                            this.syncTelegramDailyLimitRowId(id, false);
+                            try {
+                                const ds = window.Telegram?.WebApp?.DeviceStorage;
+                                if (ds && typeof ds.setItem === 'function') {
+                                    ds.setItem(this.getDailyLimitStorageKey(), id);
+                                }
+                            } catch (e) {}
+                            try {
+                                const ss = window.Telegram?.WebApp?.SecureStorage;
+                                if (ss && typeof ss.setItem === 'function') {
+                                    ss.setItem(this.getDailyLimitStorageKey(), id);
+                                }
+                            } catch (e) {}
                         }
                     }, 1000);
                 },
@@ -19011,7 +18975,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
