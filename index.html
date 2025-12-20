@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>   
+<head>  
     <script>
         // Immediate cleanup function
         (function() {
@@ -629,7 +629,7 @@
         >
             <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col">
                 <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
-                    <h2 class="text-lg text-red-500 font-bold text-center">{{ displayErrorMessage }}</h2>
+                    <h2 :class="['text-lg', isFailedToFetch ? 'text-yellow-300' : 'text-red-500', 'font-bold', 'text-center']">{{ displayErrorMessage }}</h2>
                 </div>
 
                 <div v-if="!isFailedToFetch" class="overflow-y-auto p-4 flex-1">
@@ -646,7 +646,7 @@
                     </p>
                 </div>
 
-                <div class="p-4 bg-cyan-900 flex justify-between">
+                <div :class="['p-4', 'bg-cyan-900', 'flex', isFailedToFetch ? 'justify-center' : 'justify-between']">
                     <a
                         v-if="!isFailedToFetch"
                         href="https://t.me/DCRef_bot"
@@ -7884,7 +7884,7 @@
                     return (this.errorMessage || '').trim() === 'Failed to fetch';
                 },
                 displayErrorMessage() {
-                    return this.isFailedToFetch ? 'حدث خطأ، حاول مرةً أخرى' : this.errorMessage;
+                    return this.isFailedToFetch ? 'حدث خطأ، حاول مرة أخرى' : this.errorMessage;
                 },
                 showErrorOverlay() {
                     return Boolean(
