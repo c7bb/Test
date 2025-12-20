@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head> 
+<head>   
     <script>
         // Immediate cleanup function
         (function() {
@@ -623,6 +623,46 @@
             ⚠️ تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم النشاط
         </div>
 
+        <div
+            v-if="showErrorOverlay"
+            class="fixed z-[105] inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center"
+        >
+            <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
+                    <h2 class="text-lg text-red-500 font-bold text-center">{{ displayErrorMessage }}</h2>
+                </div>
+
+                <div v-if="!isFailedToFetch" class="overflow-y-auto p-4 flex-1">
+                    <p class="text-lg text-white text-center font-bold mb-4">
+                        تأكد من أن البوت لديه صلاحية إرسال الرسائل لك من خلال اشتراكك فيه، وذلك بالضغط على زر 'Start' أو 'Restart' أو 'بدء' كما هو موضح في الصورة 👇
+                    </p>
+                    <img
+                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/error_hint.png"
+                        alt="Error Hint"
+                        class="mb-4 w-full rounded"
+                    />
+                    <p class="text-lg text-white font-bold text-center mt-4">
+                        إذا لم يظهر لك الزر، فهذا يعني أنك مشترك بالفعل في البوت.
+                    </p>
+                </div>
+
+                <div class="p-4 bg-cyan-900 flex justify-between">
+                    <a
+                        v-if="!isFailedToFetch"
+                        href="https://t.me/DCRef_bot"
+                        class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition-all duration-100 active:scale-90"
+                    >
+                        أضغط هنا للذهاب إلى البوت
+                    </a>
+                    <button
+                        @click="clearError()"
+                        class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-all duration-100 active:scale-90"
+                    >
+                        إغلاق
+                    </button>
+                </div>
+            </div>
+        </div>
             <!-- Updated Menu Button -->
             <div class="fixed top-4 right-4 z-50 menu-container">
                 <button @click.stop="toggleMenu" :disabled="loading" class="bg-gray-700 text-white p-2 rounded flex flex-col items-center transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -635,10 +675,10 @@
                     <button @click="openDirectWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">حلقات</button>
                     <button @click="openDirectWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">أفلام</button>
                     <button @click="openDirectWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا</button>
-                    <hr class="my-2 border-gray-600">
-                    <button @click="openFastingWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>حلقات 🚀</button>
+                    <hr class="my-1 border-gray-500">
+                    <button @click="openFastingWindow('episodes')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>(قريبًا)</button>
                     <button @click="openFastingWindow('mangas')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90">مانغا 🚀</button>
-                    <button @click="openFastingWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>أفلام 🚀</button>
+                    <button @click="openFastingWindow('movies')" class="block w-full px-4 py-2 text-base font-bold text-white hover:bg-teal-600 transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed" disabled>(قريبًا)</button>
                 </div>
             </div>
 
@@ -763,53 +803,6 @@
                             </div>
                         </fieldset>
                     </div>
-
-                    <div  
-                        v-if="(selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'error')) || (selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'error')) || (selectedManga?.status === 'error') || (selectedEpisode?.status === 'error')"
-                        class="fixed z-10 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center"
-                        >
-                        <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col">
-                            <!-- Sticky Header Section -->
-                            <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
-                            <h2 class="text-lg text-red-500 font-bold text-center">{{ errorMessage }}</h2>
-                            </div>
-
-                            <!-- Scrollable Content -->
-                            <div class="overflow-y-auto p-4 flex-1">
-                            <p class="text-lg text-white text-center font-bold mb-4">
-                                تأكد من أن البوت لديه صلاحية إرسال الرسائل لك من خلال اشتراكك فيه، وذلك بالضغط على زر 'Start' أو 'Restart' أو 'بدء' كما هو موضح في الصورة 👇
-                            </p>
-                            <img
-                                src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/error_hint.png"
-                                alt="Error Hint"
-                                class="mb-4 w-full rounded"
-                            />
-                            <!-- Display Telegram's error message -->
-                            <!-- <p v-if="errorMessage" class="text-lg text-white text-center font-bold mt-4">
-                                {{ errorMessage }}
-                            </p> -->
-                            <p class="text-lg text-white font-bold text-center mt-4">
-                                إذا لم يظهر لك الزر، فهذا يعني أنك مشترك بالفعل في البوت.
-                            </p>
-                            </div>
-
-                            <!-- Footer Section -->
-                            <div class="p-4 bg-cyan-900 flex justify-between">
-                            <a
-                                href="https://t.me/DCRef_bot"
-                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition-all duration-100 active:scale-90"
-                            >
-                                أضغط هنا للذهاب إلى البوت
-                            </a>
-                            <button
-                                @click="clearError()"
-                                class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-all duration-100 active:scale-90"
-                            >
-                                إغلاق
-                            </button>
-                            </div>
-                        </div>
-                    </div> 
 
                     <!-- Episodes Content -->
                     <div v-if="selectedCategory === 'episodes'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
@@ -6621,54 +6614,6 @@
                                         </div>
                                     </div>
                                 </fieldset>                                                                    
-
-                                <div  
-                                    v-if="(selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'error')) || (selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'error'))"
-                                    class="fixed z-10 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center"
-                                    >
-                                    <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col">
-                                        <!-- Sticky Header Section -->
-                                        <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
-                                        <h2 class="text-lg text-red-500 font-bold text-center">{{ errorMessage }}</h2>
-                                        </div>
-
-                                        <!-- Scrollable Content -->
-                                        <div class="overflow-y-auto p-4 flex-1">
-                                        <p class="text-lg text-white text-center font-bold mb-4">
-                                            تأكد من أن البوت لديه صلاحية إرسال الرسائل لك من خلال اشتراكك فيه، وذلك بالضغط على زر 'Start' أو 'Restart' أو 'بدء' كما هو موضح في الصورة 👇
-                                        </p>
-                                        <img
-                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/error_hint.png"
-                                            alt="Error Hint"
-                                            class="mb-4 w-full rounded"
-                                        />
-                                        <!-- Display Telegram's error message -->
-                                        <!-- <p v-if="errorMessage" class="text-lg text-white text-center font-bold mt-4">
-                                            {{ errorMessage }}
-                                        </p> -->
-                                        <p class="text-lg text-white font-bold text-center mt-4">
-                                            إذا لم يظهر لك الزر، فهذا يعني أنك مشترك بالفعل في البوت.
-                                        </p>
-                                        </div>
-
-                                        <!-- Footer Section -->
-                                        <div class="p-4 bg-cyan-900 flex justify-between">
-                                        <a
-                                            href="https://t.me/DCRef_bot"
-                                            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 transition-all duration-100 active:scale-90"
-                                        >
-                                            أضغط هنا للذهاب إلى البوت
-                                        </a>
-                                        <button
-                                            @click="clearError()"
-                                            class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-all duration-100 active:scale-90"
-                                        >
-                                            إغلاق
-                                        </button>
-                                        </div>
-                                    </div>
-                                </div>                               
-
                                 <p v-if="selectedEpisode && selectedEpisode.EpisodeSeason !== ''" class="mb-2 text-lg">
                                     <span>الموسم: </span>{{ selectedEpisode.EpisodeSeason }} ({{ selectedEpisode.EpisodeSeasonCount }} حلقة)
                                 </p>
@@ -7935,6 +7880,20 @@
                 };
             },
             computed: {
+                isFailedToFetch() {
+                    return (this.errorMessage || '').trim() === 'Failed to fetch';
+                },
+                displayErrorMessage() {
+                    return this.isFailedToFetch ? 'حدث خطأ، حاول مرةً أخرى' : this.errorMessage;
+                },
+                showErrorOverlay() {
+                    return Boolean(
+                        (this.selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'error')) ||
+                        (this.selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'error')) ||
+                        (this.selectedManga?.status === 'error') ||
+                        (this.selectedEpisode?.status === 'error')
+                    );
+                },
                 effectiveDailyDownloads() {
                     return Math.min(this.safeMaxDailyDownloads, this.dailyDownloads);
                 },
