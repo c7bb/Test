@@ -7040,6 +7040,10 @@
                     tabId: null,
                     tabStorageLockInterval: null,
                     tabStorageLockVisibilityHandler: null,
+                    tabWebLockRetryInterval: null,
+                    tabWebLockRequestInFlight: false,
+                    tabWebLockReleaseResolver: null,
+                    tabWebLockVisibilityHandler: null,
 
                     replacementDict: {
                     "سينشي": ["شينتشي", "سينشي"],
@@ -20182,56 +20186,92 @@
                         console.warn('BroadcastChannel not supported:', e);
                     }
                     
-                    // Use Web Locks API as additional verification
-                    this.acquireTabLock();
-                    this.startStorageTabLocking();
+                    const startedWebLock = this.startWebLocksTabLocking();
+                    if (!startedWebLock) {
+                        this.startStorageTabLocking();
+                    }
                 },
                 
-                async acquireTabLock() {
-                    if (navigator.locks && navigator.locks.request) {
+                startWebLocksTabLocking() {
+                    if (!(navigator.locks && navigator.locks.request)) {
+                        return false;
+                    }
+
+                    const attempt = async () => {
+                        if (this.tabWebLockRequestInFlight) return;
+                        this.tabWebLockRequestInFlight = true;
+
                         try {
                             await navigator.locks.request('dcrefbot-tab-lock', { ifAvailable: true }, async (lock) => {
-                                if (lock) {
-                                    // We got the lock, we're the owner
-                                    this.isTabOwner = true;
-                                    this.tabLockModal = false;
-                                    this.tabLockLock = lock;
-                                    
-                                    // Initialize InstantDB and load data when ownership is granted
+                                if (!lock) {
+                                    this.isTabOwner = false;
+                                    this.tabLockModal = true;
+                                    return;
+                                }
+
+                                if (this.tabWebLockRetryInterval) {
+                                    clearInterval(this.tabWebLockRetryInterval);
+                                    this.tabWebLockRetryInterval = null;
+                                }
+
+                                const becameOwner = !this.isTabOwner;
+                                this.isTabOwner = true;
+                                this.tabLockModal = false;
+                                this.tabLockLock = lock;
+
+                                if (becameOwner) {
+                                    console.log('Tab ownership granted');
                                     if (this.userJoined && !this._db) {
                                         this.initInstantDB();
                                     }
                                     if (this.userJoined && this.episodes.length === 0) {
                                         this.loadData();
                                     }
-                                    
-                                    // Keep the lock alive
-                                    const keepAlive = async () => {
-                                        while (this.isTabOwner) {
-                                            await new Promise(resolve => setTimeout(resolve, 1000));
-                                        }
-                                    };
-                                    keepAlive();
-                                } else {
-                                    // Lock is held by another tab
-                                    this.isTabOwner = false;
-                                    this.tabLockModal = true;
                                 }
+
+                                await new Promise(resolve => {
+                                    this.tabWebLockReleaseResolver = resolve;
+                                });
                             });
                         } catch (e) {
                             console.warn('Web Locks API error:', e);
-                            // Fallback: assume we're the owner if locks fail
-                            if (!this.tabBroadcastChannel && !this.tabWorkerPort) {
-                                this.isTabOwner = true;
+                            if (this.tabWebLockRetryInterval) {
+                                clearInterval(this.tabWebLockRetryInterval);
+                                this.tabWebLockRetryInterval = null;
+                            }
+                            this.tabWebLockRequestInFlight = false;
+                            this.startStorageTabLocking();
+                            return;
+                        } finally {
+                            if (!this.isTabOwner) {
+                                this.tabWebLockRequestInFlight = false;
                             }
                         }
+                    };
+
+                    attempt();
+
+                    if (this.tabWebLockRetryInterval) {
+                        clearInterval(this.tabWebLockRetryInterval);
                     }
+                    this.tabWebLockRetryInterval = setInterval(attempt, 2000);
+
+                    if (!this.tabWebLockVisibilityHandler) {
+                        this.tabWebLockVisibilityHandler = () => {
+                            if (!document.hidden) {
+                                attempt();
+                            }
+                        };
+                        document.addEventListener('visibilitychange', this.tabWebLockVisibilityHandler);
+                    }
+
+                    return true;
                 },
 
                 startStorageTabLocking() {
                     const key = 'dcrefbot-tab-owner';
-                    const ttlMs = 1000;
-                    const heartbeatMs = 500;
+                    const ttlMs = 10000;
+                    const heartbeatMs = 100;
 
                     const safeRead = () => {
                         try {
@@ -20335,6 +20375,23 @@
                         document.removeEventListener('visibilitychange', this.tabStorageLockVisibilityHandler);
                         this.tabStorageLockVisibilityHandler = null;
                     }
+
+                    if (this.tabWebLockRetryInterval) {
+                        clearInterval(this.tabWebLockRetryInterval);
+                        this.tabWebLockRetryInterval = null;
+                    }
+
+                    if (this.tabWebLockVisibilityHandler) {
+                        document.removeEventListener('visibilitychange', this.tabWebLockVisibilityHandler);
+                        this.tabWebLockVisibilityHandler = null;
+                    }
+
+                    if (this.tabWebLockReleaseResolver) {
+                        try { this.tabWebLockReleaseResolver(); } catch (e) {}
+                        this.tabWebLockReleaseResolver = null;
+                    }
+
+                    this.tabWebLockRequestInFlight = false;
 
                     try {
                         const key = 'dcrefbot-tab-owner';
