@@ -7032,7 +7032,7 @@
                     now: Date.now(),
                     _db: null,
                     userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'anonymous-user', // Fallback for testing if not in Telegram
-                    testMinuteReset: true,
+                    testMinuteReset: false,
                     nowIntervalId: null,
                     
                     // Time Synchronization
@@ -21019,4 +21019,5 @@
     </style>
 </body>
 </html>
+
 
