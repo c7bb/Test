@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>   
     <script>
         (function() {
             const params = new URLSearchParams(location.search);
@@ -6929,6 +6929,7 @@
 
     <script>
         const webApp = window.Telegram?.WebApp || null;
+        try { webApp?.ready?.(); } catch (e) {}
         const { createApp, markRaw } = Vue;
     
         const app = createApp({
@@ -15060,6 +15061,14 @@
                             storage.getItem(key, (...args) => {
                                 for (let i = args.length - 1; i >= 0; i -= 1) {
                                     const v = args[i];
+                                    if (v && typeof v === 'object') {
+                                        const valueLike = v.value ?? v.result ?? v.data ?? null;
+                                        if (typeof valueLike === 'string') return resolve(valueLike);
+                                        if (valueLike == null && ('value' in v || 'result' in v || 'data' in v)) return resolve(null);
+                                    }
+                                }
+                                for (let i = args.length - 1; i >= 0; i -= 1) {
+                                    const v = args[i];
                                     if (typeof v === 'string') return resolve(v);
                                     if (v == null) return resolve(null);
                                 }
@@ -15150,6 +15159,7 @@
                     const key = this.getDailyLimitStorageKey();
                     const cookieKey = this.getDailyLimitCookieKey();
                     let repaired = false;
+                    const shouldForceTelegramPersist = this.dailyLimitRowIdLastAsyncPersistedId !== id;
 
                     try {
                         const current = localStorage.getItem(key);
@@ -15173,7 +15183,7 @@
                         }
                     } catch (e) {}
 
-                    await this.persistDailyLimitRowIdAsync(id, repaired);
+                    await this.persistDailyLimitRowIdAsync(id, repaired || shouldForceTelegramPersist);
                 },
 
                 async hydrateDailyLimitRowIdFromAsyncStores() {
