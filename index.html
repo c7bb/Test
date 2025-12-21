@@ -525,6 +525,24 @@
         .animate-ticker {
             animation: ticker 15s linear infinite;
         }
+
+        @keyframes successHintIn {
+            from { opacity: 0; transform: translateX(48px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes successHintOut {
+            from { opacity: 1; transform: translateX(0); }
+            to { opacity: 0; transform: translateX(48px); }
+        }
+
+        .success-hint-in {
+            animation: successHintIn 220ms ease-out both;
+        }
+
+        .success-hint-out {
+            animation: successHintOut 220ms ease-in both;
+        }
     </style>
     <style>
         /* Apple Notch Style */
@@ -621,6 +639,22 @@
             class="fixed bottom-4 right-1 z-[110] bg-red-900 text-yellow-300 px-2 py-2 rounded shadow-lg text-sm"
         >
             ⚠️ تنتهي الجلسة خلال {{ formattedInactivityCountdown }} بسبب عدم النشاط
+        </div>
+
+        <div 
+            v-if="successHintVisible"
+            :class="['fixed bottom-4 right-1 z-[111] bg-emerald-900 text-yellow-100 px-3 py-2 rounded shadow-lg text-sm max-w-[90vw] sm:max-w-[420px]', successHintAnimatingOut ? 'success-hint-out' : 'success-hint-in']"
+        >
+            <div class="flex items-center gap-2">
+                <button @click="dismissSuccessHint" class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
+                    <img src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" alt="Close" class="h-8 w-8" />
+                </button>
+                <div class="flex-1 font-bold">
+                    {{ successHintMessage }}
+                    <span class="opacity-80">({{ successHintCountdown }})</span>
+                </div>
+                <img src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" alt="Success" class="h-7 w-7" />
+            </div>
         </div>
 
         <div
@@ -783,7 +817,7 @@
                             <h2 class="text-xl font-bold">النافذة المباشرة</h2>
                             <button @click="closeDirectWindow" class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
                                 <img src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" alt="Close" class="h-8 w-8" />
-                              </button>                              
+                            </button>                              
                         </div>
                         
                         <fieldset class="border p-2 rounded mt-2">
@@ -1452,7 +1486,7 @@
                         <span v-if="remainingDownloads > 2" class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span>
                         {{ remainingDownloadsLabel }} لهذا اليوم.
                     </p>
-                    <button 
+                    <button
                         @click="showLimitModal = false" 
                         class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
                         حسنًا
@@ -5962,112 +5996,9 @@
                             </fieldset>   
 
                         </fieldset>
-
-                        <!-- <div class="text-center mt-4">
-                            <button 
-                                class="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition mt-4" 
-                                @click="closeEmptyPopup">
-                                إغلاق
-                            </button>
-
-                            <br />
-                            
-                            <button 
-                                class="bg-red-500 text-white font-bold py-2 px-4 mx-2 rounded hover:bg-red-700 transition mt-4" 
-                                @click="resetFilters">
-                                إعادة تعيين التصفية
-                            </button>
-                        </div> -->
                     </div>
                 </div>
             </div>   
-
-            <!-- <fieldset class="border p-4 rounded w-full">
-                <legend class="font-bold text-lg px-2">مربع البحث</legend>
-              
-                <div class="w-full mb-4">
-                  <div class="flex items-center w-full mb-2">
-
-                    <input
-                      v-model="searchQuery"
-                      :class="['border px-4 font-bold text-xl rounded w-full', searchFilters.number ? 'py-8' : 'py-2']"
-                      placeholder="بحث..."
-                    />
-              
-                    <div class="flex flex-col items-end mr-2">
-
-                      <button
-                        @click="clearSearch"
-                        class="px-4 py-2 bg-red-500 text-white font-bold rounded transition-all duration-100 active:scale-90"
-                      >
-                        مسح
-                      </button>
-              
-                      <div v-if="searchFilters.number" class="flex flex-col space-y-2 mt-2 -ml-2">
-                        <label class="flex items-center transition-all duration-100 active:scale-90">
-                          <input
-                            type="radio"
-                            v-model="textNumberMatchMode"
-                            value="enabled"
-                            class="scale-150"
-                          />
-                          <span class="px-2 font-bold">تفعيل</span>
-                        </label>
-                        <label class="flex items-center transition-all duration-100 active:scale-90">
-                          <input
-                            type="radio"
-                            v-model="textNumberMatchMode"
-                            value="disabled"
-                            class="scale-150"
-                          />
-                          <span class="px-2 font-bold">تعطيل</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              
-                <div class="flex flex-wrap mt-2 justify-center text-lg">
-                  <label class="flex items-center transition-all duration-100 active:scale-90">
-                    <input
-                      type="checkbox"
-                      v-model="searchFilters.title"
-                      class="scale-100"
-                      @change="ensureOneChecked('title')"
-                    />
-                    <span class="px-2 font-bold">العنوان</span>
-                  </label>
-                  <label class="flex items-center transition-all duration-100 active:scale-90">
-                    <input
-                      type="checkbox"
-                      v-model="searchFilters.number"
-                      class="scale-100"
-                      @change="ensureOneChecked('number')"
-                    />
-                    <span class="px-2 font-bold">الرقم</span>
-                  </label>
-                  <label class="flex items-center transition-all duration-100 active:scale-90">
-                    <input
-                      type="checkbox"
-                      v-model="searchFilters.story"
-                      class="scale-100"
-                      @change="ensureOneChecked('story')"
-                    />
-                    <span class="px-2 font-bold">القصة</span>
-                  </label>
-                  <label class="flex items-center transition-all duration-100 active:scale-90">
-                    <input
-                      type="checkbox"
-                      v-model="searchFilters.summary"
-                      class="scale-100"
-                      @change="ensureOneChecked('summary')"
-                    />
-                    <span class="px-2 font-bold">الملخص</span>
-                  </label>
-                </div>
-            </fieldset> -->
-              
-                                                 
 
                         <!-- Manga Announcement Box -->
                         <div class="relative w-full max-w-2xl p-4 mt-4 bg-black bg-opacity-85 rounded-lg shadow-lg border border-yellow-500 animate-borderMove">
@@ -7007,6 +6938,15 @@
                     inactivityModal: false,
                     inactivityListeners: [],
                     lastActivityAt: Date.now(),
+                    successHintVisible: false,
+                    successHintAnimatingOut: false,
+                    successHintMessage: '',
+                    successHintCountdown: 0,
+                    successHintCountdownIntervalId: null,
+                    successHintHideTimeoutId: null,
+                    successHintHideAnimationTimeoutId: null,
+                    episode: { status: null },
+                    movie: { status: null },
                     ep: 1185,
                     mangaCh: 1155,
                     // Daily Limit Data
@@ -16836,6 +16776,7 @@
                     this.previousEpisodeByNumberExists = currentIndex > 0;
                 },
                 closeModal() {
+                    this.dismissSuccessHint();
                     this.showModal = false;
                     document.body.style.overflow = ''; // Restore background scrolling
                     
@@ -18379,6 +18320,10 @@
                     try {
                         await this.sendVideoResponse(videoID, caption);
                         this.selectedEpisode.EpisodeVideosIDs[index].status = 'success';
+                        const isMovie = String(this.selectedEpisode?.EpisodeNumber ?? '').includes('الفيلم');
+                        this.movie.status = isMovie ? 'success' : null;
+                        this.episode.status = isMovie ? null : 'success';
+                        this.showSuccessHint(isMovie ? 'تم إرسال الفيلم للخاص' : 'تم إرسال الحلقة للخاص');
                         this.startCountdown(index);
                         this.errorMessage = "";
                     } catch (error) {
@@ -18434,6 +18379,8 @@
                                 manga.countdown = undefined;
                             });
                         }
+                        this.episode.status = null;
+                        this.movie.status = null;
                     }, this.statusClearTimeout);
                 },
 
@@ -18551,6 +18498,7 @@
                     try {
                         await this.sendMangaResponse(fileId, caption);
                         this.selectedEpisode.EpisodeMangasIDs[index].status = 'success';
+                        this.showSuccessHint('تم إرسال الفصل للخاص');
                         this.startCountdownForManga(index);
                         this.errorMessage = "";
                     } catch (error) {
@@ -18638,6 +18586,7 @@
                     try {
                         await this.sendMangaResponse(fileId, caption);
                         this.selectedManga.status = 'success';
+                        this.showSuccessHint('تم إرسال الفصل للخاص');
                         this.startCountdownForMangaD();
                         this.errorMessage = "";
                     } catch (error) {
@@ -19033,6 +18982,63 @@
                     }
                 },
 
+                showSuccessHint(message) {
+                    const msg = String(message ?? '').trim();
+                    if (!msg) return;
+
+                    if (this.successHintCountdownIntervalId) {
+                        clearInterval(this.successHintCountdownIntervalId);
+                        this.successHintCountdownIntervalId = null;
+                    }
+                    if (this.successHintHideTimeoutId) {
+                        clearTimeout(this.successHintHideTimeoutId);
+                        this.successHintHideTimeoutId = null;
+                    }
+                    if (this.successHintHideAnimationTimeoutId) {
+                        clearTimeout(this.successHintHideAnimationTimeoutId);
+                        this.successHintHideAnimationTimeoutId = null;
+                    }
+
+                    this.successHintMessage = msg;
+                    this.successHintVisible = true;
+                    this.successHintAnimatingOut = false;
+                    this.successHintCountdown = 2;
+
+                    this.successHintCountdownIntervalId = setInterval(() => {
+                        if (!this.successHintVisible) return;
+                        this.successHintCountdown = Math.max(0, Number(this.successHintCountdown || 0) - 1);
+                    }, 1000);
+
+                    this.successHintHideTimeoutId = setTimeout(() => {
+                        this.dismissSuccessHint();
+                    }, 2000);
+                },
+
+                dismissSuccessHint() {
+                    if (this.successHintCountdownIntervalId) {
+                        clearInterval(this.successHintCountdownIntervalId);
+                        this.successHintCountdownIntervalId = null;
+                    }
+                    if (this.successHintHideTimeoutId) {
+                        clearTimeout(this.successHintHideTimeoutId);
+                        this.successHintHideTimeoutId = null;
+                    }
+                    if (this.successHintHideAnimationTimeoutId) {
+                        clearTimeout(this.successHintHideAnimationTimeoutId);
+                        this.successHintHideAnimationTimeoutId = null;
+                    }
+
+                    if (!this.successHintVisible) return;
+                    this.successHintAnimatingOut = true;
+                    this.successHintHideAnimationTimeoutId = setTimeout(() => {
+                        this.successHintVisible = false;
+                        this.successHintAnimatingOut = false;
+                        this.successHintMessage = '';
+                        this.successHintCountdown = 0;
+                        this.successHintHideAnimationTimeoutId = null;
+                    }, 240);
+                },
+
                 openDirectWindow(category) {
                     document.body.style.overflow = 'hidden'; // Block background scrolling
                     this.selectedCategory = category;
@@ -19048,6 +19054,7 @@
                 },
 
                 closeFastingWindow() {
+                    this.dismissSuccessHint();
                     if (!this.isMangaQueueRunning) {
                         this.stopMangaQueue();
                         document.body.style.overflow = '';
@@ -19191,6 +19198,7 @@
                         entry.status = 'success';
                         entry.error = '';
                         this.retryQueueCurrent.status = 'success';
+                        this.showSuccessHint('تم إرسال الفصل للخاص');
                         
                         // Move this chapter from failed → sent in the aggregate stats (MAIN stats)
                         if (this.mangaQueueStats.failed > 0) {
@@ -19350,9 +19358,10 @@
                              // Update main stats too
                              if (this.mangaQueueStats.failed > 0) this.mangaQueueStats.failed--;
                              this.mangaQueueStats.sent++;
-
+                            
                              entry.status = 'success';
                              this.retryQueueCurrent.status = 'success';
+                             this.showSuccessHint('تم إرسال الفصل للخاص');
                          } catch (error) {
                              console.error(error);
                              entry.status = 'failed';
@@ -19599,6 +19608,7 @@
                                 await this.incrementDailyLimit();
 
                                 this.mangaQueueCurrent.status = 'success';
+                                this.showSuccessHint('تم إرسال الفصل للخاص');
                                 this.recordMangaSuccess(manga);
                                 this.mangaQueueStats.sent++;
                                 this.mangaQueueIndex++;
@@ -19726,6 +19736,7 @@
                 },
 
                 resetMangaQueue() {
+                    this.dismissSuccessHint();
                     // Reset everything for a new queue
                     this.stopMangaQueue();
                     this.mangaStartNumber = null;
@@ -19745,6 +19756,7 @@
                 },
 
                 closeDirectWindow() {
+                    this.dismissSuccessHint();
                     document.body.style.overflow = ''; // Restore background scrolling
                     // Store references to the current objects before clearing them
                     const tempEpisode = this.selectedEpisode;
@@ -20810,4 +20822,3 @@
     </style>
 </body>
 </html>
-
