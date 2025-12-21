@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
-<head>  
+<head>
     <script>
         (function() {
             const params = new URLSearchParams(location.search);
@@ -7025,6 +7025,13 @@
                     dailyLimitRowId: null,
                     dailyLimitRowIdGuardIntervalId: null,
                     dailyLimitRowIdGuardInFlight: false,
+                    dailyLimitRowIdPersistInFlight: false,
+                    dailyLimitRowIdLastAsyncPersistedId: null,
+                    tgStorageCheckIntervalMs: 60000,
+                    tgDeviceStorageLastCheckAt: 0,
+                    tgSecureStorageLastCheckAt: 0,
+                    tgDeviceStorageLastValue: null,
+                    tgSecureStorageLastValue: null,
                     _dailyLimitIdbPromise: null,
                     dailyLimitDate: null,
                     dailyLimitDayStartUtcMs: null,
@@ -14963,14 +14970,31 @@
                     if (!this.isUuidLike(id)) return;
                     const key = this.getDailyLimitStorageKey();
                     const cookieKey = this.getDailyLimitCookieKey();
+                    let changed = false;
                     try {
-                        localStorage.setItem(key, id);
+                        const current = localStorage.getItem(key);
+                        if (current !== id) {
+                            localStorage.setItem(key, id);
+                            changed = true;
+                        }
                     } catch (e) {}
                     try {
-                        sessionStorage.setItem(key, id);
+                        const current = sessionStorage.getItem(key);
+                        if (current !== id) {
+                            sessionStorage.setItem(key, id);
+                            changed = true;
+                        }
                     } catch (e) {}
-                    this.setCookieValue(cookieKey, id);
-                    this.persistDailyLimitRowIdAsync(id);
+                    try {
+                        const current = this.getCookieValue(cookieKey);
+                        if (current !== id) {
+                            this.setCookieValue(cookieKey, id);
+                            changed = true;
+                        }
+                    } catch (e) {}
+                    if (changed || this.dailyLimitRowIdLastAsyncPersistedId !== id) {
+                        this.persistDailyLimitRowIdAsync(id, true);
+                    }
                 },
 
                 async openDailyLimitIdb() {
@@ -15033,8 +15057,13 @@
                         try {
                             if (!storage || typeof storage.getItem !== 'function') return resolve(null);
                             storage.getItem(key, (...args) => {
+                                for (let i = args.length - 1; i >= 0; i -= 1) {
+                                    const v = args[i];
+                                    if (typeof v === 'string') return resolve(v);
+                                    if (v == null) return resolve(null);
+                                }
                                 const last = args[args.length - 1];
-                                resolve(typeof last === 'string' ? last : (last == null ? null : String(last)));
+                                resolve(last == null ? null : String(last));
                             });
                         } catch (e) {
                             resolve(null);
@@ -15046,40 +15075,72 @@
                     return new Promise(resolve => {
                         try {
                             if (!storage || typeof storage.setItem !== 'function') return resolve(false);
-                            storage.setItem(key, String(value), () => resolve(true));
+                            storage.setItem(key, String(value), (...args) => {
+                                const last = args[args.length - 1];
+                                if (typeof last === 'boolean') return resolve(last);
+                                resolve(true);
+                            });
                         } catch (e) {
                             resolve(false);
                         }
                     });
                 },
 
-                async persistDailyLimitRowIdAsync(id) {
+                async persistDailyLimitRowIdAsync(id, force = false) {
                     if (!this.isUuidLike(id)) return;
                     const key = this.getDailyLimitStorageKey();
+                    if (this.dailyLimitRowIdPersistInFlight && !force) return;
+                    this.dailyLimitRowIdPersistInFlight = true;
                     try {
-                        const existing = await this.idbGetValue(key);
-                        if (existing !== id) {
-                            await this.idbSetValue(key, id);
-                        }
-                    } catch (e) {}
-                    try {
-                        const ds = this.getTelegramDeviceStorage();
-                        if (ds) {
-                            const current = await this.tgGetItem(ds, key);
-                            if (current !== id) {
-                                await this.tgSetItem(ds, key, id);
+                        try {
+                            if (this.dailyLimitRowIdLastAsyncPersistedId !== id) {
+                                await this.idbSetValue(key, id);
+                                this.dailyLimitRowIdLastAsyncPersistedId = id;
+                            } else if (force) {
+                                await this.idbSetValue(key, id);
                             }
-                        }
-                    } catch (e) {}
-                    try {
-                        const ss = this.getTelegramSecureStorage();
-                        if (ss) {
-                            const current = await this.tgGetItem(ss, key);
-                            if (current !== id) {
-                                await this.tgSetItem(ss, key, id);
+                        } catch (e) {}
+                        try {
+                            const ds = this.getTelegramDeviceStorage();
+                            if (ds) {
+                                const now = Date.now();
+                                const shouldCheck = force || (now - (this.tgDeviceStorageLastCheckAt || 0) >= (this.tgStorageCheckIntervalMs || 60000));
+                                if (shouldCheck) {
+                                    const current = await this.tgGetItem(ds, key);
+                                    this.tgDeviceStorageLastCheckAt = now;
+                                    this.tgDeviceStorageLastValue = current;
+                                    if (current !== id) {
+                                        await this.tgSetItem(ds, key, id);
+                                        this.tgDeviceStorageLastValue = id;
+                                    }
+                                } else if (this.tgDeviceStorageLastValue !== id && this.tgDeviceStorageLastValue != null) {
+                                    await this.tgSetItem(ds, key, id);
+                                    this.tgDeviceStorageLastValue = id;
+                                }
                             }
-                        }
-                    } catch (e) {}
+                        } catch (e) {}
+                        try {
+                            const ss = this.getTelegramSecureStorage();
+                            if (ss) {
+                                const now = Date.now();
+                                const shouldCheck = force || (now - (this.tgSecureStorageLastCheckAt || 0) >= (this.tgStorageCheckIntervalMs || 60000));
+                                if (shouldCheck) {
+                                    const current = await this.tgGetItem(ss, key);
+                                    this.tgSecureStorageLastCheckAt = now;
+                                    this.tgSecureStorageLastValue = current;
+                                    if (current !== id) {
+                                        await this.tgSetItem(ss, key, id);
+                                        this.tgSecureStorageLastValue = id;
+                                    }
+                                } else if (this.tgSecureStorageLastValue !== id && this.tgSecureStorageLastValue != null) {
+                                    await this.tgSetItem(ss, key, id);
+                                    this.tgSecureStorageLastValue = id;
+                                }
+                            }
+                        } catch (e) {}
+                    } finally {
+                        this.dailyLimitRowIdPersistInFlight = false;
+                    }
                 },
 
                 async reconcileDailyLimitRowIdStores() {
@@ -15087,21 +15148,31 @@
                     const id = this.dailyLimitRowId;
                     const key = this.getDailyLimitStorageKey();
                     const cookieKey = this.getDailyLimitCookieKey();
+                    let repaired = false;
 
                     try {
                         const current = localStorage.getItem(key);
-                        if (current !== id) localStorage.setItem(key, id);
+                        if (current !== id) {
+                            localStorage.setItem(key, id);
+                            repaired = true;
+                        }
                     } catch (e) {}
                     try {
                         const current = sessionStorage.getItem(key);
-                        if (current !== id) sessionStorage.setItem(key, id);
+                        if (current !== id) {
+                            sessionStorage.setItem(key, id);
+                            repaired = true;
+                        }
                     } catch (e) {}
                     try {
                         const current = this.getCookieValue(cookieKey);
-                        if (current !== id) this.setCookieValue(cookieKey, id);
+                        if (current !== id) {
+                            this.setCookieValue(cookieKey, id);
+                            repaired = true;
+                        }
                     } catch (e) {}
 
-                    await this.persistDailyLimitRowIdAsync(id);
+                    await this.persistDailyLimitRowIdAsync(id, repaired);
                 },
 
                 async hydrateDailyLimitRowIdFromAsyncStores() {
@@ -18973,7 +19044,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -21019,5 +21090,3 @@
     </style>
 </body>
 </html>
-
-
