@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -38,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -7018,6 +7016,8 @@
                     dailyLimitRetryTimer: null,
                     dailyLimitRetryAttempts: 0,
                     dailyLimitRowId: null,
+                    dailyLimitRowIdRam: null,
+                    dailyLimitRowIdResyncIntervalId: null,
                     dailyLimitDate: null,
                     dailyLimitDayStartUtcMs: null,
                     maxDailyDownloads: 100,
@@ -14914,9 +14914,49 @@
 
                 setStoredDailyLimitRowId(id) {
                     if (!this.isUuidLike(id)) return;
+                    this.dailyLimitRowId = id;
+                    this.dailyLimitRowIdRam = id;
                     try {
                         localStorage.setItem(this.getDailyLimitStorageKey(), id);
                     } catch (e) {}
+                },
+
+                startDailyLimitRowIdResync() {
+                    if (this.dailyLimitRowIdResyncIntervalId) return;
+
+                    const existing =
+                        (this.isUuidLike(this.dailyLimitRowId) && this.dailyLimitRowId) ||
+                        (this.isUuidLike(this.dailyLimitRowIdRam) && this.dailyLimitRowIdRam) ||
+                        this.getStoredDailyLimitRowId();
+
+                    if (existing) {
+                        this.dailyLimitRowId = existing;
+                        this.dailyLimitRowIdRam = existing;
+                    } else {
+                        const created = this.ensureDailyLimitRowId();
+                        if (this.isUuidLike(created)) {
+                            this.dailyLimitRowId = created;
+                            this.dailyLimitRowIdRam = created;
+                        }
+                    }
+
+                    this.dailyLimitRowIdResyncIntervalId = setInterval(() => {
+                        const ram = this.dailyLimitRowIdRam;
+                        if (!this.isUuidLike(ram)) return;
+                        try {
+                            const key = this.getDailyLimitStorageKey();
+                            const stored = localStorage.getItem(key);
+                            if (stored !== ram) {
+                                localStorage.setItem(key, ram);
+                            }
+                        } catch (e) {}
+                    }, 1000);
+                },
+
+                stopDailyLimitRowIdResync() {
+                    if (!this.dailyLimitRowIdResyncIntervalId) return;
+                    clearInterval(this.dailyLimitRowIdResyncIntervalId);
+                    this.dailyLimitRowIdResyncIntervalId = null;
                 },
 
                 syncDailyLimitLocalDay() {
@@ -14934,12 +14974,16 @@
                 
                 getDailyLimitId() {
                     if (this.isUuidLike(this.dailyLimitRowId)) {
+                        if (this.dailyLimitRowIdRam !== this.dailyLimitRowId) {
+                            this.dailyLimitRowIdRam = this.dailyLimitRowId;
+                        }
                         return this.dailyLimitRowId;
                     }
 
                     const stored = this.getStoredDailyLimitRowId();
                     if (stored) {
                         this.dailyLimitRowId = stored;
+                        this.dailyLimitRowIdRam = stored;
                         return stored;
                     }
 
@@ -20534,6 +20578,7 @@
                 
                 // Run the Telegram check before mounting the app.
                 await this.checkTelegram();
+                this.startDailyLimitRowIdResync();
                 // If the user is valid, immediately load data.
                 if (this.userJoined && this.isTabOwner) {
                     if (!this._db) {
@@ -20551,9 +20596,11 @@
                 
                 // Cleanup on unmount
                 window.addEventListener('beforeunload', () => {
+                    this.stopDailyLimitRowIdResync();
                     this.releaseTabLock();
                 });
                 window.addEventListener('pagehide', () => {
+                    this.stopDailyLimitRowIdResync();
                     this.releaseTabLock();
                 });
 
