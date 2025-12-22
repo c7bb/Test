@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -627,10 +626,15 @@
                 </div>
             
                 <button 
-                    @click="refreshSession" 
-                    class="px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400 transition-all duration-100 active:scale-95"
+                    @click="refreshSession"
+                    :disabled="isRefreshingSession"
+                    class="px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400 transition-all duration-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                    تحديث الجلسة
+                    <span
+                        v-if="isRefreshingSession"
+                        class="animate-spin inline-block h-5 w-5 rounded-full border-2 border-black/30 border-t-black"
+                    ></span>
+                    <span>تحديث الجلسة</span>
                 </button>
             </div>        
         </div>
@@ -1807,7 +1811,7 @@
                             </ul>
                         </div>
                         
-                        <div class="bg-gray-800 text-yellow-300 p-4 rounded mb-4">
+                        <div class="bg-gray-800 text-yellow-300 p-4 rounded mb-4 text-center">
                             <h3 class="text-lg font-bold mb-2">ملاحظة</h3>
                             <p class="text-base">اسماء الشخصيات بالترتيب الياباني (اسم العائلة + اسم الشخص)</p>
                         </div>
@@ -6856,14 +6860,31 @@
                                 </div>
 
                                 <div v-if="isActiveTrailerProviderTelegram" class="flex flex-col gap-2 mb-4">
-                                    <button
+                                    <div
                                         v-for="t in activeTrailerProviderTrailers"
                                         :key="`${t.TrailerID || ''}-${t.Resolution || ''}-${t.Size || ''}`"
-                                        @click="sendTrailerToBot(t)"
-                                        class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md transition-all duration-100 active:scale-90"
+                                        class="relative"
                                     >
-                                        {{ t.Resolution }} ({{ formatFileSize(t.Size) }})
-                                    </button>
+                                        <button
+                                            @click="sendTrailerToBot(t)"
+                                            class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md transition-all duration-100 active:scale-90"
+                                        >
+                                            {{ t.Resolution }} ({{ formatFileSize(t.Size) }})
+                                        </button>
+                                        <img
+                                            v-if="t.status === 'success'"
+                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png"
+                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                        />
+                                        <img
+                                            v-else-if="t.status === 'error'"
+                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png"
+                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
+                                        />
+                                        <div v-if="t.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div v-else-if="trailerIframeSrc" class="w-full">
@@ -7036,6 +7057,7 @@
                     inactivityCountdown: 300,
                     inactivityIntervalId: null,
                     inactivityModal: false,
+                    isRefreshingSession: false,
                     inactivityListeners: [],
                     lastActivityAt: Date.now(),
                     successHintVisible: false,
@@ -7986,8 +8008,10 @@
                 },
                 showErrorOverlay() {
                     return Boolean(
+                        ((this.errorMessage || '').trim()) ||
                         (this.selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'error')) ||
                         (this.selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'error')) ||
+                        (this.episodeTrailers?.some(trailer => trailer.status === 'error')) ||
                         (this.selectedManga?.status === 'error') ||
                         (this.selectedEpisode?.status === 'error')
                     );
@@ -8446,8 +8470,9 @@
                 },
 
                 trailerExternalUrl() {
-                    const src = this.trailerIframeSrc == null ? '' : String(this.trailerIframeSrc);
-                    return /^https?:\/\//i.test(src) ? src : '';
+                    const t = this.selectedTrailer;
+                    if (!t) return '';
+                    return this.buildTrailerExternalUrl(t.Provider, t.TrailerID);
                 },
 
                 seasonCountParts() {
@@ -15496,8 +15521,11 @@
                 },
 
                 refreshSession() {
-                    // this.setBodyScrollLock(false);
-                    window.location.reload();
+                    if (this.isRefreshingSession) return;
+                    this.isRefreshingSession = true;
+                    requestAnimationFrame(() => {
+                        window.location.reload();
+                    });
                 },
 
                 setBodyScrollLock(lock) {
@@ -17119,6 +17147,32 @@
                     return id;
                 },
 
+                buildTrailerExternalUrl(provider, trailerId) {
+                    const idRaw = trailerId == null ? '' : String(trailerId).trim();
+                    if (!idRaw) return '';
+
+                    const p = (provider == null ? '' : String(provider)).toLowerCase();
+                    const isHttp = /^https?:\/\//i.test(idRaw);
+
+                    if (isHttp) {
+                        if (idRaw.includes('drive.google.com') && idRaw.endsWith('/preview')) {
+                            return idRaw.replace(/\/preview$/, '/view');
+                        }
+                        if (idRaw.includes('mega.nz') && idRaw.includes('/embed/')) {
+                            return idRaw.replace('/embed/', '/file/');
+                        }
+                        return idRaw;
+                    }
+
+                    if (p.includes('gdrive') || p.includes('google') || p.includes('drive')) {
+                        return `https://drive.google.com/file/d/${encodeURIComponent(idRaw)}/view`;
+                    }
+                    if (p.includes('mega')) {
+                        return `https://mega.nz/file/${idRaw}`;
+                    }
+                    return idRaw;
+                },
+
                 openTrailerInBrowser() {
                     const url = this.trailerExternalUrl;
                     if (!url) return;
@@ -17129,27 +17183,83 @@
                     window.open(url, '_blank', 'noopener,noreferrer');
                 },
 
-                sendTrailerToBot(trailer) {
-                    if (!trailer) return;
+                async sendTrailerToBot(trailer) {
+                    if (!trailer || !this.selectedEpisode?.EpisodeNumber) return;
+
                     const videoId = trailer.TrailerID;
                     const resolution = trailer.Resolution;
                     const size = trailer.Size;
-                    this.sendEpisodeToBot(
-                        videoId,
-                        resolution,
-                        size,
-                        0,
-                        trailer.IntroductionTime,
-                        trailer.StartStoryTime,
-                        trailer.EpisodeSuspenseTime,
-                        trailer.StartSongTime,
-                        trailer.ChapterOneTime,
-                        trailer.ChapterTwoTime,
-                        trailer.EndSongTime,
-                        trailer.ChapterThreeTime,
-                        trailer.NextEpisodeTeaserTime,
-                        trailer.NextEpisodeHintTime
-                    );
+
+                    let episodeNumber = String(this.selectedEpisode.EpisodeNumber);
+                    const isMovie = episodeNumber.includes("الفيلم");
+
+                    if (episodeNumber.includes("خاصة بالفيلم")) {
+                        episodeNumber = episodeNumber.replace("خاصة بالفيلم", "").trim();
+                    } else if (episodeNumber.includes("الفيلم")) {
+                        episodeNumber = episodeNumber.replace("الفيلم", "").trim();
+                    } else if (episodeNumber.includes("قصة قصيرة")) {
+                        episodeNumber = episodeNumber.replace("قصة قصيرة", "").trim();
+                    } else if (episodeNumber.includes("أوفا3")) {
+                        episodeNumber = episodeNumber.replace("أوفا3", "").trim();
+                    } else if (episodeNumber.includes("أوفا2")) {
+                        episodeNumber = episodeNumber.replace("أوفا2", "").trim();
+                    } else if (episodeNumber.includes("أوفا")) {
+                        episodeNumber = episodeNumber.replace("أوفا", "").trim();
+                    } else if (episodeNumber.includes("إصدار خاص")) {
+                        episodeNumber = episodeNumber.replace("إصدار خاص", "").trim();
+                    } else if (episodeNumber.includes("ماجيك كايتو")) {
+                        episodeNumber = episodeNumber.replace("ماجيك كايتو1", "").trim();
+                        episodeNumber = episodeNumber.replace("ماجيك كايتو2", "").trim();
+                    } else if (episodeNumber.includes("يوميات زيرو")) {
+                        episodeNumber = episodeNumber.replace("يوميات زيرو", "").trim();
+                    } else if (episodeNumber.includes("المجرم هانزاوا")) {
+                        episodeNumber = episodeNumber.replace("المجرم هانزاوا", "").trim();
+                    }
+
+                    const trailerNumberRaw = trailer.TrailerNumber == null ? '' : String(trailer.TrailerNumber).trim();
+                    const trailerNumberText = trailerNumberRaw ? ` ${trailerNumberRaw}` : '';
+                    const titleLine = isMovie
+                        ? `إعلان${trailerNumberText} لفيلم ${episodeNumber}`
+                        : `إعلان${trailerNumberText} لحلقة ${episodeNumber}`;
+
+                    function escapeMarkdown(text) {
+                        return String(text)
+                            .replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&')
+                            .replace(/\n/g, '\\n');
+                    }
+
+                    let details = "";
+                    if (trailer.IntroductionTime) details += `\n*المقدمة:* ${escapeMarkdown(trailer.IntroductionTime)}`;
+                    if (trailer.StartStoryTime) details += `\n*بداية القصة:* ${escapeMarkdown(trailer.StartStoryTime)}`;
+                    if (trailer.EpisodeSuspenseTime) details += `\n*تشويق الحلقة:* ${escapeMarkdown(trailer.EpisodeSuspenseTime)}`;
+                    if (trailer.StartSongTime) details += `\n*أغنية البداية:* ${escapeMarkdown(trailer.StartSongTime)}`;
+                    if (trailer.ChapterOneTime) details += `\n*الفصل الأول:* ${escapeMarkdown(trailer.ChapterOneTime)}`;
+                    if (trailer.ChapterTwoTime) details += `\n*الفصل الثاني:* ${escapeMarkdown(trailer.ChapterTwoTime)}`;
+                    if (trailer.EndSongTime) details += `\n*أغنية النهاية:* ${escapeMarkdown(trailer.EndSongTime)}`;
+                    if (trailer.ChapterThreeTime) details += `\n*الفصل الثالث:* ${escapeMarkdown(trailer.ChapterThreeTime)}`;
+                    if (trailer.NextEpisodeTeaserTime) details += `\n*تشويق الحلقة القادمة:* ${escapeMarkdown(trailer.NextEpisodeTeaserTime)}`;
+                    if (trailer.NextEpisodeHintTime) details += `\n*تلميح الحلقة القادمة:* ${escapeMarkdown(trailer.NextEpisodeHintTime)}`;
+
+                    let caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${escapeMarkdown(this.formatFileSize(size, true))}*`;
+                    if (details) caption += `\n\n*✦✦— محتويات الإعلان —✦✦*${details}`;
+
+                    trailer.status = 'sending';
+                    this.ratelimiting = true;
+                    this.errorMessage = "";
+
+                    try {
+                        await this.sendVideoResponse(videoId, caption);
+                        trailer.status = 'success';
+                        this.showSuccessHint('تم إرسال الإعلان للخاص');
+                    } catch (error) {
+                        trailer.status = 'error';
+                        this.errorMessage = error?.message || String(error);
+                    } finally {
+                        setTimeout(() => {
+                            trailer.status = null;
+                            this.ratelimiting = false;
+                        }, this.statusClearTimeout);
+                    }
                 },
 
                 openEmptyPopup() {
@@ -19000,6 +19110,12 @@
                         });
                     }
 
+                    if (Array.isArray(this.episodeTrailers)) {
+                        this.episodeTrailers.forEach((trailer) => {
+                            if (trailer) trailer.status = null;
+                        });
+                    }
+
                     // Reset the status of selectedManga
                     if (this.selectedManga) {
                         // Clear countdown interval if it exists
@@ -19018,6 +19134,7 @@
 
                     // Always reset ratelimiting flag
                     this.ratelimiting = false;
+                    this.errorMessage = "";
                 },
 
                 async checkTelegram() {
