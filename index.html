@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -645,6 +644,7 @@
 
         <div 
             v-if="successHintVisible"
+            @click="goToBot"
             :class="['fixed bottom-4 right-1 z-[111] bg-emerald-900 text-yellow-100 px-3 py-2 rounded shadow-lg text-sm max-w-[90vw] sm:max-w-[420px]', successHintAnimatingOut ? 'success-hint-out' : 'success-hint-in']"
         >
             <div class="flex items-center gap-4">
@@ -750,13 +750,13 @@
                                 v-model.trim="searchQuery"
                                 @focus="clearJumpHighlight"
                                 @keydown.enter.prevent
-                                rows="2"
+                                :rows="(searchFilters.title || searchFilters.story || searchFilters.summary) ? 2 : 1"
                                 placeholder="ابحث..."
                                 class="w-full p-2 text-lg bg-gray-700 rounded focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none overflow-y-auto whitespace-pre-wrap break-words"
                                 ></textarea>
                                 <button
                                 @click="clearSearch"
-                                class="absolute top-5 left-3 text-xl text-red-600 font-black transition-all duration-100 active:scale-90"
+                                :class="['absolute left-3 text-xl text-red-600 font-black transition-all duration-100 active:scale-90', (searchFilters.title || searchFilters.story || searchFilters.summary) ? 'top-5' : 'top-2']"
                                 >
                                 ✕
                                 </button>
@@ -1804,6 +1804,11 @@
                                 <li class="mb-2">لعرض نتائج التصفية، انتقل إلى الجدول عن طريق إغلاق هذه النافذة بالضغط على زر الإغلاق (الزر الأحمر) في الزاوية العلوية اليسرى.</li>
                                 <li>لإعادة التصفية إلى الوضع الافتراضي، اضغط على زر إعادة التعيين (الزر البرتقالي) في الزاوية العلوية اليسرى.</li>                                
                             </ul>
+                        </div>
+                        
+                        <div class="bg-gray-800 text-white p-4 rounded mb-4">
+                            <h3 class="text-lg font-bold mb-2">ملاحظة</h3>
+                            <p class="text-base">اسماء الشخصيات بالترتيب الياباني (اسم العائلة + اسم الشخص)</p>
                         </div>
 
                         <fieldset class="border p-4 rounded">
@@ -6502,7 +6507,7 @@
                                         class="font-bold text-lg"
                                     >
                                         <p>
-                                        <span dir="ltr">:قراءة الفصول (عبر البوت)</span> {{ selectedEpisode.EpisodeMangaQuoted }}
+                                        <span dir="ltr">:الفصول المقتبسة</span> {{ selectedEpisode.EpisodeMangaQuoted }}
                                         </p>
                                     </legend>
 
@@ -15464,6 +15469,13 @@
                         this.nextEpisodeInfo = null;
                     }
                 },
+                goToBot() {
+                    if (window.Telegram?.WebApp) {
+                        Telegram.WebApp.openTelegramLink('https://t.me/DCRef_bot');
+                    } else {
+                        window.open('https://t.me/DCRef_bot', '_blank');
+                    }
+                },
                 parseNextEpisodeDate(dateStr) {
                     if (!dateStr) return null;
                     const parts = String(dateStr).trim().split('-');
@@ -18728,6 +18740,7 @@
                             this.userJoined = true;
                         } else {
                             this.userJoined = false;
+
                             document.body.innerHTML = `
                                 <div style="position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: #23447d; font-family: Tahoma, 'Segoe UI', Geneva, sans-serif; z-index: 99999;">
                                     <div style="text-align: center; padding: 30px 20px; border: 2px solid #fff; border-radius: 15px; background-color: #0f141f; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); max-width: 400px; width: 95%; direction: rtl;">
@@ -18746,10 +18759,11 @@
 
                                         <div style="margin-bottom: 35px;">
                                             <div style="font-size: 22px;">👇</div>
-                                            <a href="https://t.me/CodeSubs"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            style="display: block; color: #ffff00; font-size: 18px; font-weight: bold; text-decoration: none;">
+                                            <a
+                                                id="telegramChannelLink"
+                                                href="#"
+                                                style="display: block; color: #ffff00; font-size: 18px; font-weight: bold; text-decoration: none;"
+                                            >
                                                 https://t.me/CodeSubs
                                             </a>
                                         </div>
@@ -18798,6 +18812,18 @@
                                 setTimeout(() => {
                                     window.location.reload();
                                 }, 500);
+                            });
+
+                            const tgLink = document.getElementById('telegramChannelLink');
+
+                            tgLink.addEventListener('click', (e) => {
+                                e.preventDefault();
+
+                                if (window.Telegram?.WebApp?.openTelegramLink) {
+                                    Telegram.WebApp.openTelegramLink('https://t.me/CodeSubs');
+                                } else {
+                                    window.location.href = 'https://t.me/CodeSubs';
+                                }
                             });
                         }
                     } catch (error) {
