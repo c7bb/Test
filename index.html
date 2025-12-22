@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -38,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1787,7 +1785,7 @@
                             <!-- Reset Button (Refresh Icon with Image) -->
                             <button 
                             @click="resetFilters" 
-                            class="absolute top-0 left-16 text-yellow-300 hover:text-yellow-600 font-bold transition-all duration-100 active:scale-90">
+                            class="absolute top-0 left-14 text-yellow-300 hover:text-yellow-600 font-bold transition-all duration-100 active:scale-90">
                             <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/redo.png" alt="Reset" class="h-9 w-9"/>
                         </button>
                         </h2>
@@ -1807,7 +1805,7 @@
                             </ul>
                         </div>
                         
-                        <div class="bg-gray-800 text-white p-4 rounded mb-4">
+                        <div class="bg-gray-800 text-yellow-300 p-4 rounded mb-4">
                             <h3 class="text-lg font-bold mb-2">ملاحظة</h3>
                             <p class="text-base">اسماء الشخصيات بالترتيب الياباني (اسم العائلة + اسم الشخص)</p>
                         </div>
@@ -6554,7 +6552,12 @@
                                     </div>
                                 </fieldset>                                                                    
                                 <p v-if="selectedEpisode && selectedEpisode.EpisodeSeason !== ''" class="mb-2 text-lg">
-                                    <span>الموسم: </span>{{ selectedEpisode.EpisodeSeason }} ({{ selectedEpisode.EpisodeSeasonCount }} حلقة)
+                                    <span>الموسم: </span>{{ selectedEpisode.EpisodeSeason }}
+                                    <span class="opacity-80">(</span>
+                                    <span v-if="seasonCountParts.numberText" class="text-yellow-300 font-black">{{ seasonCountParts.numberText }}</span>
+                                    <span v-if="seasonCountParts.numberText" class="opacity-80"> </span>
+                                    <span class="opacity-80">{{ seasonCountParts.suffixText }}</span>
+                                    <span class="opacity-80">)</span>
                                 </p>
 
                                 <p v-if="selectedEpisode && selectedEpisode.EpisodeBCDate !== ''" class="mb-2 text-lg">
@@ -6713,7 +6716,7 @@
                                     </button>
                                 </fieldset>
 
-                                <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeVideosIDs !== null" class="border p-2 rounded mb-4">
+                                <fieldset v-if="selectedEpisode && Array.isArray(selectedEpisode.EpisodeVideosIDs) && selectedEpisode.EpisodeVideosIDs.length > 0" class="border p-2 rounded mb-4">
                                     <legend class="font-bold text-lg px-2">مشاهدة (عبر البوت)</legend>
                                     <div class="flex flex-col gap-4">
                                         <!-- Videos without metadata (rendered directly under main legend) -->
@@ -6837,21 +6840,32 @@
 
                                 <div v-if="shouldShowTrailerProviderButtons" class="flex flex-wrap justify-center gap-2 mb-4 text-center">
                                     <button
-                                        v-for="item in activeTrailerProviderOptions"
-                                        :key="item.key"
-                                        @click="selectTrailer(item.trailer)"
+                                        v-for="p in activeTrailerProviders"
+                                        :key="p.key"
+                                        @click="selectTrailerProvider(p.key)"
                                         :class="[
                                             'px-4 py-2 rounded font-bold transition-all duration-100 active:scale-90',
-                                            selectedTrailer && selectedTrailer.Provider === item.trailer.Provider
+                                            selectedTrailerProviderKey === p.key
                                                 ? 'bg-blue-600 text-white'
                                                 : 'bg-blue-900 text-slate-100 hover:bg-blue-800'
                                         ]"
                                     >
-                                        {{ item.label }}
+                                        {{ p.label }}
                                     </button>
                                 </div>
 
-                                <div v-if="trailerIframeSrc" class="w-full">
+                                <div v-if="isActiveTrailerProviderTelegram" class="flex flex-col gap-2 mb-4">
+                                    <button
+                                        v-for="t in activeTrailerProviderTrailers"
+                                        :key="`${t.TrailerID || ''}-${t.Resolution || ''}-${t.Size || ''}`"
+                                        @click="sendTrailerToBot(t)"
+                                        class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md transition-all duration-100 active:scale-90"
+                                    >
+                                        {{ t.Resolution }} ({{ formatFileSize(t.Size) }})
+                                    </button>
+                                </div>
+
+                                <div v-else-if="trailerIframeSrc" class="w-full">
                                     <iframe
                                         :src="trailerIframeSrc"
                                         class="w-full h-[60vh] rounded"
@@ -6861,6 +6875,13 @@
                                         webkitallowfullscreen
                                         mozallowfullscreen
                                     ></iframe>
+                                    <button
+                                        v-if="trailerExternalUrl"
+                                        @click="openTrailerInBrowser"
+                                        class="w-full mt-3 bg-gray-700 text-white px-6 py-2 rounded hover:bg-gray-600 flex items-center justify-center shadow-md transition-all duration-100 active:scale-90"
+                                    >
+                                        فتح الإعلان في المتصفح
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -7275,6 +7296,7 @@
                     showTrailerModal: false,
                     selectedEpisode: null,
                     selectedTrailerGroupKey: null,
+                    selectedTrailerProviderKey: null,
                     selectedTrailer: null,
                     trailerIframeSrc: '',
                     preserveSelectedEpisodeOnModalClose: false,
@@ -8377,21 +8399,21 @@
                 trailerMainButtonText() {
                     if (!this.selectedEpisode) return '';
                     return this.selectedEpisode.EpisodeNumber?.includes('الفيلم')
-                        ? 'أضغط هنا لمشاهدة إعلان الفيلم'
-                        : 'أضغط هنا لمشاهدة إعلان الحلقة';
+                        ? 'أضغط هنا للمشاهدة'
+                        : 'أضغط هنا للمشاهدة';
                 },
 
                 trailerModalTitleText() {
                     if (!this.selectedEpisode) return '';
                     const isMovie = !!this.selectedEpisode.EpisodeNumber?.includes('الفيلم');
-                    const isPlural = this.episodeTrailers.length > 1;
+                    const isPlural = this.groupedTrailers.length > 1;
                     if (isPlural) {
                         return isMovie ? 'إعلانات الفيلم' : 'إعلانات الحلقة';
                     }
                     return isMovie ? 'إعلان الفيلم' : 'إعلان الحلقة';
                 },
 
-                activeTrailerProviderOptions() {
+                activeTrailerProviders() {
                     const trailers = this.activeTrailerGroup?.trailers || [];
                     const byProvider = new Map();
 
@@ -8399,15 +8421,41 @@
                         const label = (t?.Provider == null ? '' : String(t.Provider)).trim() || 'Server';
                         const key = label.toLowerCase();
                         if (!byProvider.has(key)) {
-                            byProvider.set(key, { key, label, trailer: t });
+                            byProvider.set(key, { key, label });
                         }
                     });
 
                     return Array.from(byProvider.values());
                 },
 
+                activeTrailerProviderTrailers() {
+                    const trailers = this.activeTrailerGroup?.trailers || [];
+                    const key = (this.selectedTrailerProviderKey == null ? '' : String(this.selectedTrailerProviderKey)).toLowerCase();
+                    if (!key) return [];
+                    return trailers.filter(t => ((t?.Provider == null ? '' : String(t.Provider)).trim() || 'Server').toLowerCase() === key);
+                },
+
+                isActiveTrailerProviderTelegram() {
+                    const key = (this.selectedTrailerProviderKey == null ? '' : String(this.selectedTrailerProviderKey)).toLowerCase();
+                    return key === 'tg' || key.includes('telegram');
+                },
+
                 shouldShowTrailerProviderButtons() {
-                    return this.activeTrailerProviderOptions.length > 1;
+                    return this.activeTrailerProviders.length > 1;
+                },
+
+                trailerExternalUrl() {
+                    const src = this.trailerIframeSrc == null ? '' : String(this.trailerIframeSrc);
+                    return /^https?:\/\//i.test(src) ? src : '';
+                },
+
+                seasonCountParts() {
+                    const count = Number(this.selectedEpisode?.EpisodeSeasonCount);
+                    if (!Number.isFinite(count) || count <= 0) return { numberText: '', suffixText: '' };
+                    if (count === 1) return { numberText: '', suffixText: 'حلقة' };
+                    if (count === 2) return { numberText: '', suffixText: 'حلقتين' };
+                    if (count >= 3 && count <= 10) return { numberText: String(count), suffixText: 'حلقات' };
+                    return { numberText: String(count), suffixText: 'حلقة' };
                 },
 
                 hasPreviousMovie() {
@@ -17020,29 +17068,41 @@
                     this.showTrailerModal = true;
                     const firstGroup = this.groupedTrailers[0];
                     this.selectedTrailerGroupKey = firstGroup ? firstGroup.key : null;
-                    const firstTrailer = firstGroup?.trailers?.[0] || null;
+                    const firstProvider = this.activeTrailerProviders[0];
+                    this.selectedTrailerProviderKey = firstProvider ? firstProvider.key : null;
+                    const firstTrailer = this.activeTrailerProviderTrailers[0] || null;
                     this.selectedTrailer = firstTrailer;
-                    this.trailerIframeSrc = firstTrailer ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID) : '';
+                    this.trailerIframeSrc = firstTrailer && !this.isActiveTrailerProviderTelegram
+                        ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID)
+                        : '';
                 },
 
                 closeTrailerModal() {
                     this.showTrailerModal = false;
                     this.selectedTrailerGroupKey = null;
+                    this.selectedTrailerProviderKey = null;
                     this.selectedTrailer = null;
                     this.trailerIframeSrc = '';
                 },
 
                 selectTrailerGroup(groupKey) {
                     this.selectedTrailerGroupKey = groupKey;
-                    const group = this.groupedTrailers.find(g => g.key === groupKey) || this.groupedTrailers[0];
-                    const firstTrailer = group?.trailers?.[0] || null;
+                    const firstProvider = this.activeTrailerProviders[0];
+                    this.selectedTrailerProviderKey = firstProvider ? firstProvider.key : null;
+                    const firstTrailer = this.activeTrailerProviderTrailers[0] || null;
                     this.selectedTrailer = firstTrailer;
-                    this.trailerIframeSrc = firstTrailer ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID) : '';
+                    this.trailerIframeSrc = firstTrailer && !this.isActiveTrailerProviderTelegram
+                        ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID)
+                        : '';
                 },
 
-                selectTrailer(trailer) {
-                    this.selectedTrailer = trailer;
-                    this.trailerIframeSrc = trailer ? this.buildTrailerIframeSrc(trailer.Provider, trailer.TrailerID) : '';
+                selectTrailerProvider(providerKey) {
+                    this.selectedTrailerProviderKey = providerKey;
+                    const firstTrailer = this.activeTrailerProviderTrailers[0] || null;
+                    this.selectedTrailer = firstTrailer;
+                    this.trailerIframeSrc = firstTrailer && !this.isActiveTrailerProviderTelegram
+                        ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID)
+                        : '';
                 },
 
                 buildTrailerIframeSrc(provider, trailerId) {
@@ -17052,9 +17112,43 @@
                     if (/^https?:\/\//i.test(id)) return id;
 
                     const p = (provider == null ? '' : String(provider)).toLowerCase();
+                    if (p === 'tg' || p.includes('telegram')) return '';
                     if (p.includes('mega')) return `https://mega.nz/embed/${encodeURIComponent(id)}`;
                     if (p.includes('gdrive') || p.includes('google') || p.includes('drive')) return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;
                     return id;
+                },
+
+                openTrailerInBrowser() {
+                    const url = this.trailerExternalUrl;
+                    if (!url) return;
+                    if (webApp && typeof webApp.openLink === 'function') {
+                        webApp.openLink(url);
+                        return;
+                    }
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                },
+
+                sendTrailerToBot(trailer) {
+                    if (!trailer) return;
+                    const videoId = trailer.TrailerID;
+                    const resolution = trailer.Resolution;
+                    const size = trailer.Size;
+                    this.sendEpisodeToBot(
+                        videoId,
+                        resolution,
+                        size,
+                        0,
+                        trailer.IntroductionTime,
+                        trailer.StartStoryTime,
+                        trailer.EpisodeSuspenseTime,
+                        trailer.StartSongTime,
+                        trailer.ChapterOneTime,
+                        trailer.ChapterTwoTime,
+                        trailer.EndSongTime,
+                        trailer.ChapterThreeTime,
+                        trailer.NextEpisodeTeaserTime,
+                        trailer.NextEpisodeHintTime
+                    );
                 },
 
                 openEmptyPopup() {
@@ -18527,21 +18621,29 @@
                     let caption = `*${label} ${episodeNumber}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(size, true)}*`;
                     if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
 
-                    this.selectedEpisode.EpisodeVideosIDs[index].status = 'sending';
+                    if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                        this.selectedEpisode.EpisodeVideosIDs[index].status = 'sending';
+                    }
 
                     try {
                         await this.sendVideoResponse(videoID, caption);
-                        this.selectedEpisode.EpisodeVideosIDs[index].status = 'success';
+                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                            this.selectedEpisode.EpisodeVideosIDs[index].status = 'success';
+                        }
                         const isMovie = String(this.selectedEpisode?.EpisodeNumber ?? '').includes('الفيلم');
                         this.movie.status = isMovie ? 'success' : null;
                         this.episode.status = isMovie ? null : 'success';
                         this.showSuccessHint(isMovie ? 'تم إرسال الفيلم للخاص' : 'تم إرسال الحلقة للخاص');
-                        this.startCountdown(index);
+                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                            this.startCountdown(index);
+                        }
                         this.errorMessage = "";
                     } catch (error) {
-                        this.selectedEpisode.EpisodeVideosIDs[index].status = 'error';
+                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                            this.selectedEpisode.EpisodeVideosIDs[index].status = 'error';
+                        }
                         this.errorMessage = error.message;
-                        if (this.selectedEpisode.EpisodeVideosIDs.some((video) => video.status === "error")) {
+                        if (Array.isArray(this.selectedEpisode?.EpisodeVideosIDs) && this.selectedEpisode.EpisodeVideosIDs.some((video) => video.status === "error")) {
                             return;
                         }
                     }
