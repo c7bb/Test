@@ -17243,7 +17243,7 @@
                     if (trailer.NextEpisodeTeaserTime) details += `\n*تشويق الحلقة القادمة:* ${escapeMarkdown(trailer.NextEpisodeTeaserTime)}`;
                     if (trailer.NextEpisodeHintTime) details += `\n*تلميح الحلقة القادمة:* ${escapeMarkdown(trailer.NextEpisodeHintTime)}`;
 
-                    let caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${escapeMarkdown(this.formatFileSize(size, true))}*`;
+                    let caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${this.formatFileSize(size, true)}*`;
                     if (details) caption += `\n\n*✦✦— محتويات الإعلان —✦✦*${details}`;
 
                     this.errorMessage = "";
