@@ -628,7 +628,7 @@
                 <button 
                     @click="refreshSession"
                     :disabled="isRefreshingSession"
-                    class="px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400 transition-all duration-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    class="px-4 py-2 bg-yellow-500 text-black font-bold rounded hover:bg-yellow-400 transition-all duration-100 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                 >
                     <span
                         v-if="isRefreshingSession"
@@ -6866,10 +6866,13 @@
                                         class="relative"
                                     >
                                         <button
+                                            :disabled="t.status === 'success' || t.status === 'ratelimiting' || t.status === 'sending'"
                                             @click="sendTrailerToBot(t)"
-                                            class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md transition-all duration-100 active:scale-90"
+                                            class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden"
                                         >
-                                            {{ t.Resolution }} ({{ formatFileSize(t.Size) }})
+                                            <span v-if="t.status === 'ratelimiting'">{{ t.Resolution }} ({{ formatFileSize(t.Size) }})</span>
+                                            <span v-else-if="t.countdown !== undefined">{{ t.countdown }}</span>
+                                            <span v-else>{{ t.Resolution }} ({{ formatFileSize(t.Size) }})</span>
                                         </button>
                                         <img
                                             v-if="t.status === 'success'"
@@ -17219,8 +17222,8 @@
                     const trailerNumberRaw = trailer.TrailerNumber == null ? '' : String(trailer.TrailerNumber).trim();
                     const trailerNumberText = trailerNumberRaw ? ` ${trailerNumberRaw}` : '';
                     const titleLine = isMovie
-                        ? `إعلان${trailerNumberText} لفيلم ${episodeNumber}`
-                        : `إعلان${trailerNumberText} لحلقة ${episodeNumber}`;
+                        ? `إعلان${trailerNumberText} للفيلم ${episodeNumber}`
+                        : `إعلان${trailerNumberText} للحلقة ${episodeNumber}`;
 
                     function escapeMarkdown(text) {
                         return String(text)
@@ -17243,23 +17246,46 @@
                     let caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${escapeMarkdown(this.formatFileSize(size, true))}*`;
                     if (details) caption += `\n\n*✦✦— محتويات الإعلان —✦✦*${details}`;
 
-                    trailer.status = 'sending';
-                    this.ratelimiting = true;
                     this.errorMessage = "";
+                    this.ratelimiting = true;
+
+                    const trailersRef = Array.isArray(this.activeTrailerProviderTrailers) ? this.activeTrailerProviderTrailers.slice() : [];
+                    trailersRef.forEach((t) => {
+                        if (t && t !== trailer) t.status = 'ratelimiting';
+                    });
+                    trailer.status = 'sending';
 
                     try {
                         await this.sendVideoResponse(videoId, caption);
                         trailer.status = 'success';
                         this.showSuccessHint('تم إرسال الإعلان للخاص');
+                        this.startCountdownForTrailer(trailer);
                     } catch (error) {
                         trailer.status = 'error';
                         this.errorMessage = error?.message || String(error);
-                    } finally {
-                        setTimeout(() => {
-                            trailer.status = null;
-                            this.ratelimiting = false;
-                        }, this.statusClearTimeout);
+                        return;
                     }
+
+                    setTimeout(() => {
+                        if (trailer.countdownInterval) {
+                            clearInterval(trailer.countdownInterval);
+                            trailer.countdownInterval = null;
+                        }
+                        trailer.countdown = undefined;
+                        trailer.status = null;
+
+                        trailersRef.forEach((t) => {
+                            if (!t || t === trailer) return;
+                            if (t.countdownInterval) {
+                                clearInterval(t.countdownInterval);
+                                t.countdownInterval = null;
+                            }
+                            t.countdown = undefined;
+                            if (t.status === 'ratelimiting') t.status = null;
+                        });
+
+                        this.ratelimiting = false;
+                    }, this.statusClearTimeout);
                 },
 
                 openEmptyPopup() {
@@ -19112,7 +19138,13 @@
 
                     if (Array.isArray(this.episodeTrailers)) {
                         this.episodeTrailers.forEach((trailer) => {
-                            if (trailer) trailer.status = null;
+                            if (!trailer) return;
+                            if (trailer.countdownInterval) {
+                                clearInterval(trailer.countdownInterval);
+                                trailer.countdownInterval = null;
+                            }
+                            trailer.countdown = undefined;
+                            trailer.status = null;
                         });
                     }
 
@@ -20589,6 +20621,26 @@
                     const maxSize = 24;
                     const calculated = screenWidth / 50;
                     this.fontSize = Math.min(Math.max(calculated, minSize), maxSize);
+                },
+
+                startCountdownForTrailer(trailer) {
+                    if (!trailer) return;
+                    const countdownSeconds = Math.ceil(this.statusClearTimeout / 1000);
+                    trailer.countdown = countdownSeconds;
+
+                    if (trailer.countdownInterval) {
+                        clearInterval(trailer.countdownInterval);
+                    }
+
+                    const trailerRef = trailer;
+                    trailer.countdownInterval = setInterval(() => {
+                        if (trailerRef.countdown > 0) {
+                            trailerRef.countdown--;
+                        } else {
+                            clearInterval(trailerRef.countdownInterval);
+                            trailerRef.countdownInterval = null;
+                        }
+                    }, 1000);
                 },
 
                 startCountdown(index) {
