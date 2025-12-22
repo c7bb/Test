@@ -6891,15 +6891,24 @@
                                 </div>
 
                                 <div v-else-if="trailerIframeSrc" class="w-full">
-                                    <iframe
-                                        :src="trailerIframeSrc"
-                                        class="w-full h-[60vh] rounded"
-                                        frameborder="0"
-                                        allow="autoplay; fullscreen; picture-in-picture"
-                                        allowfullscreen
-                                        webkitallowfullscreen
-                                        mozallowfullscreen
-                                    ></iframe>
+                                    <div class="w-full h-[60vh] rounded relative overflow-hidden bg-black/20">
+                                        <div v-if="isTrailerIframeLoading" class="absolute inset-0 flex items-center justify-center">
+                                            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-white"></div>
+                                        </div>
+                                        <iframe
+                                            :key="trailerIframeKey"
+                                            :src="trailerIframeSrc"
+                                            class="w-full h-full rounded"
+                                            frameborder="0"
+                                            allow="autoplay; fullscreen; picture-in-picture"
+                                            allowfullscreen
+                                            webkitallowfullscreen
+                                            mozallowfullscreen
+                                            v-show="!isTrailerIframeLoading"
+                                            @load="handleTrailerIframeLoad"
+                                            @error="handleTrailerIframeError"
+                                        ></iframe>
+                                    </div>
                                     <button
                                         v-if="trailerExternalUrl"
                                         @click="openTrailerInBrowser"
@@ -7061,6 +7070,7 @@
                     inactivityIntervalId: null,
                     inactivityModal: false,
                     isRefreshingSession: false,
+                    isTrailerIframeLoading: false,
                     inactivityListeners: [],
                     lastActivityAt: Date.now(),
                     successHintVisible: false,
@@ -8476,6 +8486,10 @@
                     const t = this.selectedTrailer;
                     if (!t) return '';
                     return this.buildTrailerExternalUrl(t.Provider, t.TrailerID);
+                },
+
+                trailerIframeKey() {
+                    return `${this.selectedTrailerGroupKey || ''}-${this.selectedTrailerProviderKey || ''}-${this.trailerIframeSrc || ''}`;
                 },
 
                 seasonCountParts() {
@@ -17104,6 +17118,7 @@
                     this.selectedTrailerProviderKey = firstProvider ? firstProvider.key : null;
                     const firstTrailer = this.activeTrailerProviderTrailers[0] || null;
                     this.selectedTrailer = firstTrailer;
+                    this.isTrailerIframeLoading = Boolean(firstTrailer && !this.isActiveTrailerProviderTelegram);
                     this.trailerIframeSrc = firstTrailer && !this.isActiveTrailerProviderTelegram
                         ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID)
                         : '';
@@ -17115,6 +17130,7 @@
                     this.selectedTrailerProviderKey = null;
                     this.selectedTrailer = null;
                     this.trailerIframeSrc = '';
+                    this.isTrailerIframeLoading = false;
                 },
 
                 selectTrailerGroup(groupKey) {
@@ -17123,6 +17139,7 @@
                     this.selectedTrailerProviderKey = firstProvider ? firstProvider.key : null;
                     const firstTrailer = this.activeTrailerProviderTrailers[0] || null;
                     this.selectedTrailer = firstTrailer;
+                    this.isTrailerIframeLoading = Boolean(firstTrailer && !this.isActiveTrailerProviderTelegram);
                     this.trailerIframeSrc = firstTrailer && !this.isActiveTrailerProviderTelegram
                         ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID)
                         : '';
@@ -17132,9 +17149,18 @@
                     this.selectedTrailerProviderKey = providerKey;
                     const firstTrailer = this.activeTrailerProviderTrailers[0] || null;
                     this.selectedTrailer = firstTrailer;
+                    this.isTrailerIframeLoading = Boolean(firstTrailer && !this.isActiveTrailerProviderTelegram);
                     this.trailerIframeSrc = firstTrailer && !this.isActiveTrailerProviderTelegram
                         ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID)
                         : '';
+                },
+
+                handleTrailerIframeLoad() {
+                    this.isTrailerIframeLoading = false;
+                },
+
+                handleTrailerIframeError() {
+                    this.isTrailerIframeLoading = false;
                 },
 
                 buildTrailerIframeSrc(provider, trailerId) {
