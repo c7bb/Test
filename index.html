@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -6700,6 +6699,17 @@
                                     </div>
                                 </fieldset>
 
+                                <fieldset v-if="selectedEpisode && episodeTrailers.length > 0" class="border p-2 rounded mb-2 border-purple-400">
+                                    <legend class="font-bold text-lg px-2">
+                                        <button
+                                            @click="openTrailerModal"
+                                            class="w-full bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 flex items-center justify-center shadow-md transition-all duration-100 active:scale-90"
+                                        >
+                                            {{ trailerMainButtonText }}
+                                        </button>
+                                    </legend>
+                                </fieldset>
+
                                 <fieldset v-if="selectedEpisode && selectedEpisode.EpisodeVideosIDs !== null" class="border p-2 rounded mb-4">
                                     <legend class="font-bold text-lg px-2">مشاهدة (عبر البوت)</legend>
                                     <div class="flex flex-col gap-4">
@@ -6792,6 +6802,60 @@
                                         </template>
                                     </div>
                                 </fieldset>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="showTrailerModal" class="fixed z-[90] inset-0 overflow-y-auto bg-black bg-opacity-80 flex items-center justify-center" @click.self="closeTrailerModal">
+                        <div class="relative bg-slate-950 text-slate-200 font-bold rounded-lg w-11/12 md:w-3/4 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col border border-cyan-800">
+                            <div class="sticky top-0 bg-slate-950 p-4 flex justify-between items-center border-b border-cyan-900">
+                                <div class="text-lg">
+                                    {{ selectedEpisode?.EpisodeNumber?.includes('الفيلم') ? 'إعلان الفيلم' : 'إعلان الحلقة' }}
+                                </div>
+                                <button @click="closeTrailerModal" class="text-red-500 hover:text-yellow-300 transition-all duration-100 active:scale-90">
+                                    <span class="text-2xl font-black">✕</span>
+                                </button>
+                            </div>
+
+                            <div class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                                <div v-if="groupedTrailers.length > 1" class="flex flex-wrap gap-2 mb-4">
+                                    <button
+                                        v-for="group in groupedTrailers"
+                                        :key="group.key"
+                                        @click="selectTrailerGroup(group.key)"
+                                        :class="[
+                                            'px-3 py-2 rounded font-bold transition-all duration-100 active:scale-90',
+                                            selectedTrailerGroupKey === group.key ? 'bg-orange-500 text-black' : 'bg-gray-800 text-slate-200 hover:bg-gray-700'
+                                        ]"
+                                    >
+                                        {{ group.label }}
+                                    </button>
+                                </div>
+
+                                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+                                    <button
+                                        v-for="trailer in activeTrailerGroup?.trailers || []"
+                                        :key="`${trailer.Provider || ''}-${trailer.TrailerID || ''}`"
+                                        @click="selectTrailer(trailer)"
+                                        :class="[
+                                            'px-4 py-2 rounded font-bold transition-all duration-100 active:scale-90',
+                                            selectedTrailer && selectedTrailer.TrailerID === trailer.TrailerID && selectedTrailer.Provider === trailer.Provider
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-blue-900 text-slate-100 hover:bg-blue-800'
+                                        ]"
+                                    >
+                                        {{ trailer.Provider || 'Server' }}
+                                    </button>
+                                </div>
+
+                                <div v-if="trailerIframeSrc" class="w-full">
+                                    <iframe
+                                        :src="trailerIframeSrc"
+                                        class="w-full h-[60vh] rounded"
+                                        frameborder="0"
+                                        allowfullscreen
+                                    ></iframe>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -7202,7 +7266,11 @@
                     pageSize: 15,
                     oldPageSize: 15,
                     showModal: false,
+                    showTrailerModal: false,
                     selectedEpisode: null,
+                    selectedTrailerGroupKey: null,
+                    selectedTrailer: null,
+                    trailerIframeSrc: '',
                     preserveSelectedEpisodeOnModalClose: false,
                     showMangaButtons: false,
                     filterBlackOrganization: false,
@@ -8254,6 +8322,57 @@
                     }
                     
                     return groupedVideos;
+                },
+
+                episodeTrailers() {
+                    if (!this.selectedEpisode) return [];
+                    const raw = this.selectedEpisode.EpisodeTrailersIDs;
+                    if (!raw) return [];
+                    if (Array.isArray(raw)) return raw.filter(Boolean);
+                    if (typeof raw === 'string') {
+                        try {
+                            const parsed = JSON.parse(raw);
+                            if (Array.isArray(parsed)) return parsed.filter(Boolean);
+                            if (parsed && typeof parsed === 'object') return [parsed];
+                            return [];
+                        } catch (e) {
+                            return [];
+                        }
+                    }
+                    if (raw && typeof raw === 'object') return [raw];
+                    return [];
+                },
+
+                groupedTrailers() {
+                    const trailers = this.episodeTrailers;
+                    if (!trailers.length) return [];
+
+                    const hasNumbers = trailers.some(t => t && t.TrailerNumber !== undefined && t.TrailerNumber !== null && String(t.TrailerNumber).trim() !== '');
+                    const groups = new Map();
+
+                    trailers.forEach((t) => {
+                        const number = hasNumbers ? String(t.TrailerNumber ?? '').trim() : '';
+                        const key = number || 'default';
+                        if (!groups.has(key)) {
+                            groups.set(key, { key, label: number ? `إعلان ${number}` : 'الإعلان', trailers: [] });
+                        }
+                        groups.get(key).trailers.push(t);
+                    });
+
+                    return Array.from(groups.values());
+                },
+
+                activeTrailerGroup() {
+                    if (!this.groupedTrailers.length) return null;
+                    const picked = this.groupedTrailers.find(g => g.key === this.selectedTrailerGroupKey);
+                    return picked || this.groupedTrailers[0];
+                },
+
+                trailerMainButtonText() {
+                    if (!this.selectedEpisode) return '';
+                    return this.selectedEpisode.EpisodeNumber?.includes('الفيلم')
+                        ? 'أضغط هنا لمشاهدة إعلان الفيلم'
+                        : 'أضغط هنا لمشاهدة إعلان الحلقة';
                 },
 
                 hasPreviousMovie() {
@@ -16792,6 +16911,7 @@
                 },
                 closeModal() {
                     this.dismissSuccessHint();
+                    this.closeTrailerModal();
                     this.showModal = false;
                     document.body.style.overflow = ''; // Restore background scrolling
                     
@@ -16858,6 +16978,48 @@
                         }
                     }, 0);
                     this.preserveSelectedEpisodeOnModalClose = false;
+                },
+
+                openTrailerModal() {
+                    if (!this.episodeTrailers.length) return;
+                    this.showTrailerModal = true;
+                    const firstGroup = this.groupedTrailers[0];
+                    this.selectedTrailerGroupKey = firstGroup ? firstGroup.key : null;
+                    const firstTrailer = firstGroup?.trailers?.[0] || null;
+                    this.selectedTrailer = firstTrailer;
+                    this.trailerIframeSrc = firstTrailer ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID) : '';
+                },
+
+                closeTrailerModal() {
+                    this.showTrailerModal = false;
+                    this.selectedTrailerGroupKey = null;
+                    this.selectedTrailer = null;
+                    this.trailerIframeSrc = '';
+                },
+
+                selectTrailerGroup(groupKey) {
+                    this.selectedTrailerGroupKey = groupKey;
+                    const group = this.groupedTrailers.find(g => g.key === groupKey) || this.groupedTrailers[0];
+                    const firstTrailer = group?.trailers?.[0] || null;
+                    this.selectedTrailer = firstTrailer;
+                    this.trailerIframeSrc = firstTrailer ? this.buildTrailerIframeSrc(firstTrailer.Provider, firstTrailer.TrailerID) : '';
+                },
+
+                selectTrailer(trailer) {
+                    this.selectedTrailer = trailer;
+                    this.trailerIframeSrc = trailer ? this.buildTrailerIframeSrc(trailer.Provider, trailer.TrailerID) : '';
+                },
+
+                buildTrailerIframeSrc(provider, trailerId) {
+                    const id = trailerId == null ? '' : String(trailerId).trim();
+                    if (!id) return '';
+
+                    if (/^https?:\/\//i.test(id)) return id;
+
+                    const p = (provider == null ? '' : String(provider)).toLowerCase();
+                    if (p.includes('mega')) return `https://mega.nz/embed/${encodeURIComponent(id)}`;
+                    if (p.includes('gdrive') || p.includes('google') || p.includes('drive')) return `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;
+                    return id;
                 },
 
                 openEmptyPopup() {
