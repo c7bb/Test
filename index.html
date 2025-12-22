@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
+
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -37,6 +38,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -6554,7 +6556,7 @@
                                 <p v-if="selectedEpisode && selectedEpisode.EpisodeSeason !== ''" class="mb-2 text-lg">
                                     <span>الموسم: </span>{{ selectedEpisode.EpisodeSeason }}
                                     <span class="opacity-80">(</span>
-                                    <span v-if="seasonCountParts.numberText" class="text-yellow-300 font-black">{{ seasonCountParts.numberText }}</span>
+                                    <span v-if="seasonCountParts.numberText" class="text-yellow-300 font-black">{{ seasonCountParts.numberText }} </span>
                                     <span v-if="seasonCountParts.numberText" class="opacity-80"> </span>
                                     <span class="opacity-80">{{ seasonCountParts.suffixText }}</span>
                                     <span class="opacity-80">)</span>
