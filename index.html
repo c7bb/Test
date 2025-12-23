@@ -1481,6 +1481,21 @@
                 </div>
             </div>
 
+            <div v-if="showSendInProgressConfirmation" class="fixed z-[75] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
+                    <h3 class="text-xl mb-4">تأكيد الإيقاف</h3>
+                    <p class="mb-6">عملية الإرسال قيد التنفيذ، هل تريد إيقافها</p>
+                    <div class="flex gap-4">
+                        <button @click="confirmCancelSend" class="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all duration-100 active:scale-90">
+                            نعم
+                        </button>
+                        <button @click="cancelSendInProgressClose" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
+                            لا
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Limit Reached Modal -->
             <div v-if="showLimitModal" class="fixed z-[80] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
@@ -7009,6 +7024,10 @@
                     mangaQueueProcessId: null,
                     mangaQueueTimeoutId: null,
                     showStopConfirmation: false,
+                    showSendInProgressConfirmation: false,
+                    pendingCloseTarget: null,
+                    sendInFlight: false,
+                    sendAbortController: null,
                     showLimitModal: false,
                     showMangaSentLogModal: false,
                     showMangaFailedLogModal: false,
@@ -7147,6 +7166,9 @@
                     "جريمة في": ["جريمة قتل في", "جريمة في"],    
                     "فلم": ["فيلم","فلم"],
                     "فيلم": ["فلم","فيلم"],
+                    "سان": ["سيد","السيد"],
+                    "سيد": ["سان","السيد"],
+                    "السيد": ["سان","سيد"],
                     "ة": ["ه","ة"],
                     "ه": ["ة","ه"],
                     "أ": ["ا","إ","أ"],
@@ -8018,6 +8040,9 @@
                 },
                 displayErrorMessage() {
                     return this.isFailedToFetch ? 'حدث خطأ، حاول مرة أخرى' : this.errorMessage;
+                },
+                isSendingInProgress() {
+                    return Boolean(this.sendInFlight || this.ratelimiting);
                 },
                 showErrorOverlay() {
                     return Boolean(
@@ -17039,6 +17064,10 @@
                     this.previousEpisodeByNumberExists = currentIndex > 0;
                 },
                 closeModal() {
+                    if (this.isSendingInProgress) {
+                        this.requestCloseDuringSend('modal');
+                        return;
+                    }
                     this.dismissSuccessHint();
                     this.closeTrailerModal();
                     this.showModal = false;
@@ -17124,7 +17153,65 @@
                         : '';
                 },
 
+                requestCloseDuringSend(target) {
+                    this.pendingCloseTarget = target;
+                    this.showSendInProgressConfirmation = true;
+                },
+                cancelSendInProgressClose() {
+                    this.showSendInProgressConfirmation = false;
+                    this.pendingCloseTarget = null;
+                },
+                confirmCancelSend() {
+                    const controller = this.sendAbortController;
+                    if (controller) {
+                        try {
+                            controller.abort();
+                        } catch (e) {}
+                    }
+                    this.sendAbortController = null;
+                    this.sendInFlight = false;
+                    this.ratelimiting = false;
+                    this.errorMessage = "";
+                    this.showSendInProgressConfirmation = false;
+
+                    const target = this.pendingCloseTarget;
+                    this.pendingCloseTarget = null;
+                    if (target === 'direct') {
+                        this.closeDirectWindow();
+                        return;
+                    }
+                    if (target === 'trailer') {
+                        this.closeTrailerModal();
+                        return;
+                    }
+                    this.closeModal();
+                },
+                finishPendingCloseAfterSendSuccess() {
+                    if (!this.showSendInProgressConfirmation || !this.pendingCloseTarget) return;
+                    this.showSendInProgressConfirmation = false;
+
+                    const target = this.pendingCloseTarget;
+                    this.pendingCloseTarget = null;
+
+                    this.sendInFlight = false;
+                    this.sendAbortController = null;
+                    this.ratelimiting = false;
+
+                    if (target === 'direct') {
+                        this.closeDirectWindow();
+                        return;
+                    }
+                    if (target === 'trailer') {
+                        this.closeTrailerModal();
+                        return;
+                    }
+                    this.closeModal();
+                },
                 closeTrailerModal() {
+                    if (this.isSendingInProgress) {
+                        this.requestCloseDuringSend('trailer');
+                        return;
+                    }
                     this.showTrailerModal = false;
                     this.selectedTrailerGroupKey = null;
                     this.selectedTrailerProviderKey = null;
@@ -17286,10 +17373,17 @@
                         trailer.status = 'success';
                         this.showSuccessHint('تم إرسال الإعلان للخاص');
                         this.startCountdownForTrailer(trailer);
+                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        trailer.status = 'error';
-                        this.errorMessage = error?.message || String(error);
-                        return;
+                        const message = error?.message || String(error);
+                        if (message === 'تم إيقاف الإرسال') {
+                            trailer.status = null;
+                            this.errorMessage = "";
+                        } else {
+                            trailer.status = 'error';
+                            this.errorMessage = message;
+                            return;
+                        }
                     }
 
                     setTimeout(() => {
@@ -18801,13 +18895,21 @@
                             this.startCountdown(index);
                         }
                         this.errorMessage = "";
+                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
+                        if (error?.message === 'تم إيقاف الإرسال') {
+                            if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                                this.selectedEpisode.EpisodeVideosIDs[index].status = null;
+                            }
+                            this.errorMessage = "";
+                        } else {
                         if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
                             this.selectedEpisode.EpisodeVideosIDs[index].status = 'error';
                         }
                         this.errorMessage = error.message;
                         if (Array.isArray(this.selectedEpisode?.EpisodeVideosIDs) && this.selectedEpisode.EpisodeVideosIDs.some((video) => video.status === "error")) {
                             return;
+                        }
                         }
                     }
 
@@ -18868,6 +18970,10 @@
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
+                    const controller = new AbortController();
+                    this.sendAbortController = controller;
+                    this.sendInFlight = true;
+
                     const payload = new URLSearchParams();
                     payload.append("method", "sendVideo");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -18881,6 +18987,7 @@
                             method: "POST",
                             headers: { "Content-Type": "application/x-www-form-urlencoded" },
                             body: payload.toString(),
+                            signal: controller.signal,
                         });
 
                         const text = await response.text();
@@ -18898,7 +19005,15 @@
 
                     } catch (error) {
                         console.error(error);
-                        throw new Error(error.message);
+                        if (error?.name === 'AbortError') {
+                            throw new Error('تم إيقاف الإرسال');
+                        }
+                        throw new Error(error?.message || String(error));
+                    } finally {
+                        if (this.sendAbortController === controller) {
+                            this.sendAbortController = null;
+                        }
+                        this.sendInFlight = false;
                     }
                 },
 
@@ -18909,6 +19024,10 @@
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
+                    const controller = new AbortController();
+                    this.sendAbortController = controller;
+                    this.sendInFlight = true;
+
                     const payload = new URLSearchParams();
                     payload.append("method", "sendDocument");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -18921,6 +19040,7 @@
                             method: "POST",
                             headers: { "Content-Type": "application/x-www-form-urlencoded" },
                             body: payload.toString(),
+                            signal: controller.signal,
                         });
 
                         const text = await response.text();
@@ -18938,7 +19058,15 @@
 
                     } catch (error) {
                         console.error(error);
-                        throw new Error(error.message);
+                        if (error?.name === 'AbortError') {
+                            throw new Error('تم إيقاف الإرسال');
+                        }
+                        throw new Error(error?.message || String(error));
+                    } finally {
+                        if (this.sendAbortController === controller) {
+                            this.sendAbortController = null;
+                        }
+                        this.sendInFlight = false;
                     }
                 },
 
@@ -18978,11 +19106,19 @@
                         this.showSuccessHint('تم إرسال الفصل للخاص');
                         this.startCountdownForManga(index);
                         this.errorMessage = "";
+                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        this.selectedEpisode.EpisodeMangasIDs[index].status = 'error';
-                        this.errorMessage = error.message;
-                        if (this.selectedEpisode.EpisodeMangasIDs.some(manga => manga.status === "error")) {
-                            return;
+                        if (error?.message === 'تم إيقاف الإرسال') {
+                            if (this.selectedEpisode?.EpisodeMangasIDs?.[index]) {
+                                this.selectedEpisode.EpisodeMangasIDs[index].status = null;
+                            }
+                            this.errorMessage = "";
+                        } else {
+                            this.selectedEpisode.EpisodeMangasIDs[index].status = 'error';
+                            this.errorMessage = error.message;
+                            if (this.selectedEpisode.EpisodeMangasIDs.some(manga => manga.status === "error")) {
+                                return;
+                            }
                         }
                     }
 
@@ -19066,10 +19202,18 @@
                         this.showSuccessHint('تم إرسال الفصل للخاص');
                         this.startCountdownForMangaD();
                         this.errorMessage = "";
+                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        this.selectedManga.status = 'error';
-                        this.errorMessage = error.message;
-                        if (this.selectedManga.status === "error") return;
+                        if (error?.message === 'تم إيقاف الإرسال') {
+                            if (this.selectedManga) {
+                                this.selectedManga.status = null;
+                            }
+                            this.errorMessage = "";
+                        } else {
+                            this.selectedManga.status = 'error';
+                            this.errorMessage = error.message;
+                            if (this.selectedManga.status === "error") return;
+                        }
                     }
 
                     // Store references to objects before they might be nullified
@@ -20299,6 +20443,10 @@
                 },
 
                 closeDirectWindow() {
+                    if (this.isSendingInProgress) {
+                        this.requestCloseDuringSend('direct');
+                        return;
+                    }
                     this.dismissSuccessHint();
                     document.body.style.overflow = ''; // Restore background scrolling
                     // Store references to the current objects before clearing them
