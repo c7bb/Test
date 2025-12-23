@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
+
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -7024,10 +7025,6 @@
                     mangaQueueProcessId: null,
                     mangaQueueTimeoutId: null,
                     showStopConfirmation: false,
-                    showSendInProgressConfirmation: false,
-                    pendingCloseTarget: null,
-                    sendInFlight: false,
-                    sendAbortController: null,
                     showLimitModal: false,
                     showMangaSentLogModal: false,
                     showMangaFailedLogModal: false,
@@ -7045,6 +7042,9 @@
                     isRetryQueuePaused: false,
                     isRetryQueuePauseRequested: false,
                     showRetryStopConfirmation: false,
+                    showSendInProgressConfirmation: false,
+                    pendingCloseTarget: null,
+                    sendCancelGeneration: 0,
                     failedMangaQueue: [], // Array of objects { chapter, ... } reference from mangaFailedLog
                     failedQueueStats: {
                         total: 0,
@@ -8041,9 +8041,6 @@
                 displayErrorMessage() {
                     return this.isFailedToFetch ? 'حدث خطأ، حاول مرة أخرى' : this.errorMessage;
                 },
-                isSendingInProgress() {
-                    return Boolean(this.sendInFlight || this.ratelimiting);
-                },
                 showErrorOverlay() {
                     return Boolean(
                         ((this.errorMessage || '').trim()) ||
@@ -8053,6 +8050,25 @@
                         (this.selectedManga?.status === 'error') ||
                         (this.selectedEpisode?.status === 'error')
                     );
+                },
+                episodeSendInProgress() {
+                    const episode = this.selectedEpisode;
+                    if (!episode) return false;
+                    if (Array.isArray(episode.EpisodeVideosIDs) && episode.EpisodeVideosIDs.some(v => v?.status === 'sending')) return true;
+                    if (Array.isArray(episode.EpisodeMangasIDs) && episode.EpisodeMangasIDs.some(m => m?.status === 'sending')) return true;
+                    return false;
+                },
+                directSendInProgress() {
+                    return Boolean(this.episodeSendInProgress || this.selectedManga?.status === 'sending');
+                },
+                trailerSendInProgress() {
+                    const trailers = this.activeTrailerProviderTrailers;
+                    if (Array.isArray(trailers) && trailers.some(t => t?.status === 'sending')) return true;
+                    if (Array.isArray(this.episodeTrailers) && this.episodeTrailers.some(t => t?.status === 'sending')) return true;
+                    return false;
+                },
+                anySendInProgress() {
+                    return Boolean(this.directSendInProgress || this.trailerSendInProgress);
                 },
                 effectiveDailyDownloads() {
                     return Math.min(this.safeMaxDailyDownloads, this.dailyDownloads);
@@ -12901,6 +12917,15 @@
                     },
             },
             watch: {
+                episodeSendInProgress(newValue) {
+                    if (!newValue) this.handleAutoCloseIfRequested('modal');
+                },
+                directSendInProgress(newValue) {
+                    if (!newValue) this.handleAutoCloseIfRequested('directWindow');
+                },
+                trailerSendInProgress(newValue) {
+                    if (!newValue) this.handleAutoCloseIfRequested('trailer');
+                },
                 selectedEpisode() {
                     // When episode changes, recalculate the countdown
                     this.$nextTick(() => {
@@ -17064,21 +17089,23 @@
                     this.previousEpisodeByNumberExists = currentIndex > 0;
                 },
                 closeModal() {
-                    if (this.isSendingInProgress) {
-                        this.requestCloseDuringSend('modal');
+                    if (this.episodeSendInProgress) {
+                        this.pendingCloseTarget = 'modal';
+                        this.showSendInProgressConfirmation = true;
                         return;
                     }
+                    this.forceCloseModal();
+                },
+
+                forceCloseModal() {
                     this.dismissSuccessHint();
-                    this.closeTrailerModal();
+                    this.forceCloseTrailerModal();
                     this.showModal = false;
-                    document.body.style.overflow = ''; // Restore background scrolling
+                    document.body.style.overflow = '';
                     
-                    // Reset status and clean up timers for all videos and mangas when closing modal
                     if (this.selectedEpisode) {
-                        // Handle videos
                         if (this.selectedEpisode.EpisodeVideosIDs) {
                             this.selectedEpisode.EpisodeVideosIDs.forEach((video, index) => {
-                                // Clear any running countdown intervals
                                 if (video.countdownInterval) {
                                     clearInterval(video.countdownInterval);
                                     video.countdownInterval = null;
@@ -17088,10 +17115,8 @@
                             });
                         }
                         
-                        // Handle mangas
                         if (this.selectedEpisode.EpisodeMangasIDs) {
                             this.selectedEpisode.EpisodeMangasIDs.forEach((manga, index) => {
-                                // Clear any running countdown intervals
                                 if (manga.countdownInterval) {
                                     clearInterval(manga.countdownInterval);
                                     manga.countdownInterval = null;
@@ -17102,20 +17127,16 @@
                         }
                     }
                     
-                    // Clear the ratelimiting flag
                     this.ratelimiting = false;
                     this.errorMessage = "";
                     
-                    // Store a temporary reference to the episode before nullifying it
                     const tempEpisode = this.selectedEpisode;
                     if (!this.preserveSelectedEpisodeOnModalClose) {
                         this.selectedEpisode = null;
-                        }
+                    }
                     this.spoilerVisible = false;
                     
-                    // Additional cleanup with setTimeout to ensure the component updates first
                     setTimeout(() => {
-                        // Extra cleanup for any lingering intervals
                         if (tempEpisode) {
                             if (tempEpisode.EpisodeVideosIDs) {
                                 tempEpisode.EpisodeVideosIDs.forEach(video => {
@@ -17153,71 +17174,82 @@
                         : '';
                 },
 
-                requestCloseDuringSend(target) {
-                    this.pendingCloseTarget = target;
-                    this.showSendInProgressConfirmation = true;
-                },
-                cancelSendInProgressClose() {
-                    this.showSendInProgressConfirmation = false;
-                    this.pendingCloseTarget = null;
-                },
-                confirmCancelSend() {
-                    const controller = this.sendAbortController;
-                    if (controller) {
-                        try {
-                            controller.abort();
-                        } catch (e) {}
-                    }
-                    this.sendAbortController = null;
-                    this.sendInFlight = false;
-                    this.ratelimiting = false;
-                    this.errorMessage = "";
-                    this.showSendInProgressConfirmation = false;
-
-                    const target = this.pendingCloseTarget;
-                    this.pendingCloseTarget = null;
-                    if (target === 'direct') {
-                        this.closeDirectWindow();
-                        return;
-                    }
-                    if (target === 'trailer') {
-                        this.closeTrailerModal();
-                        return;
-                    }
-                    this.closeModal();
-                },
-                finishPendingCloseAfterSendSuccess() {
-                    if (!this.showSendInProgressConfirmation || !this.pendingCloseTarget) return;
-                    this.showSendInProgressConfirmation = false;
-
-                    const target = this.pendingCloseTarget;
-                    this.pendingCloseTarget = null;
-
-                    this.sendInFlight = false;
-                    this.sendAbortController = null;
-                    this.ratelimiting = false;
-
-                    if (target === 'direct') {
-                        this.closeDirectWindow();
-                        return;
-                    }
-                    if (target === 'trailer') {
-                        this.closeTrailerModal();
-                        return;
-                    }
-                    this.closeModal();
-                },
                 closeTrailerModal() {
-                    if (this.isSendingInProgress) {
-                        this.requestCloseDuringSend('trailer');
+                    if (this.trailerSendInProgress) {
+                        this.pendingCloseTarget = 'trailer';
+                        this.showSendInProgressConfirmation = true;
                         return;
                     }
+                    this.forceCloseTrailerModal();
+                },
+
+                forceCloseTrailerModal() {
                     this.showTrailerModal = false;
                     this.selectedTrailerGroupKey = null;
                     this.selectedTrailerProviderKey = null;
                     this.selectedTrailer = null;
                     this.trailerIframeSrc = '';
                     this.isTrailerIframeLoading = false;
+                },
+
+                handleAutoCloseIfRequested(target) {
+                    if (!this.showSendInProgressConfirmation && !this.pendingCloseTarget) return;
+
+                    if (this.pendingCloseTarget !== target) {
+                        if (this.pendingCloseTarget == null) {
+                            this.showSendInProgressConfirmation = false;
+                        }
+                        return;
+                    }
+
+                    if (target === 'modal' && this.episodeSendInProgress) return;
+                    if (target === 'directWindow' && this.directSendInProgress) return;
+                    if (target === 'trailer' && this.trailerSendInProgress) return;
+
+                    this.showSendInProgressConfirmation = false;
+                    this.pendingCloseTarget = null;
+
+                    if (target === 'modal' && this.showModal) {
+                        this.forceCloseModal();
+                        return;
+                    }
+                    if (target === 'directWindow' && this.showDirectWindow) {
+                        this.forceCloseDirectWindow();
+                        return;
+                    }
+                    if (target === 'trailer' && this.showTrailerModal) {
+                        this.forceCloseTrailerModal();
+                        return;
+                    }
+                },
+
+                confirmCancelSend() {
+                    this.sendCancelGeneration += 1;
+
+                    const target =
+                        this.pendingCloseTarget ||
+                        (this.showModal ? 'modal' : (this.showDirectWindow ? 'directWindow' : (this.showTrailerModal ? 'trailer' : null)));
+
+                    this.showSendInProgressConfirmation = false;
+                    this.pendingCloseTarget = null;
+
+                    if (target === 'modal' && this.showModal) {
+                        this.forceCloseModal();
+                        return;
+                    }
+                    if (target === 'directWindow' && this.showDirectWindow) {
+                        this.forceCloseDirectWindow();
+                        return;
+                    }
+                    if (target === 'trailer' && this.showTrailerModal) {
+                        this.forceCloseTrailerModal();
+                        return;
+                    }
+                },
+
+                cancelSendInProgressClose() {
+                    this.showSendInProgressConfirmation = false;
+                    this.pendingCloseTarget = null;
                 },
 
                 selectTrailerGroup(groupKey) {
@@ -17301,6 +17333,7 @@
 
                 async sendTrailerToBot(trailer) {
                     if (!trailer || !this.selectedEpisode?.EpisodeNumber) return;
+                    const sendGen = this.sendCancelGeneration;
 
                     const videoId = trailer.TrailerID;
                     const resolution = trailer.Resolution;
@@ -17370,23 +17403,19 @@
 
                     try {
                         await this.sendVideoResponse(videoId, caption);
+                        if (this.sendCancelGeneration !== sendGen) return;
                         trailer.status = 'success';
                         this.showSuccessHint('تم إرسال الإعلان للخاص');
                         this.startCountdownForTrailer(trailer);
-                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        const message = error?.message || String(error);
-                        if (message === 'تم إيقاف الإرسال') {
-                            trailer.status = null;
-                            this.errorMessage = "";
-                        } else {
-                            trailer.status = 'error';
-                            this.errorMessage = message;
-                            return;
-                        }
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        trailer.status = 'error';
+                        this.errorMessage = error?.message || String(error);
+                        return;
                     }
 
                     setTimeout(() => {
+                        if (this.sendCancelGeneration !== sendGen) return;
                         if (trailer.countdownInterval) {
                             clearInterval(trailer.countdownInterval);
                             trailer.countdownInterval = null;
@@ -18805,26 +18834,28 @@
                 },
 
                 async sendEpisodeToBot(videoID, resolution, size, index, introductionTime, startStoryTime, episodeSuspenseTime, startSongTime, chapterOneTime, chapterTwoTime, endSongTime, chapterThreeTime, nextEpisodeTeaserTime, nextEpisodeHintTime) {
-                    if (!this.selectedEpisode?.EpisodeNumber) {
+                    const episodeRef = this.selectedEpisode;
+                    if (!episodeRef?.EpisodeNumber) {
                         return;
                     }
+                    const sendGen = this.sendCancelGeneration;
 
                     // Set ratelimiting for all other buttons
                     this.ratelimiting = true;
-                    if (this.selectedEpisode.EpisodeVideosIDs) {
-                        this.selectedEpisode.EpisodeVideosIDs.forEach((video, i) => {
+                    if (episodeRef.EpisodeVideosIDs) {
+                        episodeRef.EpisodeVideosIDs.forEach((video, i) => {
                             if (i !== index) {
                                 video.status = 'ratelimiting';
                             }
                         });
                     }
-                    if (this.selectedEpisode.EpisodeMangasIDs) {
-                        this.selectedEpisode.EpisodeMangasIDs.forEach((manga) => {
+                    if (episodeRef.EpisodeMangasIDs) {
+                        episodeRef.EpisodeMangasIDs.forEach((manga) => {
                             manga.status = 'ratelimiting';
                         });
                     }
 
-                    let episodeNumber = this.selectedEpisode.EpisodeNumber;
+                    let episodeNumber = episodeRef.EpisodeNumber;
                     let label = "رقم الحلقة:";
 
                     if (episodeNumber.includes("خاصة بالفيلم")) {
@@ -18878,46 +18909,33 @@
                     let caption = `*${label} ${episodeNumber}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(size, true)}*`;
                     if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
 
-                    if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
-                        this.selectedEpisode.EpisodeVideosIDs[index].status = 'sending';
-                    }
+                    const videoEntry = episodeRef?.EpisodeVideosIDs?.[index] || null;
+                    if (videoEntry) videoEntry.status = 'sending';
 
                     try {
                         await this.sendVideoResponse(videoID, caption);
-                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
-                            this.selectedEpisode.EpisodeVideosIDs[index].status = 'success';
-                        }
-                        const isMovie = String(this.selectedEpisode?.EpisodeNumber ?? '').includes('الفيلم');
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        if (videoEntry) videoEntry.status = 'success';
+                        const isMovie = String(episodeRef?.EpisodeNumber ?? '').includes('الفيلم');
                         this.movie.status = isMovie ? 'success' : null;
                         this.episode.status = isMovie ? null : 'success';
                         this.showSuccessHint(isMovie ? 'تم إرسال الفيلم للخاص' : 'تم إرسال الحلقة للخاص');
-                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
+                        if (videoEntry && this.selectedEpisode === episodeRef) {
                             this.startCountdown(index);
                         }
                         this.errorMessage = "";
-                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        if (error?.message === 'تم إيقاف الإرسال') {
-                            if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
-                                this.selectedEpisode.EpisodeVideosIDs[index].status = null;
-                            }
-                            this.errorMessage = "";
-                        } else {
-                        if (this.selectedEpisode?.EpisodeVideosIDs?.[index]) {
-                            this.selectedEpisode.EpisodeVideosIDs[index].status = 'error';
-                        }
-                        this.errorMessage = error.message;
-                        if (Array.isArray(this.selectedEpisode?.EpisodeVideosIDs) && this.selectedEpisode.EpisodeVideosIDs.some((video) => video.status === "error")) {
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        if (videoEntry) videoEntry.status = 'error';
+                        this.errorMessage = error?.message || String(error);
+                        if (Array.isArray(episodeRef?.EpisodeVideosIDs) && episodeRef.EpisodeVideosIDs.some((video) => video.status === "error")) {
                             return;
-                        }
                         }
                     }
 
-                    // Store a reference to selectedEpisode before the timeout to prevent null reference errors
-                    const episodeRef = this.selectedEpisode;
-                    
                     // Clear status after 2 seconds
                     setTimeout(() => {
+                        if (this.sendCancelGeneration !== sendGen) return;
                         // Check if references still exist before accessing them
                         if (episodeRef?.EpisodeVideosIDs?.[index]) {
                             // Clear countdown and interval for the clicked button
@@ -18970,10 +18988,6 @@
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
-                    const controller = new AbortController();
-                    this.sendAbortController = controller;
-                    this.sendInFlight = true;
-
                     const payload = new URLSearchParams();
                     payload.append("method", "sendVideo");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -18987,7 +19001,6 @@
                             method: "POST",
                             headers: { "Content-Type": "application/x-www-form-urlencoded" },
                             body: payload.toString(),
-                            signal: controller.signal,
                         });
 
                         const text = await response.text();
@@ -19005,15 +19018,7 @@
 
                     } catch (error) {
                         console.error(error);
-                        if (error?.name === 'AbortError') {
-                            throw new Error('تم إيقاف الإرسال');
-                        }
-                        throw new Error(error?.message || String(error));
-                    } finally {
-                        if (this.sendAbortController === controller) {
-                            this.sendAbortController = null;
-                        }
-                        this.sendInFlight = false;
+                        throw new Error(error.message);
                     }
                 },
 
@@ -19024,10 +19029,6 @@
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
-                    const controller = new AbortController();
-                    this.sendAbortController = controller;
-                    this.sendInFlight = true;
-
                     const payload = new URLSearchParams();
                     payload.append("method", "sendDocument");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
@@ -19040,7 +19041,6 @@
                             method: "POST",
                             headers: { "Content-Type": "application/x-www-form-urlencoded" },
                             body: payload.toString(),
-                            signal: controller.signal,
                         });
 
                         const text = await response.text();
@@ -19058,15 +19058,7 @@
 
                     } catch (error) {
                         console.error(error);
-                        if (error?.name === 'AbortError') {
-                            throw new Error('تم إيقاف الإرسال');
-                        }
-                        throw new Error(error?.message || String(error));
-                    } finally {
-                        if (this.sendAbortController === controller) {
-                            this.sendAbortController = null;
-                        }
-                        this.sendInFlight = false;
+                        throw new Error(error.message);
                     }
                 },
 
@@ -19077,56 +19069,51 @@
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
-                    if (!this.selectedEpisode?.EpisodeNumber) {
+                    const episodeRef = this.selectedEpisode;
+                    if (!episodeRef?.EpisodeNumber) {
                         return;
                     }
+                    const sendGen = this.sendCancelGeneration;
 
                     // Set ratelimiting for all other buttons
                     this.ratelimiting = true;
-                    if (this.selectedEpisode.EpisodeVideosIDs) {
-                        this.selectedEpisode.EpisodeVideosIDs.forEach((video) => {
+                    if (episodeRef.EpisodeVideosIDs) {
+                        episodeRef.EpisodeVideosIDs.forEach((video) => {
                             video.status = 'ratelimiting';
                         });
                     }
-                    if (this.selectedEpisode.EpisodeMangasIDs) {
-                        this.selectedEpisode.EpisodeMangasIDs.forEach((manga, i) => {
+                    if (episodeRef.EpisodeMangasIDs) {
+                        episodeRef.EpisodeMangasIDs.forEach((manga, i) => {
                             if (i !== index) {
                                 manga.status = 'ratelimiting';
                             }
                         });
                     }
 
-                    const caption = `*الفصل: ${mangaNumber}\nالحجم: ${this.formatFileSize(this.selectedEpisode.EpisodeMangasIDs[index].MangaFileSize, true)}*`;
+                    const caption = `*الفصل: ${mangaNumber}\nالحجم: ${this.formatFileSize(episodeRef?.EpisodeMangasIDs?.[index]?.MangaFileSize, true)}*`;
 
-                    this.selectedEpisode.EpisodeMangasIDs[index].status = 'sending';
+                    const mangaEntry = episodeRef?.EpisodeMangasIDs?.[index] || null;
+                    if (mangaEntry) mangaEntry.status = 'sending';
 
                     try {
                         await this.sendMangaResponse(fileId, caption);
-                        this.selectedEpisode.EpisodeMangasIDs[index].status = 'success';
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        if (mangaEntry) mangaEntry.status = 'success';
                         this.showSuccessHint('تم إرسال الفصل للخاص');
-                        this.startCountdownForManga(index);
+                        if (mangaEntry && this.selectedEpisode === episodeRef) this.startCountdownForManga(index);
                         this.errorMessage = "";
-                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        if (error?.message === 'تم إيقاف الإرسال') {
-                            if (this.selectedEpisode?.EpisodeMangasIDs?.[index]) {
-                                this.selectedEpisode.EpisodeMangasIDs[index].status = null;
-                            }
-                            this.errorMessage = "";
-                        } else {
-                            this.selectedEpisode.EpisodeMangasIDs[index].status = 'error';
-                            this.errorMessage = error.message;
-                            if (this.selectedEpisode.EpisodeMangasIDs.some(manga => manga.status === "error")) {
-                                return;
-                            }
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        if (mangaEntry) mangaEntry.status = 'error';
+                        this.errorMessage = error?.message || String(error);
+                        if (Array.isArray(episodeRef?.EpisodeMangasIDs) && episodeRef.EpisodeMangasIDs.some(manga => manga.status === "error")) {
+                            return;
                         }
                     }
 
-                    // Store a reference to selectedEpisode before the timeout to prevent null reference errors
-                    const episodeRef = this.selectedEpisode;
-                    
                     // Clear status after 2 seconds
                     setTimeout(() => {
+                        if (this.sendCancelGeneration !== sendGen) return;
                         // Check if references still exist before accessing them
                         if (episodeRef?.EpisodeMangasIDs?.[index]) {
                             // Clear countdown and interval for the clicked button
@@ -19177,51 +19164,45 @@
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
-                    if (!this.selectedManga?.MangaNumber) return;
+                    const mangaRef = this.selectedManga;
+                    const episodeRef = this.selectedEpisode;
+                    if (!mangaRef?.MangaNumber) return;
+                    const sendGen = this.sendCancelGeneration;
 
                     // Set ratelimiting for all other buttons
                     this.ratelimiting = true;
-                    if (this.selectedEpisode?.EpisodeVideosIDs) {
-                        this.selectedEpisode.EpisodeVideosIDs.forEach((video) => {
+                    if (episodeRef?.EpisodeVideosIDs) {
+                        episodeRef.EpisodeVideosIDs.forEach((video) => {
                             video.status = 'ratelimiting';
                         });
                     }
-                    if (this.selectedEpisode?.EpisodeMangasIDs) {
-                        this.selectedEpisode.EpisodeMangasIDs.forEach((manga) => {
+                    if (episodeRef?.EpisodeMangasIDs) {
+                        episodeRef.EpisodeMangasIDs.forEach((manga) => {
                             manga.status = 'ratelimiting';
                         });
                     }
 
-                    const caption = `*الفصل: ${mangaNumber}\nالحجم: ${this.formatFileSize(this.selectedManga.MangaFileSize, true)}*`;
+                    const caption = `*الفصل: ${mangaNumber}\nالحجم: ${this.formatFileSize(mangaRef?.MangaFileSize, true)}*`;
 
-                    this.selectedManga.status = 'sending';
+                    mangaRef.status = 'sending';
 
                     try {
                         await this.sendMangaResponse(fileId, caption);
-                        this.selectedManga.status = 'success';
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        mangaRef.status = 'success';
                         this.showSuccessHint('تم إرسال الفصل للخاص');
-                        this.startCountdownForMangaD();
+                        if (this.selectedManga === mangaRef) this.startCountdownForMangaD();
                         this.errorMessage = "";
-                        this.finishPendingCloseAfterSendSuccess();
                     } catch (error) {
-                        if (error?.message === 'تم إيقاف الإرسال') {
-                            if (this.selectedManga) {
-                                this.selectedManga.status = null;
-                            }
-                            this.errorMessage = "";
-                        } else {
-                            this.selectedManga.status = 'error';
-                            this.errorMessage = error.message;
-                            if (this.selectedManga.status === "error") return;
-                        }
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        mangaRef.status = 'error';
+                        this.errorMessage = error?.message || String(error);
+                        if (mangaRef.status === "error") return;
                     }
 
-                    // Store references to objects before they might be nullified
-                    const mangaRef = this.selectedManga;
-                    const episodeRef = this.selectedEpisode;
-                    
                     // Clear status after 2 seconds
                     setTimeout(() => {
+                        if (this.sendCancelGeneration !== sendGen) return;
                         // Clear countdown and interval for the clicked button if it still exists
                         if (mangaRef?.countdownInterval) {
                             clearInterval(mangaRef.countdownInterval);
@@ -20443,21 +20424,23 @@
                 },
 
                 closeDirectWindow() {
-                    if (this.isSendingInProgress) {
-                        this.requestCloseDuringSend('direct');
+                    if (this.directSendInProgress) {
+                        this.pendingCloseTarget = 'directWindow';
+                        this.showSendInProgressConfirmation = true;
                         return;
                     }
+                    this.forceCloseDirectWindow();
+                },
+
+                forceCloseDirectWindow() {
                     this.dismissSuccessHint();
-                    document.body.style.overflow = ''; // Restore background scrolling
-                    // Store references to the current objects before clearing them
+                    document.body.style.overflow = '';
                     const tempEpisode = this.selectedEpisode;
                     const tempManga = this.selectedManga;
                     
-                    // Reset status for all videos and episode mangas when closing modal 
                     if (tempEpisode) {
                         if (tempEpisode.EpisodeVideosIDs) {
                             tempEpisode.EpisodeVideosIDs.forEach((video, index) => {
-                                // Clear countdown interval if it exists
                                 if (video.countdownInterval) {
                                     clearInterval(video.countdownInterval);
                                     video.countdownInterval = null;
@@ -20470,7 +20453,6 @@
                         }
                         if (tempEpisode.EpisodeMangasIDs) {
                             tempEpisode.EpisodeMangasIDs.forEach((manga, index) => {
-                                // Clear countdown interval if it exists
                                 if (manga.countdownInterval) {
                                     clearInterval(manga.countdownInterval);
                                     manga.countdownInterval = null;
@@ -20483,9 +20465,7 @@
                         }
                     }
                     
-                    // Additionally, reset the manga status if a manga is selected
                     if (tempManga) {
-                        // Clear countdown interval if it exists
                         if (tempManga.countdownInterval) {
                             clearInterval(tempManga.countdownInterval);
                             tempManga.countdownInterval = null;
@@ -20494,14 +20474,11 @@
                         tempManga.status = null;
                     }
 
-                    // Clear the ratelimiting flag
                     this.ratelimiting = false;
                     this.errorMessage = "";
 
-                    // Close the modal
                     this.showDirectWindow = false;
 
-                    // Reset selections depending on the current category
                     if (this.selectedCategory === 'episodes') {
                         this.resetEpisodesView();
                     } else if (this.selectedCategory === 'movies') {
@@ -20510,20 +20487,16 @@
                         this.resetMangasView();
                     }
 
-                    // Clear selections
                     this.selectedEpisode = null;
                     this.selectedManga = null;
 
-                    // Reset active tabs
                     this.activeTab = {
                         episodes: 0,
                         movies: 0,
                         mangas: 0
                     };
                     
-                    // Additional cleanup with setTimeout to ensure proper timing
                     setTimeout(() => {
-                        // Double-check any lingering intervals on the temporary references
                         if (tempEpisode) {
                             if (tempEpisode.EpisodeVideosIDs) {
                                 tempEpisode.EpisodeVideosIDs.forEach(video => {
