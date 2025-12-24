@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -6452,7 +6453,7 @@
                                         type="button"
                                         class="text-xl font-bold overflow-hidden text-ellipsis w-full"
                                         :class="[
-                                            hasRelatedEpisodesForEpisode(selectedEpisode) && !isEpisodeSwitchBlocked(selectedEpisode) ? 'underline cursor-pointer' : '',
+                                            hasRelatedEpisodesForEpisode(selectedEpisode) && !isEpisodeSwitchBlocked(selectedEpisode) ? 'underline text-yellow-300 cursor-pointer' : '',
                                             isEpisodeSwitchBlocked(selectedEpisode) ? 'opacity-60 cursor-not-allowed' : ''
                                         ]"
                                         @click.stop="toggleRelatedEpisodeMenu"
@@ -19528,7 +19529,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-	
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
