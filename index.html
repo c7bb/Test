@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1241,7 +1240,7 @@
                         <div class="flex justify-between items-center">
                             <h2 class="text-xl font-bold">النافذة السريعة <span class="text-xs text-yellow-300 font-normal">(تجريبي)</span></h2>
                             <button 
-                                v-if="!isMangaQueueRunning" 
+                                v-if="!isAnyQueueRunning" 
                                 @click="closeFastingWindow" 
                                 class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
                                 <img src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" alt="Close" class="h-8 w-8" />
@@ -1252,19 +1251,391 @@
                             <legend class="px-2">اختر نوع المحتوى:</legend>
                             <div class="flex justify-around">
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedCategory" value="episodes" class="ml-2" disabled>
+                                    <input type="radio" v-model="selectedCategory" value="episodes" class="ml-2" :disabled="isAnyQueueRunning">
                                     حلقات
                                 </label>
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedCategory" value="movies" class="ml-2" disabled>
+                                    <input type="radio" v-model="selectedCategory" value="movies" class="ml-2" :disabled="isAnyQueueRunning">
                                     أفلام
                                 </label>
                                 <label class="flex items-center transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedCategory" value="mangas" class="ml-2" :disabled="isMangaQueueRunning">
+                                    <input type="radio" v-model="selectedCategory" value="mangas" class="ml-2" :disabled="isAnyQueueRunning">
                                     مانغا
                                 </label>
                             </div>
                         </fieldset>
+                    </div>
+
+                    <!-- Episodes Bulk Send Content -->
+                    <div v-if="selectedCategory === 'episodes'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                        <div class="pt-2 mb-4">
+                            <div class="bg-slate-800 rounded p-2 text-sm flex flex-col gap-1 border border-cyan-700">
+                                <div class="flex justify-between items-center">
+                                    <span>التحميلات اليومية:</span>
+                                    <span v-if="dailyReadyEpisodes" :class="{'text-green-400': effectiveRemainingDownloadsFor('episodes') > 20, 'text-yellow-400': effectiveRemainingDownloadsFor('episodes') <= 20 && effectiveRemainingDownloadsFor('episodes') > 0, 'text-red-500': effectiveRemainingDownloadsFor('episodes') === 0}">
+                                        <span v-if="pendingDailyIncrementsEpisodes > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">{{ pendingDailyIncrementsEpisodes }}+</span>
+                                        {{ dailyDownloadsEpisodes }} / {{ safeMaxDailyDownloads }}
+                                    </span>
+                                    <span v-else class="text-slate-300 text-xs">جارٍ المزامنة...</span>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1">
+                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (effectiveDailyDownloadsFor('episodes') / safeMaxDailyDownloads * 100) + '%' }"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
+                                    <span>
+                                        المتبقي:
+                                        <span v-if="!dailyReadyEpisodes" class="text-slate-300 text-xs">جارٍ المزامنة...</span>
+                                        <span v-else>
+                                            {{ effectiveRemainingDownloadsFor('episodes') }}
+                                            <span v-if="pendingDailyIncrementsEpisodes > 0 && (safeMaxDailyDownloads - dailyDownloadsEpisodes) > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">{{ Math.min(pendingDailyIncrementsEpisodes, (safeMaxDailyDownloads - dailyDownloadsEpisodes)) }}-</span>
+                                        </span>
+                                    </span>
+                                    <span>🔄️ {{ timeUntilReset }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!isEpisodeQueueRunning && episodeQueueStats.total === 0" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <label class="block mb-2">النوع:</label>
+                                    <select v-model="bulkSendPreferences.episodes.category" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="any">الكل</option>
+                                        <option value="S">مترجم (S)</option>
+                                        <option value="D">مدبلج (D)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-2">الإصدار:</label>
+                                    <select v-model="bulkSendPreferences.episodes.remastered" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="any">الكل</option>
+                                        <option value="TP">محسنة وخاصة (TP)</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block mb-2">المترجم:</label>
+                                    <input v-model="bulkSendPreferences.episodes.translator" type="text" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="اختياري" />
+                                </div>
+                                <div>
+                                    <label class="block mb-2">الجودة:</label>
+                                    <select v-model="bulkSendPreferences.episodes.resolutionMode" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="best">أفضل جودة</option>
+                                        <option value="closest">الأقرب إلى قيمة</option>
+                                        <option value="atMost">لا تتجاوز قيمة</option>
+                                        <option value="atLeast">لا تقل عن قيمة</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-2">قيمة الجودة:</label>
+                                    <input v-model="bulkSendPreferences.episodes.resolutionValue" type="text" inputmode="numeric" pattern="[0-9٠-٩۰-۹]*" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="مثال: 720" dir="ltr" />
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block mb-2">أقصى حجم (MB):</label>
+                                    <input v-model="bulkSendPreferences.episodes.maxSizeMb" type="text" inputmode="numeric" pattern="[0-9٠-٩۰-۹.]*" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="اختياري" dir="ltr" />
+                                </div>
+                            </div>
+
+                            <div class="flex gap-4 items-center">
+                                <div class="flex-1">
+                                    <label class="block mb-2 text-sm">من الحلقة:</label>
+                                    <input
+                                        v-model="episodeStartNumberModel"
+                                        type="text"
+                                        inputmode="numeric"
+                                        pattern="[0-9٠-٩۰-۹]*"
+                                        class="w-full p-2 bg-gray-700 rounded text-white"
+                                        :placeholder="`${minEpisodeNumber}`"
+                                        dir="ltr"
+                                    />
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block mb-2 text-sm">إلى الحلقة:</label>
+                                    <input
+                                        v-model="episodeEndNumberModel"
+                                        type="text"
+                                        inputmode="numeric"
+                                        pattern="[0-9٠-٩۰-۹]*"
+                                        class="w-full p-2 bg-gray-700 rounded text-white"
+                                        :placeholder="`${maxEpisodeNumber}`"
+                                        dir="ltr"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                @click="startEpisodeQueue"
+                                :disabled="episodeStartNumber === null || episodeEndNumber === null || episodeStartNumber > episodeEndNumber || episodeStartNumber < minEpisodeNumber || episodeEndNumber > maxEpisodeNumber"
+                                class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                إرسال الحلقات ({{ (episodeStartNumber !== null && episodeEndNumber !== null && episodeStartNumber <= episodeEndNumber && episodeStartNumber >= minEpisodeNumber && episodeEndNumber <= maxEpisodeNumber) ? (episodeEndNumber - episodeStartNumber + 1) : 0 }})
+                            </button>
+                        </div>
+
+                        <div v-if="isEpisodeQueueRunning || episodeQueueStats.total > 0" class="space-y-4 mt-4">
+                            <div v-if="episodeQueueCurrent && episodeQueueCurrent.number !== null" class="bg-gray-800 p-3 rounded flex items-center justify-center">
+                                <div class="flex items-center gap-3" dir="ltr">
+                                    <span class="text-lg font-bold text-yellow-300">{{ episodeQueueCurrent.number }}</span>
+                                    <span v-if="episodeQueueCurrent.status === 'sending'" class="inline-flex items-center">
+                                        <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                    </span>
+                                    <span v-else-if="episodeQueueCurrent.status === 'success'" class="text-green-400 text-lg">✅</span>
+                                    <span v-else-if="episodeQueueCurrent.status === 'failed'" class="text-red-400 text-lg">❌</span>
+                                </div>
+                            </div>
+
+                            <div class="w-full">
+                                <div class="flex justify-between mb-2 text-sm">
+                                    <span>التقدم</span>
+                                    <span>{{ episodeQueueProgress }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-6 overflow-hidden">
+                                    <div
+                                        class="h-6 transition-all duration-300 rounded-full"
+                                        :class="{
+                                            'bg-green-500': episodeQueueProgress >= 100,
+                                            'bg-blue-500': episodeQueueProgress >= 50 && episodeQueueProgress < 100,
+                                            'bg-yellow-500': episodeQueueProgress >= 25 && episodeQueueProgress < 50,
+                                            'bg-red-500': episodeQueueProgress < 25
+                                        }"
+                                        :style="{ width: episodeQueueProgress + '%' }"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">إجمالي الحلقات</div>
+                                    <div class="text-xl font-bold">{{ episodeQueueStats.total }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">تم الإرسال</div>
+                                    <div class="text-xl font-bold text-green-400">{{ episodeQueueStats.sent }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">في الانتظار</div>
+                                    <div class="text-xl font-bold text-yellow-400">{{ episodeQueueStats.waiting }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">فشل</div>
+                                    <div class="text-xl font-bold text-red-400">{{ episodeQueueStats.failed }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">الوقت المستغرق</div>
+                                    <div class="text-xl font-bold">{{ formatTime(episodeQueueStats.elapsedTime) }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">الوقت المتبقي</div>
+                                    <div class="text-xl font-bold">{{ formatTime(episodeQueueStats.remainingTime) }}</div>
+                                </div>
+                            </div>
+
+                            <div v-if="isEpisodeQueueRunning" class="flex gap-4">
+                                <button
+                                    @click="toggleEpisodeQueuePause"
+                                    :disabled="isEpisodeQueuePauseRequested"
+                                    class="flex-1 bg-yellow-500 text-black px-6 py-3 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                    {{ isEpisodeQueuePauseRequested ? 'جاري الإيقاف...' : (isEpisodeQueuePaused ? 'استئناف' : 'إيقاف مؤقت') }}
+                                </button>
+                                <button
+                                    @click="stopTargetQueue = 'episodes'; showStopConfirmation = true"
+                                    class="flex-1 bg-red-500 text-white px-6 py-3 rounded hover:bg-red-600 transition-all duration-100 active:scale-90 font-bold">
+                                    إيقاف
+                                </button>
+                            </div>
+
+                            <div v-if="!isEpisodeQueueRunning && episodeQueueStats.total > 0" class="flex gap-4 mt-4">
+                                <button
+                                    @click="resetEpisodeQueue"
+                                    :disabled="isAnyQueueRunning"
+                                    class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                    إرسال جديد
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Movies Bulk Send Content -->
+                    <div v-if="selectedCategory === 'movies'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                        <div class="pt-2 mb-4">
+                            <div class="bg-slate-800 rounded p-2 text-sm flex flex-col gap-1 border border-cyan-700">
+                                <div class="flex justify-between items-center">
+                                    <span>التحميلات اليومية:</span>
+                                    <span v-if="dailyReadyMovies" :class="{'text-green-400': effectiveRemainingDownloadsFor('movies') > 20, 'text-yellow-400': effectiveRemainingDownloadsFor('movies') <= 20 && effectiveRemainingDownloadsFor('movies') > 0, 'text-red-500': effectiveRemainingDownloadsFor('movies') === 0}">
+                                        <span v-if="pendingDailyIncrementsMovies > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">{{ pendingDailyIncrementsMovies }}+</span>
+                                        {{ dailyDownloadsMovies }} / {{ safeMaxDailyDownloads }}
+                                    </span>
+                                    <span v-else class="text-slate-300 text-xs">جارٍ المزامنة...</span>
+                                </div>
+                                <div class="w-full bg-slate-700 rounded-full h-2.5 dark:bg-slate-700 mt-1">
+                                    <div class="bg-cyan-600 h-2.5 rounded-full transition-all duration-500" :style="{ width: (effectiveDailyDownloadsFor('movies') / safeMaxDailyDownloads * 100) + '%' }"></div>
+                                </div>
+                                <div class="flex justify-between items-center mt-1 text-xs text-slate-400">
+                                    <span>
+                                        المتبقي:
+                                        <span v-if="!dailyReadyMovies" class="text-slate-300 text-xs">جارٍ المزامنة...</span>
+                                        <span v-else>
+                                            {{ effectiveRemainingDownloadsFor('movies') }}
+                                            <span v-if="pendingDailyIncrementsMovies > 0 && (safeMaxDailyDownloads - dailyDownloadsMovies) > 0" class="text-cyan-300 text-xs inline-flex items-center gap-1">{{ Math.min(pendingDailyIncrementsMovies, (safeMaxDailyDownloads - dailyDownloadsMovies)) }}-</span>
+                                        </span>
+                                    </span>
+                                    <span>🔄️ {{ timeUntilReset }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="!isMovieQueueRunning && movieQueueStats.total === 0" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <label class="block mb-2">النوع:</label>
+                                    <select v-model="bulkSendPreferences.movies.category" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="any">الكل</option>
+                                        <option value="S">مترجم (S)</option>
+                                        <option value="D">مدبلج (D)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-2">الإصدار:</label>
+                                    <select v-model="bulkSendPreferences.movies.remastered" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="any">الكل</option>
+                                        <option value="TP">محسنة وخاصة (TP)</option>
+                                    </select>
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block mb-2">المترجم:</label>
+                                    <input v-model="bulkSendPreferences.movies.translator" type="text" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="اختياري" />
+                                </div>
+                                <div>
+                                    <label class="block mb-2">الجودة:</label>
+                                    <select v-model="bulkSendPreferences.movies.resolutionMode" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="best">أفضل جودة</option>
+                                        <option value="closest">الأقرب إلى قيمة</option>
+                                        <option value="atMost">لا تتجاوز قيمة</option>
+                                        <option value="atLeast">لا تقل عن قيمة</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block mb-2">قيمة الجودة:</label>
+                                    <input v-model="bulkSendPreferences.movies.resolutionValue" type="text" inputmode="numeric" pattern="[0-9٠-٩۰-۹]*" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="مثال: 720" dir="ltr" />
+                                </div>
+                                <div class="col-span-2">
+                                    <label class="block mb-2">أقصى حجم (MB):</label>
+                                    <input v-model="bulkSendPreferences.movies.maxSizeMb" type="text" inputmode="numeric" pattern="[0-9٠-٩۰-۹.]*" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="اختياري" dir="ltr" />
+                                </div>
+                            </div>
+
+                            <div class="flex gap-4 items-center">
+                                <div class="flex-1">
+                                    <label class="block mb-2 text-sm">من الفيلم:</label>
+                                    <input
+                                        v-model="movieStartNumberModel"
+                                        type="text"
+                                        inputmode="numeric"
+                                        pattern="[0-9٠-٩۰-۹]*"
+                                        class="w-full p-2 bg-gray-700 rounded text-white"
+                                        :placeholder="`${minMovieNumber}`"
+                                        dir="ltr"
+                                    />
+                                </div>
+                                <div class="flex-1">
+                                    <label class="block mb-2 text-sm">إلى الفيلم:</label>
+                                    <input
+                                        v-model="movieEndNumberModel"
+                                        type="text"
+                                        inputmode="numeric"
+                                        pattern="[0-9٠-٩۰-۹]*"
+                                        class="w-full p-2 bg-gray-700 rounded text-white"
+                                        :placeholder="`${maxMovieNumber}`"
+                                        dir="ltr"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                @click="startMovieQueue"
+                                :disabled="movieStartNumber === null || movieEndNumber === null || movieStartNumber > movieEndNumber || movieStartNumber < minMovieNumber || movieEndNumber > maxMovieNumber"
+                                class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                إرسال الأفلام ({{ (movieStartNumber !== null && movieEndNumber !== null && movieStartNumber <= movieEndNumber && movieStartNumber >= minMovieNumber && movieEndNumber <= maxMovieNumber) ? (movieEndNumber - movieStartNumber + 1) : 0 }})
+                            </button>
+                        </div>
+
+                        <div v-if="isMovieQueueRunning || movieQueueStats.total > 0" class="space-y-4 mt-4">
+                            <div v-if="movieQueueCurrent && movieQueueCurrent.number !== null" class="bg-gray-800 p-3 rounded flex items-center justify-center">
+                                <div class="flex items-center gap-3" dir="ltr">
+                                    <span class="text-lg font-bold text-yellow-300">{{ movieQueueCurrent.number }}</span>
+                                    <span v-if="movieQueueCurrent.status === 'sending'" class="inline-flex items-center">
+                                        <span class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></span>
+                                    </span>
+                                    <span v-else-if="movieQueueCurrent.status === 'success'" class="text-green-400 text-lg">✅</span>
+                                    <span v-else-if="movieQueueCurrent.status === 'failed'" class="text-red-400 text-lg">❌</span>
+                                </div>
+                            </div>
+
+                            <div class="w-full">
+                                <div class="flex justify-between mb-2 text-sm">
+                                    <span>التقدم</span>
+                                    <span>{{ movieQueueProgress }}%</span>
+                                </div>
+                                <div class="w-full bg-gray-700 rounded-full h-6 overflow-hidden">
+                                    <div
+                                        class="h-6 transition-all duration-300 rounded-full"
+                                        :class="{
+                                            'bg-green-500': movieQueueProgress >= 100,
+                                            'bg-blue-500': movieQueueProgress >= 50 && movieQueueProgress < 100,
+                                            'bg-yellow-500': movieQueueProgress >= 25 && movieQueueProgress < 50,
+                                            'bg-red-500': movieQueueProgress < 25
+                                        }"
+                                        :style="{ width: movieQueueProgress + '%' }"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4 text-sm">
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">إجمالي الأفلام</div>
+                                    <div class="text-xl font-bold">{{ movieQueueStats.total }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">تم الإرسال</div>
+                                    <div class="text-xl font-bold text-green-400">{{ movieQueueStats.sent }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">في الانتظار</div>
+                                    <div class="text-xl font-bold text-yellow-400">{{ movieQueueStats.waiting }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">فشل</div>
+                                    <div class="text-xl font-bold text-red-400">{{ movieQueueStats.failed }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">الوقت المستغرق</div>
+                                    <div class="text-xl font-bold">{{ formatTime(movieQueueStats.elapsedTime) }}</div>
+                                </div>
+                                <div class="bg-gray-800 p-3 rounded">
+                                    <div class="text-gray-400">الوقت المتبقي</div>
+                                    <div class="text-xl font-bold">{{ formatTime(movieQueueStats.remainingTime) }}</div>
+                                </div>
+                            </div>
+
+                            <div v-if="isMovieQueueRunning" class="flex gap-4">
+                                <button
+                                    @click="toggleMovieQueuePause"
+                                    :disabled="isMovieQueuePauseRequested"
+                                    class="flex-1 bg-yellow-500 text-black px-6 py-3 rounded hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                    {{ isMovieQueuePauseRequested ? 'جاري الإيقاف...' : (isMovieQueuePaused ? 'استئناف' : 'إيقاف مؤقت') }}
+                                </button>
+                                <button
+                                    @click="stopTargetQueue = 'movies'; showStopConfirmation = true"
+                                    class="flex-1 bg-red-500 text-white px-6 py-3 rounded hover:bg-red-600 transition-all duration-100 active:scale-90 font-bold">
+                                    إيقاف
+                                </button>
+                            </div>
+
+                            <div v-if="!isMovieQueueRunning && movieQueueStats.total > 0" class="flex gap-4 mt-4">
+                                <button
+                                    @click="resetMovieQueue"
+                                    :disabled="isAnyQueueRunning"
+                                    class="w-full bg-green-500 text-white px-6 py-3 rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 font-bold">
+                                    إرسال جديد
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Manga Bulk Send Content -->
@@ -1421,7 +1792,7 @@
                                     {{ isMangaQueuePauseRequested ? 'جاري الإيقاف...' : (isMangaQueuePaused ? 'استئناف' : 'إيقاف مؤقت') }}
                                 </button>
                                 <button 
-                                    @click="showStopConfirmation = true" 
+                                    @click="stopTargetQueue = 'mangas'; showStopConfirmation = true" 
                                     class="flex-1 bg-red-500 text-white px-6 py-3 rounded hover:bg-red-600 transition-all duration-100 active:scale-90 font-bold">
                                     إيقاف
                                 </button>
@@ -1448,7 +1819,7 @@
                     <p class="mb-6">هل أنت متأكد من إيقاف عملية الإرسال؟</p>
                     <div class="flex gap-4">
                         <button 
-                            @click="stopMangaQueue" 
+                            @click="confirmStopQueue" 
                             class="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all duration-100 active:scale-90">
                             نعم
                         </button>
@@ -1500,14 +1871,14 @@
             <div v-if="showLimitModal" class="fixed z-[80] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
                     <h3 class="text-xl mb-4 text-red-400">عذرًا</h3>
-                    <p v-if="remainingDownloads === 0" class="mb-6 text-lg">
+                    <p v-if="remainingDownloadsFor(limitModalCategory) === 0" class="mb-6 text-lg">
                         تم استهلاك الحدّ اليومي، وسيُعاد التعيين خلال
                         <span class="text-yellow-300 font-bold text-xl">{{ timeUntilReset }}</span>
                     </p>
                     <p v-else class="mb-6 text-lg">
                         متبقي لديك 
-                        <span v-if="remainingDownloads > 2" class="text-yellow-300 font-bold text-xl">{{ remainingDownloads }}</span>
-                        {{ remainingDownloadsLabel }} لهذا اليوم.
+                        <span v-if="remainingDownloadsFor(limitModalCategory) > 2" class="text-yellow-300 font-bold text-xl">{{ remainingDownloadsFor(limitModalCategory) }}</span>
+                        {{ remainingDownloadsLabelFor(limitModalCategory) }} لهذا اليوم.
                     </p>
                     <button
                         @click="showLimitModal = false" 
@@ -7055,7 +7426,9 @@
                     mangaQueueProcessId: null,
                     mangaQueueTimeoutId: null,
                     showStopConfirmation: false,
+                    stopTargetQueue: 'mangas',
                     showLimitModal: false,
+                    limitModalCategory: 'mangas',
                     showMangaSentLogModal: false,
                     showMangaFailedLogModal: false,
                     mangaQueueCurrent: {
@@ -7101,6 +7474,64 @@
                     mangaQueuePausedTime: 0,
                     mangaQueueTotalPausedTime: 0,
                     mangaQueueInterval: null,
+                    episodeStartNumber: null,
+                    episodeEndNumber: null,
+                    episodeQueue: [],
+                    episodeQueueIndex: 0,
+                    isEpisodeQueueRunning: false,
+                    isEpisodeQueuePaused: false,
+                    isEpisodeQueueSending: false,
+                    isEpisodeQueuePauseRequested: false,
+                    episodeQueueProcessId: null,
+                    episodeQueueTimeoutId: null,
+                    episodeQueueCurrent: {
+                        number: null,
+                        status: null,
+                        error: null,
+                    },
+                    episodeSentLog: [],
+                    episodeFailedLog: [],
+                    episodeQueueStats: {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    },
+                    episodeQueueStartTime: null,
+                    episodeQueuePausedTime: 0,
+                    episodeQueueTotalPausedTime: 0,
+                    episodeQueueInterval: null,
+                    movieStartNumber: null,
+                    movieEndNumber: null,
+                    movieQueue: [],
+                    movieQueueIndex: 0,
+                    isMovieQueueRunning: false,
+                    isMovieQueuePaused: false,
+                    isMovieQueueSending: false,
+                    isMovieQueuePauseRequested: false,
+                    movieQueueProcessId: null,
+                    movieQueueTimeoutId: null,
+                    movieQueueCurrent: {
+                        number: null,
+                        status: null,
+                        error: null,
+                    },
+                    movieSentLog: [],
+                    movieFailedLog: [],
+                    movieQueueStats: {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    },
+                    movieQueueStartTime: null,
+                    movieQueuePausedTime: 0,
+                    movieQueueTotalPausedTime: 0,
+                    movieQueueInterval: null,
                     activeTab: { episodes: 0, movies: 0, mangas: 0 },
                     searchFilters: {
                         number: true,
@@ -7146,18 +7577,56 @@
                     dailyLimitRowIdResyncIntervalId: null,
                     dailyLimitDate: null,
                     dailyLimitDayStartUtcMs: null,
+                    dailyDownloadsEpisodes: 0,
+                    dailyReadyEpisodes: false,
+                    pendingDailyIncrementsEpisodes: 0,
+                    dailyLimitRetryTimerEpisodes: null,
+                    dailyLimitRetryAttemptsEpisodes: 0,
+                    dailyLimitRowIdEpisodes: null,
+                    dailyLimitRowIdRamEpisodes: null,
+                    dailyLimitRowIdResyncIntervalIdEpisodes: null,
+                    dailyLimitDateEpisodes: null,
+                    dailyLimitDayStartUtcMsEpisodes: null,
+                    dailyDownloadsMovies: 0,
+                    dailyReadyMovies: false,
+                    pendingDailyIncrementsMovies: 0,
+                    dailyLimitRetryTimerMovies: null,
+                    dailyLimitRetryAttemptsMovies: 0,
+                    dailyLimitRowIdMovies: null,
+                    dailyLimitRowIdRamMovies: null,
+                    dailyLimitRowIdResyncIntervalIdMovies: null,
+                    dailyLimitDateMovies: null,
+                    dailyLimitDayStartUtcMsMovies: null,
                     maxDailyDownloads: 100,
                     now: Date.now(),
                     _db: null,
                     userId: window.Telegram?.WebApp?.initDataUnsafe?.user?.id || 'anonymous-user', // Fallback for testing if not in Telegram
                     testMinuteReset: false,
                     nowIntervalId: null,
+                    bulkSendPreferences: {
+                        episodes: {
+                            category: 'any',
+                            remastered: 'any',
+                            translator: '',
+                            resolutionMode: 'best',
+                            resolutionValue: '',
+                            maxSizeMb: ''
+                        },
+                        movies: {
+                            category: 'any',
+                            remastered: 'any',
+                            translator: '',
+                            resolutionMode: 'best',
+                            resolutionValue: '',
+                            maxSizeMb: ''
+                        }
+                    },
                     
                     // Time Synchronization
                     serverTimeOffset: 0,
                     lastServerSync: 0,
                     trustedToday: null,
-                    unsubscribeDaily: null,
+                    unsubscribeDaily: { mangas: null, episodes: null, movies: null },
 
                     // Tab Locking System
                     tabLockModal: false,
@@ -8073,8 +8542,127 @@
                         this.mangaEndNumber = Math.round(clamped);
                     }
                 },
+                episodeStartNumberModel: {
+                    get() {
+                        return this.episodeStartNumber ?? '';
+                    },
+                    set(value) {
+                        const normalized = this.normalizeNumericString(value).trim();
+                        if (normalized === '') {
+                            this.episodeStartNumber = null;
+                            return;
+                        }
+                        const parsed = parseFloat(normalized);
+                        if (isNaN(parsed)) {
+                            this.episodeStartNumber = null;
+                            return;
+                        }
+                        const clamped = Math.min(Math.max(parsed, this.minEpisodeNumber), this.maxEpisodeNumber);
+                        this.episodeStartNumber = Math.round(clamped);
+                    }
+                },
+                episodeEndNumberModel: {
+                    get() {
+                        return this.episodeEndNumber ?? '';
+                    },
+                    set(value) {
+                        const normalized = this.normalizeNumericString(value).trim();
+                        if (normalized === '') {
+                            this.episodeEndNumber = null;
+                            return;
+                        }
+                        const parsed = parseFloat(normalized);
+                        if (isNaN(parsed)) {
+                            this.episodeEndNumber = null;
+                            return;
+                        }
+                        const clamped = Math.min(Math.max(parsed, this.minEpisodeNumber), this.maxEpisodeNumber);
+                        this.episodeEndNumber = Math.round(clamped);
+                    }
+                },
+                movieStartNumberModel: {
+                    get() {
+                        return this.movieStartNumber ?? '';
+                    },
+                    set(value) {
+                        const normalized = this.normalizeNumericString(value).trim();
+                        if (normalized === '') {
+                            this.movieStartNumber = null;
+                            return;
+                        }
+                        const parsed = parseFloat(normalized);
+                        if (isNaN(parsed)) {
+                            this.movieStartNumber = null;
+                            return;
+                        }
+                        const clamped = Math.min(Math.max(parsed, this.minMovieNumber), this.maxMovieNumber);
+                        this.movieStartNumber = Math.round(clamped);
+                    }
+                },
+                movieEndNumberModel: {
+                    get() {
+                        return this.movieEndNumber ?? '';
+                    },
+                    set(value) {
+                        const normalized = this.normalizeNumericString(value).trim();
+                        if (normalized === '') {
+                            this.movieEndNumber = null;
+                            return;
+                        }
+                        const parsed = parseFloat(normalized);
+                        if (isNaN(parsed)) {
+                            this.movieEndNumber = null;
+                            return;
+                        }
+                        const clamped = Math.min(Math.max(parsed, this.minMovieNumber), this.maxMovieNumber);
+                        this.movieEndNumber = Math.round(clamped);
+                    }
+                },
+                minEpisodeNumber() {
+                    const all = this.groupedEpisodes.flatMap(group => group.items);
+                    const numbers = all.map(e => parseFloat(e?.EpisodeNumber)).filter(n => !isNaN(n));
+                    return numbers.length ? Math.min(...numbers) : 0;
+                },
+                maxEpisodeNumber() {
+                    const all = this.groupedEpisodes.flatMap(group => group.items);
+                    const numbers = all.map(e => parseFloat(e?.EpisodeNumber)).filter(n => !isNaN(n));
+                    return numbers.length ? Math.max(...numbers) : 0;
+                },
+                minMovieNumber() {
+                    const all = this.groupedMovies.flatMap(group => group.items);
+                    const numbers = all
+                        .map(e => this.extractMovieNumberValue(e?.EpisodeNumber))
+                        .filter(n => Number.isFinite(n));
+                    return numbers.length ? Math.min(...numbers) : 0;
+                },
+                maxMovieNumber() {
+                    const all = this.groupedMovies.flatMap(group => group.items);
+                    const numbers = all
+                        .map(e => this.extractMovieNumberValue(e?.EpisodeNumber))
+                        .filter(n => Number.isFinite(n));
+                    return numbers.length ? Math.max(...numbers) : 0;
+                },
                 isFailedToFetch() {
                     return (this.errorMessage || '').trim() === 'Failed to fetch';
+                },
+                episodeQueueProgress() {
+                    if (this.episodeQueueStats.total === 0) return 0;
+                    const completed = this.episodeQueueStats.sent + this.episodeQueueStats.failed;
+                    return Math.round((completed / this.episodeQueueStats.total) * 100);
+                },
+                movieQueueProgress() {
+                    if (this.movieQueueStats.total === 0) return 0;
+                    const completed = this.movieQueueStats.sent + this.movieQueueStats.failed;
+                    return Math.round((completed / this.movieQueueStats.total) * 100);
+                },
+                isAnyQueueRunning() {
+                    return Boolean(
+                        this.isMangaQueueRunning ||
+                        this.isEpisodeQueueRunning ||
+                        this.isMovieQueueRunning ||
+                        this.isRetryAllFailedRunning ||
+                        this.isRetryQueueRunning
+                    );
                 },
                 displayErrorMessage() {
                     return this.isFailedToFetch ? 'حدث خطأ، حاول مرة أخرى' : this.errorMessage;
@@ -15191,60 +15779,129 @@
                     return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 0, 0, 0, 0);
                 },
 
-                getDailyLimitStorageKey() {
-                    return `dcrefbot-dailyLimitRowId:${String(this.userId)}`;
+                getDailyLimitKindConfig(kind) {
+                    const normalized = kind === 'episodes' ? 'episodes' : (kind === 'movies' ? 'movies' : 'mangas');
+                    if (normalized === 'episodes') {
+                        return {
+                            kind: 'episodes',
+                            suffix: 'Episodes',
+                            tableName: 'dailyLimitDownloadsEpisodes',
+                            dailyDownloadsKey: 'dailyDownloadsEpisodes',
+                            dailyReadyKey: 'dailyReadyEpisodes',
+                            pendingKey: 'pendingDailyIncrementsEpisodes',
+                            retryTimerKey: 'dailyLimitRetryTimerEpisodes',
+                            retryAttemptsKey: 'dailyLimitRetryAttemptsEpisodes',
+                            rowIdKey: 'dailyLimitRowIdEpisodes',
+                            rowIdRamKey: 'dailyLimitRowIdRamEpisodes',
+                            rowIdResyncKey: 'dailyLimitRowIdResyncIntervalIdEpisodes',
+                            dateKey: 'dailyLimitDateEpisodes',
+                            dayStartKey: 'dailyLimitDayStartUtcMsEpisodes'
+                        };
+                    }
+                    if (normalized === 'movies') {
+                        return {
+                            kind: 'movies',
+                            suffix: 'Movies',
+                            tableName: 'dailyLimitDownloadsMovies',
+                            dailyDownloadsKey: 'dailyDownloadsMovies',
+                            dailyReadyKey: 'dailyReadyMovies',
+                            pendingKey: 'pendingDailyIncrementsMovies',
+                            retryTimerKey: 'dailyLimitRetryTimerMovies',
+                            retryAttemptsKey: 'dailyLimitRetryAttemptsMovies',
+                            rowIdKey: 'dailyLimitRowIdMovies',
+                            rowIdRamKey: 'dailyLimitRowIdRamMovies',
+                            rowIdResyncKey: 'dailyLimitRowIdResyncIntervalIdMovies',
+                            dateKey: 'dailyLimitDateMovies',
+                            dayStartKey: 'dailyLimitDayStartUtcMsMovies'
+                        };
+                    }
+                    return {
+                        kind: 'mangas',
+                        suffix: '',
+                        tableName: 'dailyLimitDownloadsMangas',
+                        dailyDownloadsKey: 'dailyDownloads',
+                        dailyReadyKey: 'dailyReady',
+                        pendingKey: 'pendingDailyIncrements',
+                        retryTimerKey: 'dailyLimitRetryTimer',
+                        retryAttemptsKey: 'dailyLimitRetryAttempts',
+                        rowIdKey: 'dailyLimitRowId',
+                        rowIdRamKey: 'dailyLimitRowIdRam',
+                        rowIdResyncKey: 'dailyLimitRowIdResyncIntervalId',
+                        dateKey: 'dailyLimitDate',
+                        dayStartKey: 'dailyLimitDayStartUtcMs'
+                    };
+                },
+
+                getDailyLimitStorageKeyFor(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    if (cfg.kind === 'mangas') {
+                        return `dcrefbot-dailyLimitRowId:${String(this.userId)}`;
+                    }
+                    return `dcrefbot-dailyLimitRowId:${String(this.userId)}:${cfg.kind}`;
                 },
 
                 isUuidLike(value) {
                     return typeof value === 'string' && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(value);
                 },
 
-                getStoredDailyLimitRowId() {
+                getStoredDailyLimitRowId(kind = 'mangas') {
                     try {
-                        const stored = localStorage.getItem(this.getDailyLimitStorageKey());
+                        const stored = localStorage.getItem(this.getDailyLimitStorageKeyFor(kind));
                         if (this.isUuidLike(stored)) {
                             return stored;
                         }
                         if (stored) {
-                            localStorage.removeItem(this.getDailyLimitStorageKey());
+                            localStorage.removeItem(this.getDailyLimitStorageKeyFor(kind));
                         }
                     } catch (e) {}
                     return null;
                 },
 
-                setStoredDailyLimitRowId(id) {
+                setStoredDailyLimitRowId(id, kind = 'mangas') {
                     if (!this.isUuidLike(id)) return;
-                    this.dailyLimitRowId = id;
-                    this.dailyLimitRowIdRam = id;
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    this[cfg.rowIdKey] = id;
+                    this[cfg.rowIdRamKey] = id;
                     try {
-                        localStorage.setItem(this.getDailyLimitStorageKey(), id);
+                        localStorage.setItem(this.getDailyLimitStorageKeyFor(kind), id);
                     } catch (e) {}
                 },
 
+                startDailyLimitRowIdResyncAll() {
+                    this.startDailyLimitRowIdResyncFor('mangas');
+                    this.startDailyLimitRowIdResyncFor('episodes');
+                    this.startDailyLimitRowIdResyncFor('movies');
+                },
+
                 startDailyLimitRowIdResync() {
-                    if (this.dailyLimitRowIdResyncIntervalId) return;
+                    this.startDailyLimitRowIdResyncAll();
+                },
+
+                startDailyLimitRowIdResyncFor(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    if (this[cfg.rowIdResyncKey]) return;
 
                     const existing =
-                        (this.isUuidLike(this.dailyLimitRowId) && this.dailyLimitRowId) ||
-                        (this.isUuidLike(this.dailyLimitRowIdRam) && this.dailyLimitRowIdRam) ||
-                        this.getStoredDailyLimitRowId();
+                        (this.isUuidLike(this[cfg.rowIdKey]) && this[cfg.rowIdKey]) ||
+                        (this.isUuidLike(this[cfg.rowIdRamKey]) && this[cfg.rowIdRamKey]) ||
+                        this.getStoredDailyLimitRowId(kind);
 
                     if (existing) {
-                        this.dailyLimitRowId = existing;
-                        this.dailyLimitRowIdRam = existing;
+                        this[cfg.rowIdKey] = existing;
+                        this[cfg.rowIdRamKey] = existing;
                     } else {
-                        const created = this.ensureDailyLimitRowId();
+                        const created = this.ensureDailyLimitRowId(kind);
                         if (this.isUuidLike(created)) {
-                            this.dailyLimitRowId = created;
-                            this.dailyLimitRowIdRam = created;
+                            this[cfg.rowIdKey] = created;
+                            this[cfg.rowIdRamKey] = created;
                         }
                     }
 
-                    this.dailyLimitRowIdResyncIntervalId = setInterval(() => {
-                        const ram = this.dailyLimitRowIdRam;
+                    this[cfg.rowIdResyncKey] = setInterval(() => {
+                        const ram = this[cfg.rowIdRamKey];
                         if (!this.isUuidLike(ram)) return;
                         try {
-                            const key = this.getDailyLimitStorageKey();
+                            const key = this.getDailyLimitStorageKeyFor(kind);
                             const stored = localStorage.getItem(key);
                             if (stored !== ram) {
                                 localStorage.setItem(key, ram);
@@ -15253,74 +15910,104 @@
                     }, 500);
                 },
 
-                stopDailyLimitRowIdResync() {
-                    if (!this.dailyLimitRowIdResyncIntervalId) return;
-                    clearInterval(this.dailyLimitRowIdResyncIntervalId);
-                    this.dailyLimitRowIdResyncIntervalId = null;
+                stopDailyLimitRowIdResyncAll() {
+                    this.stopDailyLimitRowIdResyncFor('mangas');
+                    this.stopDailyLimitRowIdResyncFor('episodes');
+                    this.stopDailyLimitRowIdResyncFor('movies');
                 },
 
-                syncDailyLimitLocalDay() {
+                stopDailyLimitRowIdResync() {
+                    this.stopDailyLimitRowIdResyncAll();
+                },
+
+                stopDailyLimitRowIdResyncFor(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    const id = this[cfg.rowIdResyncKey];
+                    if (!id) return;
+                    clearInterval(id);
+                    this[cfg.rowIdResyncKey] = null;
+                },
+
+                syncDailyLimitLocalDay(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
                     const today = this.getTrustedTodayISO();
                     const dayStartUtcMs = this.getTrustedDayStartUtcMs();
-                    const isNewDay = this.dailyLimitDate !== today;
+                    const isNewDay = this[cfg.dateKey] !== today;
                     if (isNewDay) {
-                        this.dailyDownloads = 0;
-                        this.dailyLimitDate = today;
-                        this.dailyLimitDayStartUtcMs = dayStartUtcMs;
+                        this[cfg.dailyDownloadsKey] = 0;
+                        this[cfg.dateKey] = today;
+                        this[cfg.dayStartKey] = dayStartUtcMs;
                         this.trustedToday = today;
                     }
                     return { today, dayStartUtcMs, isNewDay };
                 },
                 
-                getDailyLimitId() {
-                    if (this.isUuidLike(this.dailyLimitRowId)) {
-                        if (this.dailyLimitRowIdRam !== this.dailyLimitRowId) {
-                            this.dailyLimitRowIdRam = this.dailyLimitRowId;
+                getDailyLimitId(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    if (this.isUuidLike(this[cfg.rowIdKey])) {
+                        if (this[cfg.rowIdRamKey] !== this[cfg.rowIdKey]) {
+                            this[cfg.rowIdRamKey] = this[cfg.rowIdKey];
                         }
-                        return this.dailyLimitRowId;
+                        return this[cfg.rowIdKey];
                     }
 
-                    const stored = this.getStoredDailyLimitRowId();
+                    const stored = this.getStoredDailyLimitRowId(kind);
                     if (stored) {
-                        this.dailyLimitRowId = stored;
-                        this.dailyLimitRowIdRam = stored;
+                        this[cfg.rowIdKey] = stored;
+                        this[cfg.rowIdRamKey] = stored;
                         return stored;
                     }
 
                     return null;
                 },
 
-                ensureDailyLimitRowId() {
-                    const existing = this.getDailyLimitId();
+                ensureDailyLimitRowId(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    const existing = this.getDailyLimitId(kind);
                     if (existing) return existing;
 
                     const instantDB = window.InstantDB || window.instantdb;
                     const newId = instantDB?.id ? instantDB.id() : crypto.randomUUID();
-                    this.dailyLimitRowId = newId;
-                    this.setStoredDailyLimitRowId(newId);
+                    this[cfg.rowIdKey] = newId;
+                    this.setStoredDailyLimitRowId(newId, kind);
                     return newId;
                 },
                 
                 async resetDailyLimitForNewDay() {
-                    if (!this._db) return;
+                    await this.resetDailyLimitForNewDayFor('mangas');
+                    await this.resetDailyLimitForNewDayFor('episodes');
+                    await this.resetDailyLimitForNewDayFor('movies');
+                },
 
-                    const { today, dayStartUtcMs } = this.syncDailyLimitLocalDay();
-                    this.pendingDailyIncrements = 0;
-                    const id = this.getDailyLimitId();
+                async resetDailyLimitForNewDayFor(kind = 'mangas') {
+                    if (!this._db) return;
+                    const cfg = this.getDailyLimitKindConfig(kind);
+
+                    const { today, dayStartUtcMs } = this.syncDailyLimitLocalDay(kind);
+                    this[cfg.pendingKey] = 0;
+                    const id = this.getDailyLimitId(kind);
                     if (!id) return;
 
                     try {
+                        const txTable = this._db?.tx?.[cfg.tableName];
+                        if (!txTable) {
+                            this[cfg.dailyDownloadsKey] = 0;
+                            this[cfg.dateKey] = today;
+                            this[cfg.dayStartKey] = dayStartUtcMs;
+                            this[cfg.dailyReadyKey] = true;
+                            return;
+                        }
                         await this._db.transact(
-                            this._db.tx.dailyLimitDownloadsMangas[id].update({
+                            txTable[id].update({
                                 userId: this.userId,
                                 date: today,
                                 dayStartUtcMs,
                                 count: 0
                             })
                         );
-                        this.dailyDownloads = 0;
-                        this.dailyLimitDate = today;
-                        this.dailyLimitDayStartUtcMs = dayStartUtcMs;
+                        this[cfg.dailyDownloadsKey] = 0;
+                        this[cfg.dateKey] = today;
+                        this[cfg.dayStartKey] = dayStartUtcMs;
                     } catch (e) {
                         console.error('DB Reset Error', e);
                     }
@@ -15344,7 +16031,9 @@
                         if (instantDB && instantDB.init) {
                             console.log('InstantDB SDK loaded, initializing...');
                             this._db = markRaw(instantDB.init({ appId: APP_ID }));
-                            this.subscribeToDailyDownloads();
+                            this.subscribeToDailyDownloads('mangas');
+                            this.subscribeToDailyDownloads('episodes');
+                            this.subscribeToDailyDownloads('movies');
 
                             // Update timer for reset every second and check for date change
                             setInterval(() => {
@@ -15382,7 +16071,7 @@
                     initialize();
                 },
 
-                subscribeToDailyDownloads() {
+                subscribeToDailyDownloads(kind = 'mangas') {
                     // Block subscription if this tab is not the owner
                     if (!this.isTabOwner) {
                         console.warn('InstantDB subscription blocked: Tab is not the owner');
@@ -15390,37 +16079,35 @@
                     }
                     
                     if (!this._db) return;
+
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    if (!this.unsubscribeDaily || typeof this.unsubscribeDaily !== 'object') {
+                        this.unsubscribeDaily = { mangas: null, episodes: null, movies: null };
+                    }
                     
                     // Unsubscribe previous if exists
-                    if (this.unsubscribeDaily) {
-                        this.unsubscribeDaily();
-                        this.unsubscribeDaily = null;
+                    if (this.unsubscribeDaily[cfg.kind]) {
+                        this.unsubscribeDaily[cfg.kind]();
+                        this.unsubscribeDaily[cfg.kind] = null;
                     }
 
                     const today = this.getTrustedTodayISO();
                     this.trustedToday = today; // Track current subscription date
 
-                    const query = { 
-                        dailyLimitDownloadsMangas: { 
-                            $: { 
-                                where: { 
-                                    userId: this.userId
-                                } 
-                            } 
-                        } 
-                    };
+                    const query = { [cfg.tableName]: { $: { where: { userId: this.userId } } } };
 
                     try {
                         const subscribeFunc = this._db.subscribeQuery || this._db.subscribe;
                         if (typeof subscribeFunc === 'function') {
-                            this.unsubscribeDaily = subscribeFunc.call(this._db, query, (resp) => {
+                            this.unsubscribeDaily[cfg.kind] = subscribeFunc.call(this._db, query, (resp) => {
                                 if (resp.error) {
                                     console.error('InstantDB Error:', resp.error);
                                     return;
                                 }
                                 const data = resp.data;
-                                if (data && data.dailyLimitDownloadsMangas && data.dailyLimitDownloadsMangas.length > 0) {
-                                    const records = data.dailyLimitDownloadsMangas;
+                                const tableData = data ? data[cfg.tableName] : null;
+                                if (Array.isArray(tableData) && tableData.length > 0) {
+                                    const records = tableData;
                                     const record = records
                                         .slice()
                                         .sort((a, b) => {
@@ -15430,30 +16117,30 @@
                                         })[0];
 
                                     if (record?.id) {
-                                        this.dailyLimitRowId = record.id;
-                                        this.setStoredDailyLimitRowId(record.id);
+                                        this[cfg.rowIdKey] = record.id;
+                                        this.setStoredDailyLimitRowId(record.id, kind);
                                     }
 
-                                    const { today, dayStartUtcMs } = this.syncDailyLimitLocalDay();
+                                    const { today, dayStartUtcMs } = this.syncDailyLimitLocalDay(kind);
                                     const recordDayStart = Number.isFinite(record?.dayStartUtcMs) ? record.dayStartUtcMs : null;
                                     const recordDay = recordDayStart != null
                                         ? new Date(recordDayStart).toISOString().split('T')[0]
                                         : (record?.date || null);
 
                                     if (recordDay === today) {
-                                        this.dailyDownloads = Math.min(this.maxDailyDownloads, record?.count || 0);
-                                        this.dailyLimitDate = today;
-                                        this.dailyLimitDayStartUtcMs = recordDayStart != null ? recordDayStart : dayStartUtcMs;
+                                        this[cfg.dailyDownloadsKey] = Math.min(this.maxDailyDownloads, record?.count || 0);
+                                        this[cfg.dateKey] = today;
+                                        this[cfg.dayStartKey] = recordDayStart != null ? recordDayStart : dayStartUtcMs;
                                     } else {
-                                        this.dailyDownloads = 0;
-                                        this.dailyLimitDate = today;
-                                        this.dailyLimitDayStartUtcMs = dayStartUtcMs;
+                                        this[cfg.dailyDownloadsKey] = 0;
+                                        this[cfg.dateKey] = today;
+                                        this[cfg.dayStartKey] = dayStartUtcMs;
                                     }
-                                    this.dailyReady = true;
+                                    this[cfg.dailyReadyKey] = true;
 
                                     if (records.length > 1 && record?.id) {
                                         try {
-                                            const txTable = this._db?.tx?.dailyLimitDownloadsMangas;
+                                            const txTable = this._db?.tx?.[cfg.tableName];
                                             if (txTable) {
                                                 const deletes = records
                                                     .filter(r => r?.id && r.id !== record.id)
@@ -15472,11 +16159,11 @@
                                         } catch (e) {}
                                     }
                                 } else {
-                                    this.syncDailyLimitLocalDay();
-                                    this.dailyDownloads = 0;
+                                    this.syncDailyLimitLocalDay(kind);
+                                    this[cfg.dailyDownloadsKey] = 0;
                                     // Do NOT reset dailyLimitRowId here, as we might have just generated it 
                                     // and it hasn't synced yet.
-                                    this.dailyReady = true;
+                                    this[cfg.dailyReadyKey] = true;
                                 }
                             });
                         } else {
@@ -15487,56 +16174,95 @@
                     }
                 },
 
-                async checkDailyLimit() {
-                    this.syncDailyLimitLocalDay();
+                async checkDailyLimit(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    this.syncDailyLimitLocalDay(kind);
                     // Check local state first for immediate feedback
-                    if ((this.dailyDownloads + this.pendingDailyIncrements) >= this.maxDailyDownloads) {
+                    if ((this[cfg.dailyDownloadsKey] + this[cfg.pendingKey]) >= this.maxDailyDownloads) {
                         return false;
                     }
                     return true;
                 },
 
-                async incrementDailyLimit(count = 1) {
-                    this.syncDailyLimitLocalDay();
-                    this.pendingDailyIncrements += count;
-                    this.flushDailyLimitPending();
+                effectiveDailyDownloadsFor(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    return Math.min(this.safeMaxDailyDownloads, this[cfg.dailyDownloadsKey] || 0);
+                },
+
+                effectiveRemainingDownloadsFor(kind = 'mangas') {
+                    return Math.max(0, this.safeMaxDailyDownloads - this.effectiveDailyDownloadsFor(kind));
+                },
+
+                remainingDownloadsFor(kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    return Math.max(0, this.safeMaxDailyDownloads - ((this[cfg.dailyDownloadsKey] || 0) + (this[cfg.pendingKey] || 0)));
+                },
+
+                remainingDownloadsLabelFor(kind = 'mangas') {
+                    const n = this.remainingDownloadsFor(kind);
+                    if (kind === 'episodes') {
+                        if (n === 1) return 'حلقة';
+                        if (n === 2) return 'حلقتين';
+                        if (n >= 3 && n <= 10) return 'حلقات';
+                        return 'حلقة';
+                    }
+                    if (kind === 'movies') {
+                        if (n === 1) return 'فيلم';
+                        if (n === 2) return 'فيلمين';
+                        if (n >= 3 && n <= 10) return 'أفلام';
+                        return 'فيلم';
+                    }
+                    return this.remainingDownloadsLabel;
+                },
+
+                async incrementDailyLimit(count = 1, kind = 'mangas') {
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    this.syncDailyLimitLocalDay(kind);
+                    this[cfg.pendingKey] += count;
+                    this.flushDailyLimitPending(kind);
                     return true;
                 },
 
-                async flushDailyLimitPending() {
+                async flushDailyLimitPending(kind = 'mangas') {
                     if (!this._db) return false;
-                    if (this.pendingDailyIncrements <= 0) return true;
+                    const cfg = this.getDailyLimitKindConfig(kind);
+                    if (this[cfg.pendingKey] <= 0) return true;
 
-                    const { today, dayStartUtcMs, isNewDay } = this.syncDailyLimitLocalDay();
-                    const id = this.ensureDailyLimitRowId();
-                    const baseCount = isNewDay ? 0 : this.dailyDownloads;
-                    const targetCount = Math.min(this.maxDailyDownloads, baseCount + this.pendingDailyIncrements);
+                    const { today, dayStartUtcMs, isNewDay } = this.syncDailyLimitLocalDay(kind);
+                    const id = this.ensureDailyLimitRowId(kind);
+                    const baseCount = isNewDay ? 0 : this[cfg.dailyDownloadsKey];
+                    const targetCount = Math.min(this.maxDailyDownloads, baseCount + this[cfg.pendingKey]);
                     
                     try {
+                        const txTable = this._db?.tx?.[cfg.tableName];
+                        if (!txTable) {
+                            this[cfg.pendingKey] = 0;
+                            return true;
+                        }
                         await this._db.transact(
-                            this._db.tx.dailyLimitDownloadsMangas[id].update({
+                            txTable[id].update({
                                 userId: this.userId,
                                 date: today,
                                 dayStartUtcMs,
                                 count: targetCount
                             })
                         );
-                        this.pendingDailyIncrements = 0;
-                        this.dailyLimitRetryAttempts = 0;
-                        if (this.dailyLimitRetryTimer) {
-                            clearTimeout(this.dailyLimitRetryTimer);
-                            this.dailyLimitRetryTimer = null;
+                        this[cfg.pendingKey] = 0;
+                        this[cfg.retryAttemptsKey] = 0;
+                        if (this[cfg.retryTimerKey]) {
+                            clearTimeout(this[cfg.retryTimerKey]);
+                            this[cfg.retryTimerKey] = null;
                         }
                         return true;
                     } catch (e) {
                         console.error('DB Update Error', e);
                         // retry with backoff, up to 5 attempts
-                        this.dailyLimitRetryAttempts = Math.min(this.dailyLimitRetryAttempts + 1, 5);
-                        const delay = Math.min(1000 * this.dailyLimitRetryAttempts, 5000);
-                        if (this.dailyLimitRetryTimer) {
-                            clearTimeout(this.dailyLimitRetryTimer);
+                        this[cfg.retryAttemptsKey] = Math.min((this[cfg.retryAttemptsKey] || 0) + 1, 5);
+                        const delay = Math.min(1000 * this[cfg.retryAttemptsKey], 5000);
+                        if (this[cfg.retryTimerKey]) {
+                            clearTimeout(this[cfg.retryTimerKey]);
                         }
-                        this.dailyLimitRetryTimer = setTimeout(() => this.flushDailyLimitPending(), delay);
+                        this[cfg.retryTimerKey] = setTimeout(() => this.flushDailyLimitPending(kind), delay);
                         return false;
                     }
                 },
@@ -19715,7 +20441,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+	
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -20110,13 +20836,18 @@
 
                 closeFastingWindow() {
                     this.dismissSuccessHint();
-                    if (!this.isMangaQueueRunning) {
-                        this.stopMangaQueue();
-                        document.body.style.overflow = '';
-                        this.showFastingWindow = false;
-                        this.mangaStartNumber = null;
-                        this.mangaEndNumber = null;
-                    }
+                    if (this.isAnyQueueRunning) return;
+                    this.stopEpisodeQueue();
+                    this.stopMovieQueue();
+                    this.stopMangaQueue();
+                    document.body.style.overflow = '';
+                    this.showFastingWindow = false;
+                    this.episodeStartNumber = null;
+                    this.episodeEndNumber = null;
+                    this.movieStartNumber = null;
+                    this.movieEndNumber = null;
+                    this.mangaStartNumber = null;
+                    this.mangaEndNumber = null;
                 },
 
                 formatTime(seconds) {
@@ -20796,6 +21527,693 @@
                     this.stopMangaQueue();
                     this.mangaStartNumber = null;
                     this.mangaEndNumber = null;
+                },
+
+                selectBulkVideoCandidate(episode, preferences) {
+                    const prefs = preferences || {};
+                    const rawVideos = Array.isArray(episode?.EpisodeVideosIDs) ? episode.EpisodeVideosIDs : [];
+                    const candidates = rawVideos
+                        .map((video, index) => ({ ...video, originalIndex: index }))
+                        .filter(video => {
+                            if (!video?.VideoID) return false;
+                            if (prefs.category && prefs.category !== 'any' && String(video.EpisodeCategory || '') !== String(prefs.category)) return false;
+                            if (prefs.remastered && prefs.remastered !== 'any' && String(video.EpisodeRemastered || '') !== String(prefs.remastered)) return false;
+                            if (prefs.translator && String(prefs.translator).trim()) {
+                                const needle = String(prefs.translator).trim().toLowerCase();
+                                const hay = String(video.EpisodeTranslator || '').toLowerCase();
+                                if (!hay.includes(needle)) return false;
+                            }
+                            if (prefs.maxSizeMb && String(prefs.maxSizeMb).trim()) {
+                                const maxMb = parseFloat(this.normalizeNumericString(prefs.maxSizeMb));
+                                if (Number.isFinite(maxMb) && maxMb > 0) {
+                                    const maxBytes = maxMb * 1024 * 1024;
+                                    const size = Number(video.Size) || 0;
+                                    if (size > maxBytes) return false;
+                                }
+                            }
+                            return true;
+                        });
+
+                    if (!candidates.length) return null;
+
+                    const mode = prefs.resolutionMode || 'best';
+                    const target = prefs.resolutionValue && String(prefs.resolutionValue).trim()
+                        ? parseInt(this.normalizeNumericString(prefs.resolutionValue), 10)
+                        : null;
+
+                    const scored = candidates.map(video => {
+                        const res = parseInt(video.Resolution, 10) || 0;
+                        const sizeBytes = Number(video.Size) || 0;
+                        const sizeMb = sizeBytes > 0 ? sizeBytes / (1024 * 1024) : 0;
+
+                        let score = 0;
+                        if (mode === 'best') {
+                            score += res / 60;
+                        } else if (Number.isFinite(target) && target > 0) {
+                            if (mode === 'closest') {
+                                score += 30 - (Math.abs(res - target) / 35);
+                            } else if (mode === 'atMost') {
+                                score += res <= target ? (25 + res / 70) : (-25 - (res - target) / 25);
+                            } else if (mode === 'atLeast') {
+                                score += res >= target ? (25 + res / 70) : (-25 - (target - res) / 25);
+                            } else {
+                                score += res / 60;
+                            }
+                        } else {
+                            score += res / 60;
+                        }
+
+                        score -= Math.log1p(sizeMb) / 3;
+
+                        const remastered = String(video.EpisodeRemastered || '');
+                        if (remastered === 'TP') {
+                            score += (prefs.remastered === 'TP') ? 4 : 1;
+                        }
+
+                        return { video, score };
+                    }).sort((a, b) => b.score - a.score);
+
+                    const top = scored.slice(0, Math.min(5, scored.length));
+                    const weights = top.map(x => {
+                        const clamped = Math.max(-30, Math.min(30, x.score));
+                        return Math.exp(clamped / 6);
+                    });
+                    const total = weights.reduce((a, b) => a + b, 0);
+                    let roll = Math.random() * total;
+                    for (let i = 0; i < top.length; i++) {
+                        roll -= weights[i];
+                        if (roll <= 0) return top[i];
+                    }
+                    return top[0];
+                },
+
+                buildBulkEpisodeCaption(episode, video) {
+                    const episodeNumberRaw = String(episode?.EpisodeNumber ?? '');
+                    let episodeNumber = episodeNumberRaw;
+                    let label = 'رقم الحلقة:';
+
+                    if (episodeNumber.includes('خاصة بالفيلم')) {
+                        label = 'رقم الحلقة الخاصة:';
+                        episodeNumber = episodeNumber.replace('خاصة بالفيلم', '').trim();
+                    } else if (episodeNumber.includes('الفيلم')) {
+                        label = 'رقم الفيلم:';
+                        episodeNumber = episodeNumber.replace('الفيلم', '').trim();
+                    } else if (episodeNumber.includes('قصة قصيرة')) {
+                        label = 'رقم القصة القصيرة:';
+                        episodeNumber = episodeNumber.replace('قصة قصيرة', '').trim();
+                    } else if (episodeNumber.includes('أوفا3')) {
+                        label = 'رقم الأوفا الثالثة:';
+                        episodeNumber = episodeNumber.replace('أوفا3', '').trim();
+                    } else if (episodeNumber.includes('أوفا2')) {
+                        label = 'رقم الأوفا الثانية:';
+                        episodeNumber = episodeNumber.replace('أوفا2', '').trim();
+                    } else if (episodeNumber.includes('أوفا')) {
+                        label = 'رقم الأوفا:';
+                        episodeNumber = episodeNumber.replace('أوفا', '').trim();
+                    } else if (episodeNumber.includes('إصدار خاص')) {
+                        label = 'رقم الإصدار الخاص:';
+                        episodeNumber = episodeNumber.replace('إصدار خاص', '').trim();
+                    } else if (episodeNumber.includes('ماجيك كايتو')) {
+                        episodeNumber = episodeNumber.replace('ماجيك كايتو1', '').trim();
+                        episodeNumber = episodeNumber.replace('ماجيك كايتو2', '').trim();
+                    } else if (episodeNumber.includes('يوميات زيرو')) {
+                        episodeNumber = episodeNumber.replace('يوميات زيرو', '').trim();
+                    } else if (episodeNumber.includes('المجرم هانزاوا')) {
+                        episodeNumber = episodeNumber.replace('المجرم هانزاوا', '').trim();
+                    }
+
+                    const escapeMarkdown = (text) => {
+                        return String(text || '')
+                            .replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&')
+                            .replace(/\n/g, '\\n');
+                    };
+
+                    let details = '';
+                    if (video?.IntroductionTime) details += `\n*المقدمة:* ${escapeMarkdown(video.IntroductionTime)}`;
+                    if (video?.StartStoryTime) details += `\n*بداية القصة:* ${escapeMarkdown(video.StartStoryTime)}`;
+                    if (video?.EpisodeSuspenseTime) details += `\n*تشويق الحلقة:* ${escapeMarkdown(video.EpisodeSuspenseTime)}`;
+                    if (video?.StartSongTime) details += `\n*أغنية البداية:* ${escapeMarkdown(video.StartSongTime)}`;
+                    if (video?.ChapterOneTime) details += `\n*الفصل الأول:* ${escapeMarkdown(video.ChapterOneTime)}`;
+                    if (video?.ChapterTwoTime) details += `\n*الفصل الثاني:* ${escapeMarkdown(video.ChapterTwoTime)}`;
+                    if (video?.EndSongTime) details += `\n*أغنية النهاية:* ${escapeMarkdown(video.EndSongTime)}`;
+                    if (video?.ChapterThreeTime) details += `\n*الفصل الثالث:* ${escapeMarkdown(video.ChapterThreeTime)}`;
+                    if (video?.NextEpisodeTeaserTime) details += `\n*تشويق الحلقة القادمة:* ${escapeMarkdown(video.NextEpisodeTeaserTime)}`;
+                    if (video?.NextEpisodeHintTime) details += `\n*تلميح الحلقة القادمة:* ${escapeMarkdown(video.NextEpisodeHintTime)}`;
+
+                    const resolution = video?.Resolution ?? '';
+                    const size = video?.Size ?? 0;
+                    let caption = `*${label} ${episodeNumber}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(size, true)}*`;
+                    if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
+                    return caption;
+                },
+
+                startEpisodeQueue() {
+                    if (!this.isTabOwner) {
+                        this.tabLockModal = true;
+                        return;
+                    }
+                    if (this.isRetryAllFailedRunning || this.isRetryQueueRunning) {
+                        return;
+                    }
+                    if (this.episodeStartNumber === null || this.episodeEndNumber === null || this.episodeStartNumber > this.episodeEndNumber) {
+                        return;
+                    }
+
+                    const all = this.groupedEpisodes.flatMap(group => group.items);
+                    const inRange = all.filter(ep => {
+                        const num = parseFloat(ep?.EpisodeNumber);
+                        return Number.isFinite(num) && num >= this.episodeStartNumber && num <= this.episodeEndNumber;
+                    }).sort((a, b) => parseFloat(a.EpisodeNumber) - parseFloat(b.EpisodeNumber));
+
+                    if (!inRange.length) {
+                        alert('لا توجد حلقات في النطاق المحدد');
+                        return;
+                    }
+
+                    const prefs = this.bulkSendPreferences?.episodes || {};
+                    const builtQueue = inRange.map(ep => {
+                        const pick = this.selectBulkVideoCandidate(ep, prefs);
+                        return {
+                            number: ep?.EpisodeNumber ?? null,
+                            episode: ep,
+                            pick: pick ? pick.video : null,
+                            pickScore: pick ? pick.score : null,
+                            error: pick ? null : 'لا يوجد فيديو مطابق للفلاتر'
+                        };
+                    });
+
+                    const needed = builtQueue.filter(x => x.pick).length;
+                    if (needed > this.remainingDownloadsFor('episodes')) {
+                        this.limitModalCategory = 'episodes';
+                        this.showLimitModal = true;
+                        return;
+                    }
+
+                    this.episodeQueue = builtQueue;
+                    this.episodeQueueIndex = 0;
+                    this.isEpisodeQueueRunning = true;
+                    this.isEpisodeQueuePaused = false;
+                    this.isEpisodeQueueSending = false;
+                    this.isEpisodeQueuePauseRequested = false;
+                    this.episodeQueueStartTime = Date.now();
+                    this.episodeQueuePausedTime = 0;
+                    this.episodeQueueTotalPausedTime = 0;
+                    this.episodeQueueCurrent = { number: null, status: null, error: null };
+                    this.episodeSentLog = [];
+                    this.episodeFailedLog = [];
+                    this.episodeQueueStats = {
+                        total: this.episodeQueue.length,
+                        sent: 0,
+                        failed: 0,
+                        waiting: this.episodeQueue.length,
+                        elapsedTime: 0,
+                        remainingTime: this.episodeQueue.length * (this.fastingStatusClearTimeout / 1000)
+                    };
+
+                    if (this.episodeQueueTimeoutId !== null) {
+                        clearTimeout(this.episodeQueueTimeoutId);
+                        this.episodeQueueTimeoutId = null;
+                    }
+                    this.episodeQueueProcessId = null;
+
+                    this.episodeQueueInterval = setInterval(() => {
+                        if (this.isEpisodeQueueRunning && !this.isEpisodeQueuePaused) {
+                            const now = Date.now();
+                            const elapsed = Math.floor((now - this.episodeQueueStartTime - this.episodeQueueTotalPausedTime) / 1000);
+                            const remainingItems = this.episodeQueueStats.waiting;
+                            const estimatedTimePerItem = this.fastingStatusClearTimeout / 1000;
+                            const remaining = remainingItems > 0 ? Math.max(0, remainingItems * estimatedTimePerItem) : 0;
+                            this.episodeQueueStats.elapsedTime = elapsed;
+                            this.episodeQueueStats.remainingTime = remaining;
+                        } else if (!this.isEpisodeQueueRunning && this.episodeQueueStats.total > 0) {
+                            if (this.episodeQueueStats.waiting === 0) {
+                                this.episodeQueueStats.remainingTime = 0;
+                            }
+                        }
+                    }, 1000);
+
+                    this.processEpisodeQueue();
+                },
+
+                async processEpisodeQueue() {
+                    const currentProcessId = Date.now() + Math.random();
+                    this.episodeQueueProcessId = currentProcessId;
+
+                    const processNext = async (processId) => {
+                        if (this.episodeQueueProcessId !== processId) return;
+
+                        if (!this.isEpisodeQueueRunning || this.episodeQueueIndex >= this.episodeQueue.length) {
+                            if (this.episodeQueueIndex >= this.episodeQueue.length) {
+                                this.finishEpisodeQueue();
+                            }
+                            return;
+                        }
+
+                        if (this.isEpisodeQueuePauseRequested && !this.isEpisodeQueueSending) {
+                            this.isEpisodeQueuePaused = true;
+                            this.isEpisodeQueuePauseRequested = false;
+                            this.episodeQueuePausedTime = Date.now();
+                            this.episodeQueueTimeoutId = setTimeout(() => processNext(processId), 100);
+                            return;
+                        }
+
+                        if (this.isEpisodeQueuePaused && !this.isEpisodeQueuePauseRequested) {
+                            this.episodeQueueTimeoutId = setTimeout(() => processNext(processId), 100);
+                            return;
+                        }
+
+                        this.isEpisodeQueueSending = true;
+                        const currentIndex = this.episodeQueueIndex;
+                        const entry = this.episodeQueue[currentIndex];
+
+                        this.episodeQueueCurrent.number = entry?.number ?? null;
+                        this.episodeQueueCurrent.status = 'sending';
+                        this.episodeQueueCurrent.error = null;
+                        this.episodeQueueStats.waiting = this.episodeQueue.length - currentIndex - 1;
+
+                        try {
+                            if (!entry?.pick?.VideoID) {
+                                throw new Error(entry?.error || 'لا يوجد فيديو مناسب');
+                            }
+                            const canDownload = await this.checkDailyLimit('episodes');
+                            if (!canDownload) {
+                                throw new Error(`Daily download limit of ${this.maxDailyDownloads} reached.`);
+                            }
+
+                            const caption = this.buildBulkEpisodeCaption(entry.episode, entry.pick);
+                            const replyMarkup = this.buildEpisodePartsReplyMarkup(entry.episode);
+                            await this.sendVideoResponse(entry.pick.VideoID, caption, replyMarkup);
+
+                            if (this.episodeQueueIndex === currentIndex) {
+                                await this.incrementDailyLimit(1, 'episodes');
+                                this.episodeQueueCurrent.status = 'success';
+                                this.showSuccessHint('تم إرسال الحلقة للخاص');
+                                this.episodeSentLog.push({
+                                    number: entry?.number ?? null,
+                                    videoId: entry.pick.VideoID,
+                                    resolution: entry.pick.Resolution,
+                                    size: entry.pick.Size,
+                                    sentAt: Date.now()
+                                });
+                                this.episodeQueueStats.sent++;
+                                this.episodeQueueIndex++;
+                                this.episodeQueueStats.waiting = this.episodeQueue.length - this.episodeQueueIndex;
+                                if (this.episodeQueueStats.waiting === 0) {
+                                    this.episodeQueueStats.remainingTime = 0;
+                                }
+                            }
+                        } catch (error) {
+                            if (this.episodeQueueIndex === currentIndex) {
+                                this.episodeQueueCurrent.status = 'failed';
+                                this.episodeQueueCurrent.error = String(error?.message ?? error ?? 'Unknown error');
+                                this.episodeFailedLog.push({
+                                    number: entry?.number ?? null,
+                                    videoId: entry?.pick?.VideoID ?? null,
+                                    resolution: entry?.pick?.Resolution ?? null,
+                                    size: entry?.pick?.Size ?? null,
+                                    error: this.episodeQueueCurrent.error,
+                                    sentAt: Date.now()
+                                });
+                                this.episodeQueueStats.failed++;
+                                this.episodeQueueIndex++;
+                                this.episodeQueueStats.waiting = this.episodeQueue.length - this.episodeQueueIndex;
+                                if (this.episodeQueueStats.waiting === 0) {
+                                    this.episodeQueueStats.remainingTime = 0;
+                                }
+                            }
+                        }
+
+                        this.isEpisodeQueueSending = false;
+
+                        if (this.isEpisodeQueuePauseRequested) {
+                            this.isEpisodeQueuePaused = true;
+                            this.isEpisodeQueuePauseRequested = false;
+                            this.episodeQueuePausedTime = Date.now();
+                            return;
+                        }
+
+                        if (this.isEpisodeQueueRunning && this.episodeQueueIndex < this.episodeQueue.length) {
+                            this.episodeQueueTimeoutId = setTimeout(() => processNext(processId), this.fastingStatusClearTimeout);
+                        } else if (this.episodeQueueIndex >= this.episodeQueue.length) {
+                            this.finishEpisodeQueue();
+                        }
+                    };
+
+                    processNext(currentProcessId);
+                },
+
+                toggleEpisodeQueuePause() {
+                    if (this.isEpisodeQueuePaused) {
+                        if (this.episodeQueuePausedTime > 0) {
+                            const pausedDuration = Date.now() - this.episodeQueuePausedTime;
+                            this.episodeQueueTotalPausedTime += pausedDuration;
+                            this.episodeQueuePausedTime = 0;
+                        }
+                        this.isEpisodeQueuePaused = false;
+                        this.isEpisodeQueuePauseRequested = false;
+                    } else {
+                        this.isEpisodeQueuePauseRequested = true;
+                    }
+                },
+
+                stopEpisodeQueue() {
+                    this.isEpisodeQueueRunning = false;
+                    this.isEpisodeQueuePaused = false;
+                    this.isEpisodeQueueSending = false;
+                    this.isEpisodeQueuePauseRequested = false;
+                    this.showStopConfirmation = false;
+                    if (this.episodeQueueInterval) {
+                        clearInterval(this.episodeQueueInterval);
+                        this.episodeQueueInterval = null;
+                    }
+                    if (this.episodeQueueTimeoutId !== null) {
+                        clearTimeout(this.episodeQueueTimeoutId);
+                        this.episodeQueueTimeoutId = null;
+                    }
+                    this.episodeQueueProcessId = null;
+                    this.episodeQueue = [];
+                    this.episodeQueueIndex = 0;
+                    this.episodeQueueStats = {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    };
+                    this.episodeQueueStartTime = null;
+                    this.episodeQueuePausedTime = 0;
+                    this.episodeQueueTotalPausedTime = 0;
+                    this.episodeQueueCurrent = { number: null, status: null, error: null };
+                    this.episodeSentLog = [];
+                    this.episodeFailedLog = [];
+                },
+
+                finishEpisodeQueue() {
+                    this.isEpisodeQueueRunning = false;
+                    this.isEpisodeQueuePaused = false;
+                    this.isEpisodeQueueSending = false;
+                    this.isEpisodeQueuePauseRequested = false;
+                    this.episodeQueueStats.waiting = 0;
+                    this.episodeQueueStats.remainingTime = 0;
+                    if (this.episodeQueueInterval) {
+                        clearInterval(this.episodeQueueInterval);
+                        this.episodeQueueInterval = null;
+                    }
+                    if (this.episodeQueueTimeoutId !== null) {
+                        clearTimeout(this.episodeQueueTimeoutId);
+                        this.episodeQueueTimeoutId = null;
+                    }
+                    this.episodeQueueProcessId = null;
+                },
+
+                resetEpisodeQueue() {
+                    this.dismissSuccessHint();
+                    this.stopEpisodeQueue();
+                    this.episodeStartNumber = null;
+                    this.episodeEndNumber = null;
+                },
+
+                startMovieQueue() {
+                    if (!this.isTabOwner) {
+                        this.tabLockModal = true;
+                        return;
+                    }
+                    if (this.isRetryAllFailedRunning || this.isRetryQueueRunning) {
+                        return;
+                    }
+                    if (this.movieStartNumber === null || this.movieEndNumber === null || this.movieStartNumber > this.movieEndNumber) {
+                        return;
+                    }
+
+                    const all = this.groupedMovies.flatMap(group => group.items);
+                    const inRange = all.filter(ep => {
+                        const num = this.extractMovieNumberValue(ep?.EpisodeNumber);
+                        return Number.isFinite(num) && num >= this.movieStartNumber && num <= this.movieEndNumber;
+                    }).sort((a, b) => {
+                        return this.extractMovieNumberValue(a?.EpisodeNumber) - this.extractMovieNumberValue(b?.EpisodeNumber);
+                    });
+
+                    if (!inRange.length) {
+                        alert('لا توجد أفلام في النطاق المحدد');
+                        return;
+                    }
+
+                    const prefs = this.bulkSendPreferences?.movies || {};
+                    const builtQueue = inRange.map(ep => {
+                        const pick = this.selectBulkVideoCandidate(ep, prefs);
+                        return {
+                            number: ep?.EpisodeNumber ?? null,
+                            episode: ep,
+                            pick: pick ? pick.video : null,
+                            pickScore: pick ? pick.score : null,
+                            error: pick ? null : 'لا يوجد فيديو مطابق للفلاتر'
+                        };
+                    });
+
+                    const needed = builtQueue.filter(x => x.pick).length;
+                    if (needed > this.remainingDownloadsFor('movies')) {
+                        this.limitModalCategory = 'movies';
+                        this.showLimitModal = true;
+                        return;
+                    }
+
+                    this.movieQueue = builtQueue;
+                    this.movieQueueIndex = 0;
+                    this.isMovieQueueRunning = true;
+                    this.isMovieQueuePaused = false;
+                    this.isMovieQueueSending = false;
+                    this.isMovieQueuePauseRequested = false;
+                    this.movieQueueStartTime = Date.now();
+                    this.movieQueuePausedTime = 0;
+                    this.movieQueueTotalPausedTime = 0;
+                    this.movieQueueCurrent = { number: null, status: null, error: null };
+                    this.movieSentLog = [];
+                    this.movieFailedLog = [];
+                    this.movieQueueStats = {
+                        total: this.movieQueue.length,
+                        sent: 0,
+                        failed: 0,
+                        waiting: this.movieQueue.length,
+                        elapsedTime: 0,
+                        remainingTime: this.movieQueue.length * (this.fastingStatusClearTimeout / 1000)
+                    };
+
+                    if (this.movieQueueTimeoutId !== null) {
+                        clearTimeout(this.movieQueueTimeoutId);
+                        this.movieQueueTimeoutId = null;
+                    }
+                    this.movieQueueProcessId = null;
+
+                    this.movieQueueInterval = setInterval(() => {
+                        if (this.isMovieQueueRunning && !this.isMovieQueuePaused) {
+                            const now = Date.now();
+                            const elapsed = Math.floor((now - this.movieQueueStartTime - this.movieQueueTotalPausedTime) / 1000);
+                            const remainingItems = this.movieQueueStats.waiting;
+                            const estimatedTimePerItem = this.fastingStatusClearTimeout / 1000;
+                            const remaining = remainingItems > 0 ? Math.max(0, remainingItems * estimatedTimePerItem) : 0;
+                            this.movieQueueStats.elapsedTime = elapsed;
+                            this.movieQueueStats.remainingTime = remaining;
+                        } else if (!this.isMovieQueueRunning && this.movieQueueStats.total > 0) {
+                            if (this.movieQueueStats.waiting === 0) {
+                                this.movieQueueStats.remainingTime = 0;
+                            }
+                        }
+                    }, 1000);
+
+                    this.processMovieQueue();
+                },
+
+                async processMovieQueue() {
+                    const currentProcessId = Date.now() + Math.random();
+                    this.movieQueueProcessId = currentProcessId;
+
+                    const processNext = async (processId) => {
+                        if (this.movieQueueProcessId !== processId) return;
+
+                        if (!this.isMovieQueueRunning || this.movieQueueIndex >= this.movieQueue.length) {
+                            if (this.movieQueueIndex >= this.movieQueue.length) {
+                                this.finishMovieQueue();
+                            }
+                            return;
+                        }
+
+                        if (this.isMovieQueuePauseRequested && !this.isMovieQueueSending) {
+                            this.isMovieQueuePaused = true;
+                            this.isMovieQueuePauseRequested = false;
+                            this.movieQueuePausedTime = Date.now();
+                            this.movieQueueTimeoutId = setTimeout(() => processNext(processId), 100);
+                            return;
+                        }
+
+                        if (this.isMovieQueuePaused && !this.isMovieQueuePauseRequested) {
+                            this.movieQueueTimeoutId = setTimeout(() => processNext(processId), 100);
+                            return;
+                        }
+
+                        this.isMovieQueueSending = true;
+                        const currentIndex = this.movieQueueIndex;
+                        const entry = this.movieQueue[currentIndex];
+
+                        this.movieQueueCurrent.number = entry?.number ?? null;
+                        this.movieQueueCurrent.status = 'sending';
+                        this.movieQueueCurrent.error = null;
+                        this.movieQueueStats.waiting = this.movieQueue.length - currentIndex - 1;
+
+                        try {
+                            if (!entry?.pick?.VideoID) {
+                                throw new Error(entry?.error || 'لا يوجد فيديو مناسب');
+                            }
+                            const canDownload = await this.checkDailyLimit('movies');
+                            if (!canDownload) {
+                                throw new Error(`Daily download limit of ${this.maxDailyDownloads} reached.`);
+                            }
+
+                            const caption = this.buildBulkEpisodeCaption(entry.episode, entry.pick);
+                            const replyMarkup = this.buildEpisodePartsReplyMarkup(entry.episode);
+                            await this.sendVideoResponse(entry.pick.VideoID, caption, replyMarkup);
+
+                            if (this.movieQueueIndex === currentIndex) {
+                                await this.incrementDailyLimit(1, 'movies');
+                                this.movieQueueCurrent.status = 'success';
+                                this.showSuccessHint('تم إرسال الفيلم للخاص');
+                                this.movieSentLog.push({
+                                    number: entry?.number ?? null,
+                                    videoId: entry.pick.VideoID,
+                                    resolution: entry.pick.Resolution,
+                                    size: entry.pick.Size,
+                                    sentAt: Date.now()
+                                });
+                                this.movieQueueStats.sent++;
+                                this.movieQueueIndex++;
+                                this.movieQueueStats.waiting = this.movieQueue.length - this.movieQueueIndex;
+                                if (this.movieQueueStats.waiting === 0) {
+                                    this.movieQueueStats.remainingTime = 0;
+                                }
+                            }
+                        } catch (error) {
+                            if (this.movieQueueIndex === currentIndex) {
+                                this.movieQueueCurrent.status = 'failed';
+                                this.movieQueueCurrent.error = String(error?.message ?? error ?? 'Unknown error');
+                                this.movieFailedLog.push({
+                                    number: entry?.number ?? null,
+                                    videoId: entry?.pick?.VideoID ?? null,
+                                    resolution: entry?.pick?.Resolution ?? null,
+                                    size: entry?.pick?.Size ?? null,
+                                    error: this.movieQueueCurrent.error,
+                                    sentAt: Date.now()
+                                });
+                                this.movieQueueStats.failed++;
+                                this.movieQueueIndex++;
+                                this.movieQueueStats.waiting = this.movieQueue.length - this.movieQueueIndex;
+                                if (this.movieQueueStats.waiting === 0) {
+                                    this.movieQueueStats.remainingTime = 0;
+                                }
+                            }
+                        }
+
+                        this.isMovieQueueSending = false;
+
+                        if (this.isMovieQueuePauseRequested) {
+                            this.isMovieQueuePaused = true;
+                            this.isMovieQueuePauseRequested = false;
+                            this.movieQueuePausedTime = Date.now();
+                            return;
+                        }
+
+                        if (this.isMovieQueueRunning && this.movieQueueIndex < this.movieQueue.length) {
+                            this.movieQueueTimeoutId = setTimeout(() => processNext(processId), this.fastingStatusClearTimeout);
+                        } else if (this.movieQueueIndex >= this.movieQueue.length) {
+                            this.finishMovieQueue();
+                        }
+                    };
+
+                    processNext(currentProcessId);
+                },
+
+                toggleMovieQueuePause() {
+                    if (this.isMovieQueuePaused) {
+                        if (this.movieQueuePausedTime > 0) {
+                            const pausedDuration = Date.now() - this.movieQueuePausedTime;
+                            this.movieQueueTotalPausedTime += pausedDuration;
+                            this.movieQueuePausedTime = 0;
+                        }
+                        this.isMovieQueuePaused = false;
+                        this.isMovieQueuePauseRequested = false;
+                    } else {
+                        this.isMovieQueuePauseRequested = true;
+                    }
+                },
+
+                stopMovieQueue() {
+                    this.isMovieQueueRunning = false;
+                    this.isMovieQueuePaused = false;
+                    this.isMovieQueueSending = false;
+                    this.isMovieQueuePauseRequested = false;
+                    this.showStopConfirmation = false;
+                    if (this.movieQueueInterval) {
+                        clearInterval(this.movieQueueInterval);
+                        this.movieQueueInterval = null;
+                    }
+                    if (this.movieQueueTimeoutId !== null) {
+                        clearTimeout(this.movieQueueTimeoutId);
+                        this.movieQueueTimeoutId = null;
+                    }
+                    this.movieQueueProcessId = null;
+                    this.movieQueue = [];
+                    this.movieQueueIndex = 0;
+                    this.movieQueueStats = {
+                        total: 0,
+                        sent: 0,
+                        failed: 0,
+                        waiting: 0,
+                        elapsedTime: 0,
+                        remainingTime: 0
+                    };
+                    this.movieQueueStartTime = null;
+                    this.movieQueuePausedTime = 0;
+                    this.movieQueueTotalPausedTime = 0;
+                    this.movieQueueCurrent = { number: null, status: null, error: null };
+                    this.movieSentLog = [];
+                    this.movieFailedLog = [];
+                },
+
+                finishMovieQueue() {
+                    this.isMovieQueueRunning = false;
+                    this.isMovieQueuePaused = false;
+                    this.isMovieQueueSending = false;
+                    this.isMovieQueuePauseRequested = false;
+                    this.movieQueueStats.waiting = 0;
+                    this.movieQueueStats.remainingTime = 0;
+                    if (this.movieQueueInterval) {
+                        clearInterval(this.movieQueueInterval);
+                        this.movieQueueInterval = null;
+                    }
+                    if (this.movieQueueTimeoutId !== null) {
+                        clearTimeout(this.movieQueueTimeoutId);
+                        this.movieQueueTimeoutId = null;
+                    }
+                    this.movieQueueProcessId = null;
+                },
+
+                resetMovieQueue() {
+                    this.dismissSuccessHint();
+                    this.stopMovieQueue();
+                    this.movieStartNumber = null;
+                    this.movieEndNumber = null;
+                },
+
+                confirmStopQueue() {
+                    const target = this.stopTargetQueue;
+                    if (target === 'episodes') {
+                        this.stopEpisodeQueue();
+                        return;
+                    }
+                    if (target === 'movies') {
+                        this.stopMovieQueue();
+                        return;
+                    }
+                    this.stopMangaQueue();
                 },
 
                 resetEpisodesView() {
