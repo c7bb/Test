@@ -7109,6 +7109,8 @@
                         summary: false,
                     },
                     pendingJumpTarget: null,
+                    pendingJumpRegex: null,
+                    pendingJumpOpenModal: false,
                     jumpHighlightIdentifier: null,
                     lastClickedEpisode: null,
                     errorMessage: "",
@@ -12977,6 +12979,37 @@
                         }
 
                         this.pendingJumpTarget = targetValue;
+                        this.pendingJumpRegex = null;
+                        this.pendingJumpOpenModal = false;
+                        if (this.searchQuery !== '') this.searchQuery = '';
+                        this.executePendingJump();
+                        return;
+                    }
+
+                    if (trimmed.endsWith('=')) {
+                        const targetValue = this.normalizeDigits(trimmed.slice(0, -1).trim());
+
+                        if (!targetValue) {
+                            this.pendingJumpTarget = null;
+                            this.pendingJumpRegex = null;
+                            this.pendingJumpOpenModal = false;
+                            if (this.searchQuery !== '') this.searchQuery = '';
+                            return;
+                        }
+
+                        let jumpRegex = null;
+                        try {
+                            const pattern = this.normalizeText(targetValue);
+                            if (pattern) {
+                                jumpRegex = new RegExp(`^${pattern}$`, 'i');
+                            }
+                        } catch (e) {
+                            jumpRegex = null;
+                        }
+
+                        this.pendingJumpTarget = targetValue;
+                        this.pendingJumpRegex = jumpRegex;
+                        this.pendingJumpOpenModal = true;
                         if (this.searchQuery !== '') this.searchQuery = '';
                         this.executePendingJump();
                         return;
@@ -17006,6 +17039,8 @@
                     if (!this.pendingJumpTarget) return;
 
                     const targetValue = this.pendingJumpTarget;
+                    const openModalAfterJump = !!this.pendingJumpOpenModal;
+                    const jumpRegex = this.pendingJumpRegex instanceof RegExp ? this.pendingJumpRegex : null;
 
                     this.$nextTick(() => {
                         const dataset = Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes : [];
@@ -17022,6 +17057,12 @@
                         const fallbackNumber = !searchTitle && !searchNumber;
 
                         const matchIndex = dataset.findIndex((episode) => {
+                            if (jumpRegex) {
+                                const episodeNumberRaw = this.normalizeDigits(String(episode?.EpisodeNumber || '')).toLowerCase();
+                                if (jumpRegex.test(episodeNumberRaw)) return true;
+                                return false;
+                            }
+
                             if (searchNumber || fallbackNumber) {
                                 const normalizedEpisodeNumber = this.normalizeEpisodeIdentifier(episode.EpisodeNumber);
                                 if (normalizedEpisodeNumber === normalizedTarget) {
@@ -17040,6 +17081,8 @@
                         });
 
                         this.pendingJumpTarget = null;
+                        this.pendingJumpRegex = null;
+                        this.pendingJumpOpenModal = false;
 
                         if (matchIndex === -1) {
                             console.warn(`Quick-jump target "${targetValue}" was not found.`);
@@ -17057,6 +17100,9 @@
                             const el = document.getElementById(targetId);
                             if (el && typeof el.scrollIntoView === 'function') {
                                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                            if (openModalAfterJump) {
+                                this.openModal(matchedEpisode);
                             }
                         });
                     });
