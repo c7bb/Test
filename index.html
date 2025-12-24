@@ -8693,8 +8693,16 @@
                 },
 
                 filteredEpisodes() {
-                    const rawSearchQuery = this.searchQuery.trim().toLowerCase();
+                    const rawSearchQuery = this.normalizeDigits(this.searchQuery.trim().toLowerCase());
                     const searchQuery = this.normalizeText(this.searchQuery);
+                    let searchRegex = null;
+                    if (searchQuery) {
+                        try {
+                            searchRegex = new RegExp(searchQuery, 'i');
+                        } catch (e) {
+                            searchRegex = null;
+                        }
+                    }
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -11307,17 +11315,20 @@
                         
                         // Title filter logic
                         if (this.searchFilters.title) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeTitle));
+                            const titleText = String(episode.EpisodeTitle || '');
+                            matchConditions.push(searchRegex ? searchRegex.test(titleText) : titleText.toLowerCase().includes(rawSearchQuery));
                         }
                         
                         // Story filter logic
                         if (this.searchFilters.story) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeStory));
+                            const storyText = String(episode.EpisodeStory || '');
+                            matchConditions.push(searchRegex ? searchRegex.test(storyText) : storyText.toLowerCase().includes(rawSearchQuery));
                         }
                         
                         // Summary filter logic
                         if (this.searchFilters.summary) {
-                            matchConditions.push(new RegExp(searchQuery, 'i').test(episode.EpisodeSummary));
+                            const summaryText = String(episode.EpisodeSummary || '');
+                            matchConditions.push(searchRegex ? searchRegex.test(summaryText) : summaryText.toLowerCase().includes(rawSearchQuery));
                         }
                         
                         // Return true if ANY condition is true (OR logic)
@@ -16778,16 +16789,89 @@
                 },
 
                 normalizeText(text) {
-                    let normalizedText = this.normalizeDigits(text).toLowerCase();
-                    normalizedText = normalizedText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    for (let [key, values] of Object.entries(this.replacementDict)) {
-                        const regex = new RegExp(key, 'g'); // Global search for the word
-                        normalizedText = normalizedText.replace(regex, (match) => {
-                            // Replace with all possible values, separated by "|"
-                            return `(${values.join("|")})`;
-                        });
+                    const raw = this.normalizeDigits(text).toLowerCase();
+                    if (!raw) return '';
+
+                    if (!this._replacementMatcher) {
+                        const keys = Object.keys(this.replacementDict || {})
+                            .filter(key => typeof key === 'string' && key.length >= 2)
+                            .sort((a, b) => b.length - a.length);
+
+                        const alternation = keys.map(key => this.escapeRegExpLiteral(key)).join('|');
+                        this._replacementMatcher = alternation
+                            ? new RegExp(`(^|[\\s،,])(${alternation})(?=$|[\\s،,])`, 'g')
+                            : null;
                     }
-                    return normalizedText;
+
+                    let out = '';
+                    let lastIndex = 0;
+                    const matcher = this._replacementMatcher;
+
+                    if (matcher) {
+                        matcher.lastIndex = 0;
+                        let match;
+                        while ((match = matcher.exec(raw)) !== null) {
+                            out += this.expandFreeTextToPattern(raw.slice(lastIndex, match.index));
+                            out += this.expandFreeTextToPattern(match[1] || '');
+                            out += this.buildReplacementPatternForKey(match[2] || '');
+                            lastIndex = match.index + match[0].length;
+                        }
+                    }
+
+                    out += this.expandFreeTextToPattern(raw.slice(lastIndex));
+                    return out;
+                },
+                escapeRegExpLiteral(text) {
+                    return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                },
+                expandArabicCharToPattern(ch) {
+                    if (ch === 'ا' || ch === 'أ' || ch === 'إ') return '[اأإ]';
+                    if (ch === 'ه' || ch === 'ة') return '[هة]';
+                    if (ch === 'س' || ch === 'ش') return '[سش]';
+                    return this.escapeRegExpLiteral(ch);
+                },
+                expandFreeTextToPattern(text) {
+                    const input = String(text || '');
+                    if (!input) return '';
+                    let out = '';
+                    for (let i = 0; i < input.length; i++) {
+                        const ch = input[i];
+                        if (ch === ' ' || ch === '\t' || ch === '\n' || ch === '\r' || ch === '،' || ch === ',') {
+                            out += '\\s+';
+                            while (i + 1 < input.length) {
+                                const next = input[i + 1];
+                                if (next === ' ' || next === '\t' || next === '\n' || next === '\r' || next === '،' || next === ',') {
+                                    i++;
+                                    continue;
+                                }
+                                break;
+                            }
+                            continue;
+                        }
+                        out += this.expandArabicCharToPattern(ch);
+                    }
+                    return out;
+                },
+                buildReplacementPatternForKey(key) {
+                    const normalizedKey = String(key || '').toLowerCase();
+                    if (!normalizedKey) return '';
+                    const values = this.replacementDict ? this.replacementDict[normalizedKey] : null;
+                    const alternativesRaw = Array.isArray(values) ? [normalizedKey, ...values] : [normalizedKey];
+
+                    const alternatives = [];
+                    for (const value of alternativesRaw) {
+                        const normalizedValue = String(value || '').toLowerCase();
+                        if (!normalizedValue) continue;
+                        if (!alternatives.includes(normalizedValue)) {
+                            alternatives.push(normalizedValue);
+                        }
+                    }
+
+                    const patterns = alternatives.map(value => this.expandFreeTextToPattern(value));
+                    const uniquePatterns = Array.from(new Set(patterns));
+
+                    if (uniquePatterns.length === 1) return uniquePatterns[0];
+                    return `(?:${uniquePatterns.join('|')})`;
                 },
                 normalizeEpisodeIdentifier(value) {
                     return this.normalizeDigits(String(value || ''))
