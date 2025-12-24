@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -6446,11 +6445,41 @@
                             </div>                          
                             
                             <!-- Scrollable Content -->
-                            <div class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                            <div class="overflow-y-auto p-4 flex-1 always-visible-scrollbar" @click="relatedEpisodeMenuOpen = false">
 
-                                <h2 class="text-xl font-bold mb-4 overflow-hidden text-ellipsis" v-if="selectedEpisode">
-                                    {{ selectedEpisode.EpisodeTitle }}
-                                </h2>
+                                <div v-if="selectedEpisode" class="relative mb-4">
+                                    <button
+                                        type="button"
+                                        class="text-xl font-bold overflow-hidden text-ellipsis w-full"
+                                        :class="[
+                                            hasRelatedEpisodesForEpisode(selectedEpisode) && !isEpisodeSwitchBlocked(selectedEpisode) ? 'underline cursor-pointer' : '',
+                                            isEpisodeSwitchBlocked(selectedEpisode) ? 'opacity-60 cursor-not-allowed' : ''
+                                        ]"
+                                        @click.stop="toggleRelatedEpisodeMenu"
+                                    >
+                                        {{ selectedEpisode.EpisodeTitle }}
+                                    </button>
+
+                                    <div
+                                        v-if="relatedEpisodeMenuOpen && hasRelatedEpisodesForEpisode(selectedEpisode)"
+                                        class="absolute left-1/2 -translate-x-1/2 mt-2 w-full max-w-md bg-cyan-950 border border-cyan-700 rounded-lg shadow-lg z-20 max-h-60 overflow-y-auto"
+                                    >
+                                        <button
+                                            v-for="ep in getRelatedEpisodesForEpisode(selectedEpisode)"
+                                            :key="ep.EpisodeNumber"
+                                            type="button"
+                                            class="w-full text-right px-4 py-2 text-base hover:bg-cyan-800 transition-all duration-100"
+                                            :disabled="ep._relatedMissing"
+                                            :class="[
+                                                normalizeEpisodeIdentifier(ep.EpisodeNumber) === normalizeEpisodeIdentifier(selectedEpisode.EpisodeNumber) ? 'bg-cyan-700 text-yellow-200' : '',
+                                                ep._relatedMissing ? 'opacity-60 cursor-not-allowed hover:bg-transparent' : ''
+                                            ]"
+                                            @click.stop="openRelatedEpisode(ep)"
+                                        >
+                                            {{ ep.EpisodeTitle }}
+                                        </button>
+                                    </div>
+                                </div>
 
                                 <p v-if="selectedEpisode" class="mb-2 text-lg">
                                     <span v-if="selectedEpisode.EpisodeNumber.includes('خاصة بالفيلم')">رقم الحلقة الخاصة:</span>
@@ -7353,6 +7382,12 @@
                     showModal: false,
                     showTrailerModal: false,
                     selectedEpisode: null,
+                    relatedEpisodesDataUrl: null,
+                    relatedEpisodeGroups: [],
+                    relatedEpisodeGroupById: {},
+                    relatedEpisodeGroupIdByEpisodeKey: {},
+                    episodesByEpisodeKey: {},
+                    relatedEpisodeMenuOpen: false,
                     selectedTrailerGroupKey: null,
                     selectedTrailerProviderKey: null,
                     selectedTrailer: null,
@@ -12928,6 +12963,7 @@
                 },
                 selectedEpisode() {
                     // When episode changes, recalculate the countdown
+                    this.relatedEpisodeMenuOpen = false;
                     this.$nextTick(() => {
                         this.calculateCountdown();
                     });
@@ -16759,6 +16795,107 @@
                         .toLowerCase();
                 },
 
+                async loadRelatedEpisodesData() {
+                    const baseUrl = new URL(window.location.href);
+                    const relatedUrl = new URL('relatedEpisodes.json', baseUrl).toString();
+                    this.relatedEpisodesDataUrl = relatedUrl;
+
+                    try {
+                        const response = await fetch(`${relatedUrl}?t=${Date.now()}`, { cache: 'no-store' });
+                        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                        const data = await response.json();
+
+                        const groups = Array.isArray(data?.groups) ? data.groups : [];
+                        const byId = {};
+                        const byEpisodeKey = {};
+
+                        for (const group of groups) {
+                            if (!group || !group.id) continue;
+                            const episodes = Array.isArray(group.episodes) ? group.episodes : [];
+                            byId[group.id] = { ...group, episodes };
+                            for (const epNumber of episodes) {
+                                const key = this.normalizeEpisodeIdentifier(epNumber);
+                                if (!key) continue;
+                                byEpisodeKey[key] = group.id;
+                            }
+                        }
+
+                        this.relatedEpisodeGroups = groups;
+                        this.relatedEpisodeGroupById = byId;
+                        this.relatedEpisodeGroupIdByEpisodeKey = byEpisodeKey;
+                    } catch (e) {
+                        this.relatedEpisodeGroups = [];
+                        this.relatedEpisodeGroupById = {};
+                        this.relatedEpisodeGroupIdByEpisodeKey = {};
+                    }
+                },
+
+                rebuildEpisodesByKey() {
+                    const map = {};
+                    for (const episode of this.episodes || []) {
+                        const key = this.normalizeEpisodeIdentifier(episode?.EpisodeNumber);
+                        if (!key) continue;
+                        map[key] = episode;
+                    }
+                    this.episodesByEpisodeKey = map;
+                },
+
+                getRelatedEpisodeGroup(episode) {
+                    const key = this.normalizeEpisodeIdentifier(episode?.EpisodeNumber);
+                    const groupId = key ? this.relatedEpisodeGroupIdByEpisodeKey[key] : null;
+                    if (!groupId) return null;
+                    return this.relatedEpisodeGroupById[groupId] || null;
+                },
+
+                getRelatedEpisodesForEpisode(episode) {
+                    const group = this.getRelatedEpisodeGroup(episode);
+                    if (!group) return [];
+                    const episodeNumbers = Array.isArray(group.episodes) ? group.episodes : [];
+                    const result = [];
+                    for (const epNumber of episodeNumbers) {
+                        const key = this.normalizeEpisodeIdentifier(epNumber);
+                        const resolved = this.episodesByEpisodeKey[key];
+                        if (resolved) {
+                            result.push(resolved);
+                        } else if (key) {
+                            result.push({ EpisodeNumber: String(epNumber), EpisodeTitle: String(epNumber), _relatedMissing: true });
+                        }
+                    }
+                    return result;
+                },
+
+                hasRelatedEpisodesForEpisode(episode) {
+                    const group = this.getRelatedEpisodeGroup(episode);
+                    const episodeNumbers = Array.isArray(group?.episodes) ? group.episodes : [];
+                    return episodeNumbers.length > 1;
+                },
+
+                isEpisodeSwitchBlocked(episode) {
+                    const videosBusy = episode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending');
+                    const mangasBusy = episode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending');
+                    return !!(videosBusy || mangasBusy);
+                },
+
+                toggleRelatedEpisodeMenu() {
+                    if (!this.selectedEpisode) return;
+                    if (this.isEpisodeSwitchBlocked(this.selectedEpisode)) return;
+                    if (!this.hasRelatedEpisodesForEpisode(this.selectedEpisode)) return;
+                    this.relatedEpisodeMenuOpen = !this.relatedEpisodeMenuOpen;
+                },
+
+                openRelatedEpisode(episode) {
+                    if (!episode) return;
+                    if (episode._relatedMissing) return;
+                    if (this.isEpisodeSwitchBlocked(this.selectedEpisode)) return;
+                    if (this.normalizeEpisodeIdentifier(episode.EpisodeNumber) === this.normalizeEpisodeIdentifier(this.selectedEpisode?.EpisodeNumber)) {
+                        this.relatedEpisodeMenuOpen = false;
+                        return;
+                    }
+                    this.resetStatusForEpisodeManga();
+                    this.relatedEpisodeMenuOpen = false;
+                    this.openModal(episode);
+                },
+
                 executePendingJump() {
                     if (!this.pendingJumpTarget) return;
 
@@ -16914,6 +17051,7 @@
                                             if (this.isTabOwner) {
                                                 this.episodes = data.Episodes || [];
                                                 this.mangas = data.Mangas || [];
+                                                this.rebuildEpisodesByKey();
                                                 this.loading = false;
                                                 localStorage.removeItem('waitTime');
                                                 
@@ -19390,7 +19528,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+	
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -21336,6 +21474,7 @@
                 
                 // Run the Telegram check before mounting the app.
                 await this.checkTelegram();
+                this.loadRelatedEpisodesData();
                 this.startDailyLimitRowIdResync();
                 // If the user is valid, immediately load data.
                 if (this.userJoined && this.isTabOwner) {
