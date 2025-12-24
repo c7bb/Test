@@ -8703,6 +8703,9 @@
                             searchRegex = null;
                         }
                     }
+                    const parsedNumberSearch = this.searchFilters.number && rawSearchQuery
+                        ? this.parseNumberSearchParts(rawSearchQuery)
+                        : null;
 
                     // Filter by EpisodeType
                     let filteredByType = this.episodes;
@@ -11247,41 +11250,9 @@
                         
                         // Number filter logic
                         if (this.searchFilters.number) {
-                            const numberList = [];
-                            const textFragments = [];
-
-                            rawSearchQuery.split(/[،,]/).forEach(part => {
-                                part = part.trim();
-                                if (!part) return;
-
-                                // Normalize digits so ranges and numbers work with Arabic-Indic/Persian numerals
-                                const normalizedPart = this.normalizeDigits(part);
-
-                                if (normalizedPart.includes('-') && !normalizedPart.match(/^\d+\.\d+-/)) {
-                                    // Handle ranges like "44-60" (but not decimals like "1076.5-")
-                                    const [start, end] = normalizedPart.split('-').map(num => parseFloat(num.trim()));
-                                    if (!isNaN(start) && !isNaN(end) && start <= end) {
-                                        // For integer ranges, add all integers in the range
-                                        if (Number.isInteger(start) && Number.isInteger(end)) {
-                                            for (let i = start; i <= end; i++) {
-                                                numberList.push(i.toString());
-                                            }
-                                        } else {
-                                            // For decimal ranges, just add start and end
-                                            numberList.push(start.toString());
-                                            numberList.push(end.toString());
-                                        }
-                                    }
-                                } else {
-                                    // Handle single numbers (including decimals)
-                                    const num = parseFloat(normalizedPart);
-                                    if (!isNaN(num)) {
-                                        numberList.push(num.toString());
-                                    } else {
-                                        textFragments.push(normalizedPart);
-                                    }
-                                }
-                            });
+                            const numberList = parsedNumberSearch ? parsedNumberSearch.numberList : [];
+                            const textFragments = parsedNumberSearch ? parsedNumberSearch.textFragments : [];
+                            const textFragmentRegexes = parsedNumberSearch ? parsedNumberSearch.textFragmentRegexes : [];
 
                             // Extract number from episode.EpisodeNumber based on textNumberMatchMode
                             let numberConditionEvaluated = false;
@@ -11302,10 +11273,15 @@
 
                             if (textFragments.length) {
                                 numberConditionEvaluated = true;
-                                const normalizedEpisodeNumberText = this.normalizeEpisodeIdentifier(episode.EpisodeNumber);
-                                numberMatch = numberMatch || textFragments.some(fragment =>
-                                    normalizedEpisodeNumberText.includes(this.normalizeEpisodeIdentifier(fragment))
-                                );
+                                const episodeNumberText = this.normalizeDigits(String(episode.EpisodeNumber || '')).toLowerCase();
+                                const normalizedEpisodeNumberText = this.normalizeEpisodeIdentifier(episodeNumberText);
+
+                                numberMatch = numberMatch || textFragmentRegexes.some(regex => (regex ? regex.test(episodeNumberText) : false));
+                                if (!numberMatch) {
+                                    numberMatch = textFragments.some(fragment =>
+                                        normalizedEpisodeNumberText.includes(this.normalizeEpisodeIdentifier(fragment))
+                                    );
+                                }
                             }
 
                             if (numberConditionEvaluated) {
@@ -16794,7 +16770,7 @@
 
                     if (!this._replacementMatcher) {
                         const keys = Object.keys(this.replacementDict || {})
-                            .filter(key => typeof key === 'string' && key.length >= 2)
+                            .filter(key => typeof key === 'string' && (key.length >= 2 || /^\d+$/.test(key)))
                             .sort((a, b) => b.length - a.length);
 
                         const alternation = keys.map(key => this.escapeRegExpLiteral(key)).join('|');
@@ -16878,6 +16854,51 @@
                         .replace(/\s+/g, ' ')
                         .trim()
                         .toLowerCase();
+                },
+                parseNumberSearchParts(rawSearchQuery) {
+                    const numberList = [];
+                    const textFragments = [];
+                    const parts = String(rawSearchQuery || '').split(/[،,]/);
+
+                    for (let part of parts) {
+                        part = String(part || '').trim();
+                        if (!part) continue;
+
+                        const normalizedPart = this.normalizeDigits(part);
+
+                        if (normalizedPart.includes('-') && !normalizedPart.match(/^\d+\.\d+-/)) {
+                            const [start, end] = normalizedPart.split('-').map(num => parseFloat(String(num || '').trim()));
+                            if (!isNaN(start) && !isNaN(end) && start <= end) {
+                                if (Number.isInteger(start) && Number.isInteger(end)) {
+                                    for (let i = start; i <= end; i++) {
+                                        numberList.push(i.toString());
+                                    }
+                                } else {
+                                    numberList.push(start.toString());
+                                    numberList.push(end.toString());
+                                }
+                            }
+                        } else {
+                            const num = parseFloat(normalizedPart);
+                            if (!isNaN(num)) {
+                                numberList.push(num.toString());
+                            } else {
+                                textFragments.push(normalizedPart);
+                            }
+                        }
+                    }
+
+                    const textFragmentRegexes = textFragments.map(fragment => {
+                        try {
+                            const pattern = this.normalizeText(fragment);
+                            if (!pattern) return null;
+                            return new RegExp(pattern, 'i');
+                        } catch (e) {
+                            return null;
+                        }
+                    });
+
+                    return { numberList, textFragments, textFragmentRegexes };
                 },
 
                 async loadRelatedEpisodesData() {
@@ -19088,6 +19109,41 @@
                         13: 'الثالث عشر',
                         14: 'الرابع عشر',
                         15: 'الخامس عشر',
+                        16: 'السادس عشر',
+                        17: 'السابع عشر',
+                        18: 'الثامن عشر',
+                        19: 'التاسع عشر',
+                        20: 'العشرون',
+                        21: 'الحادي والعشرون',
+                        22: 'الثاني والعشرون',
+                        23: 'الثالث والعشرون',
+                        24: 'الرابع والعشرون',
+                        25: 'الخامس والعشرون',
+                        26: 'السادس والعشرون',
+                        27: 'السابع والعشرون',
+                        28: 'الثامن والعشرون',
+                        29: 'التاسع والعشرون',
+                        30: 'الثلاثون',
+                        31: 'الحادي والثلاثون',
+                        32: 'الثاني والثلاثون',
+                        33: 'الثالث والثلاثون',
+                        34: 'الرابع والثلاثون',
+                        35: 'الخامس والثلاثون',
+                        36: 'السادس والثلاثون',
+                        37: 'السابع والثلاثون',
+                        38: 'الثامن والثلاثون',
+                        39: 'التاسع والثلاثون',
+                        40: 'الأربعون',
+                        41: 'الحادي والأربعون',
+                        42: 'الثاني والأربعون',
+                        43: 'الثالث والأربعون',
+                        44: 'الرابع والأربعون',
+                        45: 'الخامس والأربعون',
+                        46: 'السادس والأربعون',
+                        47: 'السابع والأربعون',
+                        48: 'الثامن والأربعون',
+                        49: 'التاسع والأربعون',
+                        50: 'الخمسون'
                     };
                     return map[n] || String(n);
                 },
