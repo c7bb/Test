@@ -2,62 +2,62 @@
   "version": 1,
   "groups": [
     {
-      "id": "ghomod_yawm_al_fatayat",
+      "id": "1",
       "title": "غموض يوم الفتيات",
       "episodes": ["1091", "1118", "1140", "1186"]
     },
     {
-      "id": "ghurfat_al_istijwab",
+      "id": "2",
       "title": "غرفة الاستجواب",
       "episodes": ["553", "1127", "1183"]
     },
     {
-      "id": "qadiat_yawmiyat_ayumi_al_musawwarah",
+      "id": "3",
       "title": "قضية يوميات أيومي المصورة",
       "episodes": ["989", "1040", "1087", "1125", "1162"]
     },
     {
-      "id": "alhiqhum_ayyuha_al_muhaqqiq_taxi",
+      "id": "4",
       "title": "الحقهم! أيها المحقق تاكسي",
       "episodes": ["976", "1155"]
     },
     {
-      "id": "almuraqabah",
+      "id": "5",
       "title": "المراقبة",
       "episodes": ["1015", "1092", "1122", "1147"]
     },
     {
-      "id": "maktab_al_kutub_al_musaffar",
+      "id": "6",
       "title": "مكتب الكتب المصفر",
       "episodes": ["868", "951", "1023", "1146"]
     },
     {
-      "id": "mudhakkirat_al_muhaqqiq_tsuburaya_mitsuhiko",
+      "id": "7",
       "title": "مذكرات المحقق تسوبورايا ميتسوهيكو",
       "episodes": ["1068", "1096", "1132"]
     },
     {
-      "id": "qissat_al_qadiyah_al_gharibah_li_akadimiyat_al_shurtah",
+      "id": "8",
       "title": "قصة القضية الغريبة لأكاديمية الشرطة",
       "episodes": ["1029", "1038", "1042", "1061", "1076.5"]
     },
     {
-      "id": "qissat_hubb_fi_maqar_shurtat_al_asimah",
+      "id": "9",
       "title": "قصة حب في مقر شرطة العاصمة",
-      "episodes": ["146", "156", "205", "253", "358", "390", "431", "487", "748"]
+      "episodes": ["146", "147", "156", "157", "205", "206", "253", "254", "358", "359", "390", "391", "431", "432", "487", "748", "749"]
     },
     {
-      "id": "ramen_yamut_al_maru_min_lidhatihi",
+      "id": "10",
       "title": "رامن يموت المرء من لذته",
       "episodes": ["644", "827"]
     },
     {
-      "id": "intisar_al_kalb_al_azim_kuro",
+      "id": "11",
       "title": "انتصار الكلب العظيم كورو",
       "episodes": ["434", "664"]
     },
     {
-      "id": "mudhakkirat_sayd_al_anqalis_lighinta",
+      "id": "12",
       "title": "مذكرة صيد الأنقليس لغينتا",
       "episodes": ["1168"]
     }
