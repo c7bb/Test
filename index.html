@@ -18881,7 +18881,7 @@
                         const partNumber = idx + 1;
                         const ordinal = this.getArabicOrdinalNumberText(partNumber);
                         const isCurrent = this.normalizeEpisodeIdentifier(ep.EpisodeNumber) === normalizedCurrent;
-                        const text = `الجزء ${ordinal}${isCurrent ? ' (الحلقة الحالية)' : ''}`;
+                        const text = `الجزء ${ordinal}${isCurrent ? ' (الحلقة الحالية ✅)' : ''}`;
                         const code = this.normalizeEpisodeIdentifier(ep?.EpisodeNumber);
                         return [{
                             text,
