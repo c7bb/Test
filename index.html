@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en" dir="rtl">
 <head>
-
     <!-- <script>
         // Immediate cleanup function
         (function() {
@@ -7003,6 +7002,7 @@
     <script>
         const webApp = window.Telegram?.WebApp || null;
         const { createApp, markRaw } = Vue;
+        const WEB_APP_URL = "https://euz.pages.dev/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/";
     
         const app = createApp({
             data() {
@@ -18833,6 +18833,65 @@
                     }
                 },
 
+                getEpisodeNumberSortValue(episode) {
+                    const raw = this.normalizeDigits(String(episode?.EpisodeNumber ?? ''));
+                    const match = raw.match(/\d+/);
+                    if (!match) return 0;
+                    const parsed = parseInt(match[0], 10);
+                    return isNaN(parsed) ? 0 : parsed;
+                },
+
+                getEpisodePartsGroupEpisodes(episode) {
+                    const key = episode?.EpisodeParts;
+                    if (!key) return [];
+                    const all = Array.isArray(this.episodes) ? this.episodes : [];
+                    return all.filter((ep) => ep && ep.EpisodeParts === key);
+                },
+
+                getArabicOrdinalNumberText(n) {
+                    const map = {
+                        1: 'الأول',
+                        2: 'الثاني',
+                        3: 'الثالث',
+                        4: 'الرابع',
+                        5: 'الخامس',
+                        6: 'السادس',
+                        7: 'السابع',
+                        8: 'الثامن',
+                        9: 'التاسع',
+                        10: 'العاشر',
+                        11: 'الحادي عشر',
+                        12: 'الثاني عشر',
+                        13: 'الثالث عشر',
+                        14: 'الرابع عشر',
+                        15: 'الخامس عشر',
+                    };
+                    return map[n] || String(n);
+                },
+
+                buildEpisodePartsReplyMarkup(episode) {
+                    if (!episode?.EpisodeParts) return null;
+                    const group = this.getEpisodePartsGroupEpisodes(episode);
+                    if (!group || group.length <= 1) return null;
+
+                    const normalizedCurrent = this.normalizeEpisodeIdentifier(episode.EpisodeNumber);
+                    const sorted = group.slice().sort((a, b) => this.getEpisodeNumberSortValue(a) - this.getEpisodeNumberSortValue(b));
+
+                    const inline_keyboard = sorted.map((ep, idx) => {
+                        const partNumber = idx + 1;
+                        const ordinal = this.getArabicOrdinalNumberText(partNumber);
+                        const isCurrent = this.normalizeEpisodeIdentifier(ep.EpisodeNumber) === normalizedCurrent;
+                        const text = `الجزء ${ordinal}${isCurrent ? ' (الحلقة الحالية)' : ''}`;
+                        const code = this.normalizeEpisodeIdentifier(ep?.EpisodeNumber);
+                        return [{
+                            text,
+                            web_app: { url: `${WEB_APP_URL}?code=${encodeURIComponent(code)}` }
+                        }];
+                    });
+
+                    return { inline_keyboard };
+                },
+
                 async sendEpisodeToBot(videoID, resolution, size, index, introductionTime, startStoryTime, episodeSuspenseTime, startSongTime, chapterOneTime, chapterTwoTime, endSongTime, chapterThreeTime, nextEpisodeTeaserTime, nextEpisodeHintTime) {
                     const episodeRef = this.selectedEpisode;
                     if (!episodeRef?.EpisodeNumber) {
@@ -18911,9 +18970,10 @@
 
                     const videoEntry = episodeRef?.EpisodeVideosIDs?.[index] || null;
                     if (videoEntry) videoEntry.status = 'sending';
+                    const replyMarkup = this.buildEpisodePartsReplyMarkup(episodeRef);
 
                     try {
-                        await this.sendVideoResponse(videoID, caption);
+                        await this.sendVideoResponse(videoID, caption, replyMarkup);
                         if (this.sendCancelGeneration !== sendGen) return;
                         if (videoEntry) videoEntry.status = 'success';
                         const isMovie = String(episodeRef?.EpisodeNumber ?? '').includes('الفيلم');
@@ -18981,7 +19041,7 @@
                     }, this.statusClearTimeout);
                 },
 
-                async sendVideoResponse(fileId, caption) {
+                async sendVideoResponse(fileId, caption, replyMarkup) {
                     // Block API request if this tab is not the owner
                     if (!this.isTabOwner) {
                         console.warn('sendVideoResponse blocked: Tab is not the owner');
@@ -18995,6 +19055,7 @@
                     payload.append("caption", caption);
                     payload.append("parse_mode", "Markdown");
                     payload.append("cover", "AgACAgQAAxkBAAI39mewS5AKaNozUttDedMhI3xOcZdzAAJ7xzEb4AyBUdi6fgZXlnXYAQADAgADdwADNgQ");
+                    if (replyMarkup) payload.append("reply_markup", JSON.stringify(replyMarkup));
 
                     try {
                         const response = await fetch(`${this.jsonUrl}/send`, {
@@ -19251,7 +19312,8 @@
                         return; // Exit early if episodes data is not loaded
                     }
 
-                    const episode = this.episodes.find(ep => ep.EpisodeNumber === episodeCode);
+                    const direct = this.episodes.find(ep => ep.EpisodeNumber === episodeCode);
+                    const episode = direct || this.episodes.find((ep) => this.normalizeEpisodeIdentifier(ep.EpisodeNumber) === this.normalizeEpisodeIdentifier(episodeCode));
 
                     if (episode) {
                         this.openModal(episode); // Open the modal for the found episode
