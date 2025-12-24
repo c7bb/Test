@@ -1314,7 +1314,10 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="block mb-2">المترجم:</label>
-                                    <input v-model="bulkSendPreferences.episodes.translator" type="text" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="اختياري" />
+                                    <select v-model="bulkSendPreferences.episodes.translator" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="">اختياري</option>
+                                        <option v-for="t in bulkEpisodeTranslatorOptions" :key="t" :value="t">{{ t }}</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block mb-2">الجودة:</label>
@@ -1500,7 +1503,10 @@
                                 </div>
                                 <div class="col-span-2">
                                     <label class="block mb-2">المترجم:</label>
-                                    <input v-model="bulkSendPreferences.movies.translator" type="text" class="w-full p-2 bg-gray-700 rounded text-white" placeholder="اختياري" />
+                                    <select v-model="bulkSendPreferences.movies.translator" class="w-full p-2 bg-gray-700 rounded text-white">
+                                        <option value="">اختياري</option>
+                                        <option v-for="t in bulkMovieTranslatorOptions" :key="t" :value="t">{{ t }}</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label class="block mb-2">الجودة:</label>
@@ -8641,6 +8647,74 @@
                         .map(e => this.extractMovieNumberValue(e?.EpisodeNumber))
                         .filter(n => Number.isFinite(n));
                     return numbers.length ? Math.max(...numbers) : 0;
+                },
+                bulkEpisodeTranslatorOptions() {
+                    const prefs = this.bulkSendPreferences?.episodes || {};
+                    const all = this.groupedEpisodes.flatMap(group => group.items);
+
+                    const start = this.episodeStartNumber !== null && this.episodeStartNumber !== undefined
+                        ? this.episodeStartNumber
+                        : (this.episodeEndNumber !== null && this.episodeEndNumber !== undefined ? this.minEpisodeNumber : null);
+                    const end = this.episodeEndNumber !== null && this.episodeEndNumber !== undefined
+                        ? this.episodeEndNumber
+                        : (this.episodeStartNumber !== null && this.episodeStartNumber !== undefined ? this.maxEpisodeNumber : null);
+
+                    const scoped = (start !== null && end !== null)
+                        ? all.filter(ep => {
+                            const num = parseFloat(ep?.EpisodeNumber);
+                            return Number.isFinite(num) && num >= start && num <= end;
+                        })
+                        : all;
+
+                    const set = new Set();
+                    for (const ep of scoped) {
+                        const videos = Array.isArray(ep?.EpisodeVideosIDs) ? ep.EpisodeVideosIDs : [];
+                        for (const video of videos) {
+                            if (prefs.category && prefs.category !== 'any' && String(video?.EpisodeCategory || '') !== String(prefs.category)) continue;
+                            if (prefs.remastered && prefs.remastered !== 'any' && String(video?.EpisodeRemastered || '') !== String(prefs.remastered)) continue;
+                            const t = String(video?.EpisodeTranslator || '').trim();
+                            if (t) set.add(t);
+                        }
+                    }
+
+                    const out = Array.from(set).sort((a, b) => String(a).localeCompare(String(b), 'ar', { numeric: true, sensitivity: 'base' }));
+                    const current = String(prefs.translator || '').trim();
+                    if (current && !set.has(current)) out.unshift(current);
+                    return out;
+                },
+                bulkMovieTranslatorOptions() {
+                    const prefs = this.bulkSendPreferences?.movies || {};
+                    const all = this.groupedMovies.flatMap(group => group.items);
+
+                    const start = this.movieStartNumber !== null && this.movieStartNumber !== undefined
+                        ? this.movieStartNumber
+                        : (this.movieEndNumber !== null && this.movieEndNumber !== undefined ? this.minMovieNumber : null);
+                    const end = this.movieEndNumber !== null && this.movieEndNumber !== undefined
+                        ? this.movieEndNumber
+                        : (this.movieStartNumber !== null && this.movieStartNumber !== undefined ? this.maxMovieNumber : null);
+
+                    const scoped = (start !== null && end !== null)
+                        ? all.filter(ep => {
+                            const num = this.extractMovieNumberValue(ep?.EpisodeNumber);
+                            return Number.isFinite(num) && num >= start && num <= end;
+                        })
+                        : all;
+
+                    const set = new Set();
+                    for (const ep of scoped) {
+                        const videos = Array.isArray(ep?.EpisodeVideosIDs) ? ep.EpisodeVideosIDs : [];
+                        for (const video of videos) {
+                            if (prefs.category && prefs.category !== 'any' && String(video?.EpisodeCategory || '') !== String(prefs.category)) continue;
+                            if (prefs.remastered && prefs.remastered !== 'any' && String(video?.EpisodeRemastered || '') !== String(prefs.remastered)) continue;
+                            const t = String(video?.EpisodeTranslator || '').trim();
+                            if (t) set.add(t);
+                        }
+                    }
+
+                    const out = Array.from(set).sort((a, b) => String(a).localeCompare(String(b), 'ar', { numeric: true, sensitivity: 'base' }));
+                    const current = String(prefs.translator || '').trim();
+                    if (current && !set.has(current)) out.unshift(current);
+                    return out;
                 },
                 isFailedToFetch() {
                     return (this.errorMessage || '').trim() === 'Failed to fetch';
@@ -19857,6 +19931,20 @@
                     return isNaN(parsed) ? 0 : parsed;
                 },
 
+                extractMovieNumberValue(episodeNumber) {
+                    const raw = this.normalizeDigits(String(episodeNumber || '')).toLowerCase();
+                    const cleaned = raw
+                        .replace('خاصة بالفيلم', ' ')
+                        .replace('فيلم تعاوني', ' ')
+                        .replace('الفيلم', ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    const match = cleaned.match(/(\d+(?:\.\d+)?)/);
+                    if (!match) return Number.NaN;
+                    const parsed = parseFloat(match[1]);
+                    return Number.isFinite(parsed) ? parsed : Number.NaN;
+                },
+
                 getEpisodePartsGroupEpisodes(episode) {
                     const key = episode?.EpisodeParts;
                     if (!key) return [];
@@ -20441,7 +20529,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-	
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
