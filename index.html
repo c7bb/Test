@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -7283,7 +7284,7 @@
                     episode: { status: null },
                     movie: { status: null },
                     ep: 1185,
-                    mangaCh: 1156,
+                    mangaCh: 1155,
                     // Daily Limit Data
                     dailyDownloads: 0,
                     dailyReady: false,
@@ -19872,7 +19873,83 @@
                         });
                         const result = await response.json();
 
-                        if (result.valid) {
+                        const validateUserId = webApp?.initDataUnsafe?.user?.id;
+
+                        const formatDurationArabic = (ms) => {
+                            const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+                            const days = Math.floor(totalSeconds / 86400);
+                            const hours = Math.floor((totalSeconds % 86400) / 3600);
+                            const minutes = Math.floor((totalSeconds % 3600) / 60);
+                            const seconds = totalSeconds % 60;
+
+                            const parts = [];
+                            if (days) parts.push(`${days} يوم`);
+                            if (hours) parts.push(`${hours} ساعة`);
+                            if (minutes) parts.push(`${minutes} دقيقة`);
+                            parts.push(`${seconds} ثانية`);
+                            return parts.join(' و ');
+                        };
+
+                        const formatDateTimeYmdHms = (ms) => {
+                            const d = new Date(ms);
+                            const pad2 = (n) => String(n).padStart(2, '0');
+                            return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())} ${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+                        };
+
+                        if (result?.error) {
+                            throw new Error(result.error);
+                        }
+
+                        if (result?.banned) {
+                            this.userJoined = false;
+
+                            const trustedOffsetMs = typeof result?.now === 'number'
+                                ? (result.now - Date.now())
+                                : (typeof this.serverTimeOffset === 'number' ? this.serverTimeOffset : 0);
+
+                            const banUntilMs = typeof result.banUntil === 'number' ? result.banUntil : 0;
+                            const remainingMs = banUntilMs ? Math.max(0, banUntilMs - (Date.now() + trustedOffsetMs)) : 0;
+                            const remainingText = formatDurationArabic(remainingMs);
+                            const untilText = banUntilMs ? formatDateTimeYmdHms(banUntilMs) : '';
+
+                            document.body.innerHTML = `
+                                <div style="position: fixed; inset: 0; display: flex; justify-content: center; align-items: center; background: #23447d; font-family: Tahoma, 'Segoe UI', Geneva, sans-serif; z-index: 99999;">
+                                    <div style="text-align: center; padding: 30px 20px; border: 2px solid #fff; border-radius: 15px; background-color: #0f141f; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5); max-width: 450px; width: 95%; direction: rtl;">
+                                        <h1 style="font-size: 28px; font-weight: bold; color: #ff4f4f; margin-bottom: 20px; display: flex; justify-content: center; gap: 10px;">
+                                            <span>🚫</span><span>تم حظرك مؤقتًا</span><span>🚫</span>
+                                        </h1>
+
+                                        <p style="font-size: 18px; color: #fff; font-weight: bold; margin-bottom: 12px; line-height: 1.6;">
+                                            لقد قمت بمغادرة القناة 3 مرات خلال أسبوع.
+                                        </p>
+
+                                        <p style="font-size: 17px; color: #ffff00; font-weight: bold; margin-bottom: 10px; line-height: 1.6;">
+                                            الوقت المتبقي لرفع الحظر:
+                                            <br>
+                                            <span id="banRemaining" style="color: #00ff00;">${remainingText}</span>
+                                        </p>
+
+                                        <div style="font-size: 14px; color: #cbd5e1; font-weight: bold;">
+                                            (${validateUserId})
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                            if (banUntilMs) {
+                                const remainingEl = document.getElementById('banRemaining');
+                                if (remainingEl) {
+                                    const intervalId = setInterval(() => {
+                                        const msLeft = Math.max(0, banUntilMs - (Date.now() + trustedOffsetMs));
+                                        remainingEl.textContent = formatDurationArabic(msLeft);
+                                        if (msLeft <= 0) {
+                                            clearInterval(intervalId);
+                                            setTimeout(() => window.location.reload(), 500);
+                                        }
+                                    }, 1000);
+                                }
+                            }
+                        } else if (result.valid) {
                             this.userJoined = true;
                         } else {
                             this.userJoined = false;
