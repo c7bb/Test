@@ -1831,53 +1831,37 @@
                             <p class="text-base">اسماء الشخصيات بالترتيب الياباني (اسم العائلة + اسم الشخص)</p>
                         </div>
 
-                        <fieldset class="border p-4 rounded">
-                            <legend class="font-bold text-lg px-2 mb-2">حسب التصنيف</legend>
-                            <div class="space-y-3">
-                                <label v-for="opt in filterUi.categoryOptions" :key="opt.value" class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedFilter" :value="opt.value" class="scale-150">
-                                    <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
-                                </label>
-                            </div>
-                        </fieldset>
+                        <template v-for="section in filterUi.basicSections" :key="section.title">
+                            <fieldset class="border p-4 rounded">
+                                <legend class="font-bold text-lg px-2 mb-2">{{ section.title }}</legend>
+                                <div class="space-y-3">
+                                    <label
+                                        v-for="opt in filterUi[section.optionsKey]"
+                                        :key="section.inputType === 'radio' ? opt.value : opt.modelKey"
+                                        class="flex items-center space-x-2 transition-all duration-100 active:scale-90"
+                                    >
+                                        <input
+                                            v-if="section.inputType === 'radio'"
+                                            type="radio"
+                                            class="scale-150"
+                                            :value="opt.value"
+                                            :checked="getByKey(section.modelKey) === opt.value"
+                                            @change="setByKey(section.modelKey, opt.value)"
+                                        >
+                                        <input
+                                            v-else
+                                            type="checkbox"
+                                            class="scale-150"
+                                            :checked="getByKey(opt.modelKey)"
+                                            @change="setByKey(opt.modelKey, $event.target.checked)"
+                                        >
+                                        <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
+                                    </label>
+                                </div>
+                            </fieldset>
 
-                        <br />
-
-                        <fieldset class="border p-4 rounded">
-                            <legend class="font-bold text-lg px-2 mb-2">حسب النوع</legend>
-                            <div class="space-y-3">
-                                <label v-for="opt in filterUi.episodeTypeOptions" :key="opt.value" class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="episodeTypeFilter" :value="opt.value" class="scale-150">
-                                    <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
-                                </label>
-                            </div>
-                        </fieldset>
-
-                        <br />
-
-                        <fieldset class="border p-4 rounded">
-                            <legend class="font-bold text-lg px-2 mb-2">حسب المجموعة</legend>
-                            <div class="space-y-3">
-                                <label v-for="opt in filterUi.groupOptions" :key="opt.modelKey" class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
-                                    <input type="checkbox" :checked="getByKey(opt.modelKey)" @change="setByKey(opt.modelKey, $event.target.checked)" class="scale-150">
-                                    <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
-                                </label>
-                            </div>
-                        </fieldset>
-
-                        <br />
-
-                        <fieldset class="border p-4 rounded">
-                            <legend class="font-bold text-lg px-2 mb-2">حسب المشهد</legend>
-                            <div class="space-y-3">
-                                <label v-for="opt in filterUi.sceneOptions" :key="opt.modelKey" class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
-                                    <input type="checkbox" :checked="getByKey(opt.modelKey)" @change="setByKey(opt.modelKey, $event.target.checked)" class="scale-150">
-                                    <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
-                                </label>
-                            </div>
-                        </fieldset>
-
-                        <br />
+                            <br />
+                        </template>
 
                         <fieldset class="border p-4 rounded">
                             <legend class="font-bold text-lg px-2 mb-2">حسب الشخصية</legend>
@@ -1955,8 +1939,6 @@
                                     </div>
                                 </fieldset>
                             </div>
-
-
                         </fieldset>
                     </div>
                 </div>
@@ -3002,6 +2984,12 @@
                 { modelKey: 'filterNewCharacter', label: 'شخصية جديدة', countKey: 'NewCharacterEpisodesCount' },
                 { modelKey: 'filterDevelopmentCharacter', label: 'تطور الشخصية', countKey: 'DevelopmentCharacterEpisodesCount' },
                 { modelKey: 'filterFlashBackEpisodes', label: 'ذكريات من الماضي', countKey: 'FlashBackEpisodesCount' },
+            ],
+            basicSections: [
+                { title: 'حسب التصنيف', optionsKey: 'categoryOptions', inputType: 'radio', modelKey: 'selectedFilter' },
+                { title: 'حسب النوع', optionsKey: 'episodeTypeOptions', inputType: 'radio', modelKey: 'episodeTypeFilter' },
+                { title: 'حسب المجموعة', optionsKey: 'groupOptions', inputType: 'checkbox' },
+                { title: 'حسب المشهد', optionsKey: 'sceneOptions', inputType: 'checkbox' },
             ],
             logicOptions: [
                 { value: 'All', label: 'دمج' },
@@ -15940,7 +15928,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-                    
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
