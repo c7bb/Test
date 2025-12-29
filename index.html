@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1830,10 +1831,11 @@
                             <p class="text-base">اسماء الشخصيات بالترتيب الياباني (اسم العائلة + اسم الشخص)</p>
                         </div>
 
-                        <template v-for="section in filterUi.basicSections" :key="section.title">
+                        <template v-for="section in filterUi.sections" :key="section.kind">
                             <fieldset class="border p-4 rounded">
                                 <legend class="font-bold text-lg px-2 mb-2">{{ section.title }}</legend>
-                                <div class="space-y-3">
+
+                                <div v-if="section.kind === 'basic'" class="space-y-3">
                                     <label
                                         v-for="opt in filterUi[section.optionsKey]"
                                         :key="section.inputType === 'radio' ? opt.value : opt.modelKey"
@@ -1857,75 +1859,71 @@
                                         <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
                                     </label>
                                 </div>
+
+                                <div v-else class="space-y-4">
+                                    <fieldset v-for="group in filterUi.characterGroups" :key="group.title" class="border p-4 rounded">
+                                        <legend class="font-bold text-lg px-2 mb-2">{{ group.title }}</legend>
+
+                                        <div class="space-y-3">
+                                            <div v-for="id in group.ids" :key="id" class="space-y-2">
+                                                <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
+                                                    <input
+                                                        type="checkbox"
+                                                        class="scale-150"
+                                                        :checked="getByKey(characterEpisodesKey(id))"
+                                                        @change="onCharacterToggle(id, $event.target.checked)"
+                                                    >
+                                                    <span class="px-2 font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
+                                                </label>
+
+                                                <fieldset
+                                                    v-if="isCharacterAdvanced(id) && getByKey(characterEpisodesKey(id))"
+                                                    class="border border-orange-400 p-4 rounded"
+                                                >
+                                                    <div class="ml-4 flex space-x-2">
+                                                        <label
+                                                            v-for="logic in filterUi.logicOptions"
+                                                            :key="logic.value"
+                                                            class="flex items-center transition-all duration-100 active:scale-90"
+                                                            :class="logic.value === 'Some' ? 'px-4' : ''"
+                                                        >
+                                                            <input
+                                                                type="radio"
+                                                                class="scale-150"
+                                                                :name="'logic-' + id"
+                                                                :value="logic.value"
+                                                                :checked="getByKey(characterLogicKey(id)) === logic.value"
+                                                                @change="setByKey(characterLogicKey(id), logic.value)"
+                                                            >
+                                                            <span class="px-2">{{ logic.label }}</span>
+                                                        </label>
+                                                    </div>
+
+                                                    <br />
+
+                                                    <div class="space-y-3">
+                                                        <label
+                                                            v-for="detail in filterUi.detailOptions"
+                                                            :key="detail.kind"
+                                                            class="flex items-center space-x-2 transition-all duration-100 active:scale-90"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                class="scale-150"
+                                                                :checked="getByKey(characterDetailKey(id, detail.kind))"
+                                                                @change="setByKey(characterDetailKey(id, detail.kind), $event.target.checked)"
+                                                            >
+                                                            <span class="px-2 font-bold">{{ detail.label }} ({{ getByKey(characterDetailCountKey(id, detail.kind)) }})</span>
+                                                        </label>
+                                                    </div>
+                                                </fieldset>
+                                            </div>
+                                        </div>
+                                    </fieldset>
+                                </div>
                             </fieldset>
                             <br />
                         </template>
-
-                        <fieldset class="border p-4 rounded">
-                            <legend class="font-bold text-lg px-2 mb-2">حسب الشخصية</legend>
-
-                            <div class="space-y-4">
-                                <fieldset v-for="group in filterUi.characterGroups" :key="group.title" class="border p-4 rounded">
-                                    <legend class="font-bold text-lg px-2 mb-2">{{ group.title }}</legend>
-
-                                    <div class="space-y-3">
-                                        <div v-for="id in group.ids" :key="id" class="space-y-2">
-                                            <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
-                                                <input
-                                                    type="checkbox"
-                                                    class="scale-150"
-                                                    :checked="getByKey(characterEpisodesKey(id))"
-                                                    @change="onCharacterToggle(id, $event.target.checked)"
-                                                >
-                                                <span class="px-2 font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
-                                            </label>
-
-                                            <fieldset
-                                                v-if="isCharacterAdvanced(id) && getByKey(characterEpisodesKey(id))"
-                                                class="border border-orange-400 p-4 rounded"
-                                            >
-                                                <div class="ml-4 flex space-x-2">
-                                                    <label
-                                                        v-for="logic in filterUi.logicOptions"
-                                                        :key="logic.value"
-                                                        class="flex items-center transition-all duration-100 active:scale-90"
-                                                        :class="logic.value === 'Some' ? 'px-4' : ''"
-                                                    >
-                                                        <input
-                                                            type="radio"
-                                                            class="scale-150"
-                                                            :name="'logic-' + id"
-                                                            :value="logic.value"
-                                                            :checked="getByKey(characterLogicKey(id)) === logic.value"
-                                                            @change="setByKey(characterLogicKey(id), logic.value)"
-                                                        >
-                                                        <span class="px-2">{{ logic.label }}</span>
-                                                    </label>
-                                                </div>
-
-                                                <br />
-
-                                                <div class="space-y-3">
-                                                    <label
-                                                        v-for="detail in filterUi.detailOptions"
-                                                        :key="detail.kind"
-                                                        class="flex items-center space-x-2 transition-all duration-100 active:scale-90"
-                                                    >
-                                                        <input
-                                                            type="checkbox"
-                                                            class="scale-150"
-                                                            :checked="getByKey(characterDetailKey(id, detail.kind))"
-                                                            @change="setByKey(characterDetailKey(id, detail.kind), $event.target.checked)"
-                                                        >
-                                                        <span class="px-2 font-bold">{{ detail.label }} ({{ getByKey(characterDetailCountKey(id, detail.kind)) }})</span>
-                                                    </label>
-                                                </div>
-                                            </fieldset>
-                                        </div>
-                                    </div>
-                                </fieldset>
-                            </div>
-                        </fieldset>
                     </div>
                 </div>
             </div>   
@@ -2971,11 +2969,12 @@
                 { modelKey: 'filterDevelopmentCharacter', label: 'تطور الشخصية', countKey: 'DevelopmentCharacterEpisodesCount' },
                 { modelKey: 'filterFlashBackEpisodes', label: 'ذكريات من الماضي', countKey: 'FlashBackEpisodesCount' },
             ],
-            basicSections: [
-                { title: 'حسب التصنيف', optionsKey: 'categoryOptions', inputType: 'radio', modelKey: 'selectedFilter' },
-                { title: 'حسب النوع', optionsKey: 'episodeTypeOptions', inputType: 'radio', modelKey: 'episodeTypeFilter' },
-                { title: 'حسب المجموعة', optionsKey: 'groupOptions', inputType: 'checkbox' },
-                { title: 'حسب المشهد', optionsKey: 'sceneOptions', inputType: 'checkbox' },
+            sections: [
+                { kind: 'basic', title: 'حسب التصنيف', optionsKey: 'categoryOptions', inputType: 'radio', modelKey: 'selectedFilter' },
+                { kind: 'basic', title: 'حسب النوع', optionsKey: 'episodeTypeOptions', inputType: 'radio', modelKey: 'episodeTypeFilter' },
+                { kind: 'basic', title: 'حسب المجموعة', optionsKey: 'groupOptions', inputType: 'checkbox' },
+                { kind: 'basic', title: 'حسب المشهد', optionsKey: 'sceneOptions', inputType: 'checkbox' },
+                { kind: 'characters', title: 'حسب الشخصية' },
             ],
             logicOptions: [
                 { value: 'All', label: 'دمج' },
