@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1859,7 +1858,6 @@
                                     </label>
                                 </div>
                             </fieldset>
-
                             <br />
                         </template>
 
@@ -1871,23 +1869,21 @@
                                     <legend class="font-bold text-lg px-2 mb-2">{{ group.title }}</legend>
 
                                     <div class="space-y-3">
-                                        <template v-for="id in group.ids" :key="id">
+                                        <div v-for="id in group.ids" :key="id" class="space-y-2">
+                                            <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
+                                                <input
+                                                    type="checkbox"
+                                                    class="scale-150"
+                                                    :checked="getByKey(characterEpisodesKey(id))"
+                                                    @change="onCharacterToggle(id, $event.target.checked)"
+                                                >
+                                                <span class="px-2 font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
+                                            </label>
+
                                             <fieldset
                                                 v-if="isCharacterAdvanced(id) && getByKey(characterEpisodesKey(id))"
                                                 class="border border-orange-400 p-4 rounded"
                                             >
-                                                <legend class="font-bold mb-2">
-                                                    <label class="transition-all duration-100 active:scale-90">
-                                                        <input
-                                                            type="checkbox"
-                                                            class="scale-150 ml-2"
-                                                            :checked="getByKey(characterEpisodesKey(id))"
-                                                            @change="onCharacterToggle(id, $event.target.checked)"
-                                                        >
-                                                        <span>{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
-                                                    </label>
-                                                </legend>
-
                                                 <div class="ml-4 flex space-x-2">
                                                     <label
                                                         v-for="logic in filterUi.logicOptions"
@@ -1925,17 +1921,7 @@
                                                     </label>
                                                 </div>
                                             </fieldset>
-
-                                            <label v-else class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
-                                                <input
-                                                    type="checkbox"
-                                                    class="scale-150"
-                                                    :checked="getByKey(characterEpisodesKey(id))"
-                                                    @change="onCharacterToggle(id, $event.target.checked)"
-                                                >
-                                                <span class="px-2 font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
-                                            </label>
-                                        </template>
+                                        </div>
                                     </div>
                                 </fieldset>
                             </div>
