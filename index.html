@@ -1922,7 +1922,6 @@
                                     </fieldset>
                                 </div>
                             </fieldset>
-                            <br />
                         </template>
                     </div>
                 </div>
@@ -3153,6 +3152,47 @@
                 { title: 'أخرون', ids: ['KohjiHaneda', 'AmandaHughes'] },
             ],
         };
+
+        const buildInitialFilterState = (filterUi) => {
+            const state = {};
+            const setFalse = (key) => {
+                if (key) state[key] = false;
+            };
+
+            for (const listKey of ['groupOptions', 'sceneOptions']) {
+                const list = filterUi && filterUi[listKey];
+                if (!Array.isArray(list)) continue;
+                for (const opt of list) {
+                    if (!opt || !opt.modelKey) continue;
+                    setFalse(opt.modelKey);
+                }
+            }
+
+            const ids = new Set();
+            const groups = filterUi && filterUi.characterGroups;
+            if (Array.isArray(groups)) {
+                for (const g of groups) {
+                    if (!g || !Array.isArray(g.ids)) continue;
+                    for (const id of g.ids) ids.add(id);
+                }
+            }
+
+            const simple = new Set(Array.isArray(filterUi && filterUi.characterSimpleIds) ? filterUi.characterSimpleIds : []);
+            const details = Array.isArray(filterUi && filterUi.detailOptions) ? filterUi.detailOptions : [];
+
+            for (const id of ids) {
+                state[`filter${id}Episodes`] = false;
+                if (!simple.has(id)) {
+                    state[`filterLogic${id}`] = 'All';
+                    for (const d of details) {
+                        if (!d || !d.kind) continue;
+                        state[`filter${id}${d.kind}`] = false;
+                    }
+                }
+            }
+
+            return state;
+        };
     
         const app = createApp({
             data() {
@@ -3518,44 +3558,7 @@
                     trailerIframeSrc: '',
                     preserveSelectedEpisodeOnModalClose: false,
                     showMangaButtons: false,
-                    filterBlackOrganization: false,
-                    filterDetectiveBoys: false,
-                    filterScaryEpisodes: false,
-                    filterSadyEpisodes: false,
-                    filterPoliceAcademy: false,
-                    filterFBI: false,
-                    filterPSB: false,
-                    filterNewCharacter: false,
-                    filterDevelopmentCharacter: false,
-                    filterFlashBackEpisodes: false,
-                    filterRomanceEpisodes: false,
-
-                    filterShinichiKudoEpisodes: false,
-                    filterShinichiKudoSceneEpisodes: false,
-                    filterShinichiKudoBackgroundEpisodes: false,
-                    filterShinichiKudoFlashbackEpisodes: false,
-                    filterShinichiKudoOtherEpisodes: false,
-                    filterLogicShinichiKudo: 'All',
-
-                    filterConanEdogawaEpisodes: false,
-                    filterRanMouriEpisodes: false,
-                    filterKogoroMouriEpisodes: false,
-
-                    filterAyumiYoshidaEpisodes: false,
-                    filterAyumiYoshidaSceneEpisodes: false,
-                    filterAyumiYoshidaBackgroundEpisodes: false,
-                    filterAyumiYoshidaFlashbackEpisodes: false,
-                    filterAyumiYoshidaOtherEpisodes: false,
-                    filterLogicAyumiYoshida: 'All',
-
-                    filterMitsuhikoTsuburayaEpisodes: false,
-                    filterMitsuhikoTsuburayaSceneEpisodes: false,
-                    filterMitsuhikoTsuburayaBackgroundEpisodes: false,
-                    filterMitsuhikoTsuburayaFlashbackEpisodes: false,
-                    filterMitsuhikoTsuburayaOtherEpisodes: false,
-                    filterLogicMitsuhikoTsuburaya: 'All',
-
-                    filterGentaKojimaEpisodes: false,
+                    ...buildInitialFilterState(FILTER_UI),
                     
                     // Countdown properties
                     countdownInterval: null,
@@ -3590,538 +3593,6 @@
                     showEnglishNextMangaCountdown: false,
                     nextMangaExistsInList: false,
                     nextMangaIntervalId: null,
-
-                    filterGentaKojimaSceneEpisodes: false,
-                    filterGentaKojimaBackgroundEpisodes: false,
-                    filterGentaKojimaFlashbackEpisodes: false,
-                    filterGentaKojimaOtherEpisodes: false,
-                    filterLogicGentaKojima: 'All',
-
-                    filterAiHaibaraEpisodes: false,
-                    filterAiHaibaraSceneEpisodes: false,
-                    filterAiHaibaraBackgroundEpisodes: false,
-                    filterAiHaibaraFlashbackEpisodes: false,
-                    filterAiHaibaraOtherEpisodes: false,
-                    filterLogicAiHaibara: 'All',
-
-                    filterHiroshiAgasaEpisodes: false,
-                    filterHiroshiAgasaSceneEpisodes: false,
-                    filterHiroshiAgasaBackgroundEpisodes: false,
-                    filterHiroshiAgasaFlashbackEpisodes: false,
-                    filterHiroshiAgasaOtherEpisodes: false,
-                    filterLogicHiroshiAgasa: 'All',
-
-                    filterSonokoSuzukiEpisodes: false,
-                    filterSonokoSuzukiSceneEpisodes: false,
-                    filterSonokoSuzukiBackgroundEpisodes: false,
-                    filterSonokoSuzukiFlashbackEpisodes: false,
-                    filterSonokoSuzukiOtherEpisodes: false,
-                    filterLogicSonokoSuzuki: 'All',
-
-                    filterEriKisakiEpisodes: false,
-                    filterEriKisakiSceneEpisodes: false,
-                    filterEriKisakiBackgroundEpisodes: false,
-                    filterEriKisakiFlashbackEpisodes: false,
-                    filterEriKisakiOtherEpisodes: false,
-                    filterLogicEriKisaki: 'All',
-
-                    filterYusakuKudoEpisodes: false,
-                    filterYusakuKudoSceneEpisodes: false,
-                    filterYusakuKudoBackgroundEpisodes: false,
-                    filterYusakuKudoFlashbackEpisodes: false,
-                    filterYusakuKudoOtherEpisodes: false,
-                    filterLogicYusakuKudo: 'All',
-
-                    filterYukikoKudoEpisodes: false,
-                    filterYukikoKudoSceneEpisodes: false,
-                    filterYukikoKudoBackgroundEpisodes: false,
-                    filterYukikoKudoFlashbackEpisodes: false,
-                    filterYukikoKudoOtherEpisodes: false,
-                    filterLogicYukikoKudo: 'All',
-
-                    filterHeijiHattoriEpisodes: false,
-                    filterHeijiHattoriSceneEpisodes: false,
-                    filterHeijiHattoriBackgroundEpisodes: false,
-                    filterHeijiHattoriFlashbackEpisodes: false,
-                    filterHeijiHattoriOtherEpisodes: false,
-                    filterLogicHeijiHattori: 'All',
-
-                    filterKazuhaToyamaEpisodes: false,
-                    filterKazuhaToyamaSceneEpisodes: false,
-                    filterKazuhaToyamaBackgroundEpisodes: false,
-                    filterKazuhaToyamaFlashbackEpisodes: false,
-                    filterKazuhaToyamaOtherEpisodes: false,
-                    filterLogicKazuhaToyama: 'All',
-
-                    filterYokoOkinoEpisodes: false,
-                    filterYokoOkinoSceneEpisodes: false,
-                    filterYokoOkinoBackgroundEpisodes: false,
-                    filterYokoOkinoFlashbackEpisodes: false,
-                    filterYokoOkinoOtherEpisodes: false,
-                    filterLogicYokoOkino: 'All',
-
-                    filterSumikoKobayashiEpisodes: false,
-                    filterSumikoKobayashiSceneEpisodes: false,
-                    filterSumikoKobayashiBackgroundEpisodes: false,
-                    filterSumikoKobayashiFlashbackEpisodes: false,
-                    filterSumikoKobayashiOtherEpisodes: false,
-                    filterLogicSumikoKobayashi: 'All',
-                    
-                    filterTomoakiAraideEpisodes: false,
-                    filterTomoakiAraideSceneEpisodes: false,
-                    filterTomoakiAraideBackgroundEpisodes: false,
-                    filterTomoakiAraideFlashbackEpisodes: false,
-                    filterTomoakiAraideOtherEpisodes: false,
-                    filterLogicTomoakiAraide: 'All',
-
-                    filterMakotoKyogokuEpisodes: false,
-                    filterMakotoKyogokuSceneEpisodes: false,
-                    filterMakotoKyogokuBackgroundEpisodes: false,
-                    filterMakotoKyogokuFlashbackEpisodes: false,
-                    filterMakotoKyogokuOtherEpisodes: false,
-                    filterLogicMakotoKyogoku: 'All',
-
-                    filterShizukaHattoriEpisodes: false,
-                    filterShizukaHattoriSceneEpisodes: false,
-                    filterShizukaHattoriBackgroundEpisodes: false,
-                    filterShizukaHattoriFlashbackEpisodes: false,
-                    filterShizukaHattoriOtherEpisodes: false,
-                    filterLogicShizukaHattori: 'All',
-
-                    filterJirokichiSuzukiEpisodes: false,
-                    filterJirokichiSuzukiSceneEpisodes: false,
-                    filterJirokichiSuzukiBackgroundEpisodes: false,
-                    filterJirokichiSuzukiFlashbackEpisodes: false,
-                    filterJirokichiSuzukiOtherEpisodes: false,
-                    filterLogicJirokichiSuzuki: 'All',
-
-                    filterEisukeHondouEpisodes: false,
-                    filterEisukeHondouSceneEpisodes: false,
-                    filterEisukeHondouBackgroundEpisodes: false,
-                    filterEisukeHondouFlashbackEpisodes: false,
-                    filterEisukeHondouOtherEpisodes: false,
-                    filterLogicEisukeHondou: 'All',
-
-                    filterAzusaEnomotoEpisodes: false,
-                    filterAzusaEnomotoSceneEpisodes: false,
-                    filterAzusaEnomotoBackgroundEpisodes: false,
-                    filterAzusaEnomotoFlashbackEpisodes: false,
-                    filterAzusaEnomotoOtherEpisodes: false,
-                    filterLogicAzusaEnomoto: 'All',
-
-                    filterSubaruOkiyaEpisodes: false,
-                    filterSubaruOkiyaSceneEpisodes: false,
-                    filterSubaruOkiyaBackgroundEpisodes: false,
-                    filterSubaruOkiyaFlashbackEpisodes: false,
-                    filterSubaruOkiyaOtherEpisodes: false,
-                    filterLogicSubaruOkiya: 'All',
-
-                    filterMasumiSeraEpisodes: false,
-                    filterMasumiSeraSceneEpisodes: false,
-                    filterMasumiSeraBackgroundEpisodes: false,
-                    filterMasumiSeraFlashbackEpisodes: false,
-                    filterMasumiSeraOtherEpisodes: false,
-                    filterLogicMasumiSera: 'All',
-
-                    filterShukichiHanedaEpisodes: false,
-                    filterShukichiHanedaSceneEpisodes: false,
-                    filterShukichiHanedaBackgroundEpisodes: false,
-                    filterShukichiHanedaFlashbackEpisodes: false,
-                    filterShukichiHanedaOtherEpisodes: false,
-                    filterLogicShukichiHaneda: 'All',
-
-                    filterSakurakoYoneharaEpisodes: false,
-                    filterSakurakoYoneharaSceneEpisodes: false,
-                    filterSakurakoYoneharaBackgroundEpisodes: false,
-                    filterSakurakoYoneharaFlashbackEpisodes: false,
-                    filterSakurakoYoneharaOtherEpisodes: false,
-                    filterLogicSakurakoYonehara: 'All',
-
-                    filterMomijiOokaEpisodes: false,
-                    filterMomijiOokaSceneEpisodes: false,
-                    filterMomijiOokaBackgroundEpisodes: false,
-                    filterMomijiOokaFlashbackEpisodes: false,
-                    filterMomijiOokaOtherEpisodes: false,
-                    filterLogicMomijiOoka: 'All',
-
-                    filterRumiWakasaEpisodes: false,
-                    filterRumiWakasaSceneEpisodes: false,
-                    filterRumiWakasaBackgroundEpisodes: false,
-                    filterRumiWakasaFlashbackEpisodes: false,
-                    filterRumiWakasaOtherEpisodes: false,
-                    filterLogicRumiWakasa: 'All',
-
-                    filterMugaLoriEpisodes: false,
-                    filterMugaLoriSceneEpisodes: false,
-                    filterMugaLoriBackgroundEpisodes: false,
-                    filterMugaLoriFlashbackEpisodes: false,
-                    filterMugaLoriOtherEpisodes: false,
-                    filterLogicMugaLori: 'All',
-
-                    filterJuzoMegureEpisodes: false,
-                    filterJuzoMegureSceneEpisodes: false,
-                    filterJuzoMegureBackgroundEpisodes: false,
-                    filterJuzoMegureFlashbackEpisodes: false,
-                    filterJuzoMegureOtherEpisodes: false,
-                    filterLogicJuzoMegure: 'All',
-
-                    filterNinzaburoShiratoriEpisodes: false,
-                    filterNinzaburoShiratoriSceneEpisodes: false,
-                    filterNinzaburoShiratoriBackgroundEpisodes: false,
-                    filterNinzaburoShiratoriFlashbackEpisodes: false,
-                    filterNinzaburoShiratoriOtherEpisodes: false,
-                    filterLogicNinzaburoShiratori: 'All',
-
-                    filterMiwakoSatoEpisodes: false,
-                    filterMiwakoSatoSceneEpisodes: false,
-                    filterMiwakoSatoBackgroundEpisodes: false,
-                    filterMiwakoSatoFlashbackEpisodes: false,
-                    filterMiwakoSatoOtherEpisodes: false,
-                    filterLogicMiwakoSato: 'All',
-
-                    filterWataruTakagiEpisodes: false,
-                    filterWataruTakagiSceneEpisodes: false,
-                    filterWataruTakagiBackgroundEpisodes: false,
-                    filterWataruTakagiFlashbackEpisodes: false,
-                    filterWataruTakagiOtherEpisodes: false,
-                    filterLogicWataruTakagi: 'All',
-
-                    filterKazunobuChibaEpisodes: false,
-                    filterKazunobuChibaSceneEpisodes: false,
-                    filterKazunobuChibaBackgroundEpisodes: false,
-                    filterKazunobuChibaFlashbackEpisodes: false,
-                    filterKazunobuChibaOtherEpisodes: false,
-                    filterLogicKazunobuChiba: 'All',
-
-                    filterYumiMiyamotoEpisodes: false,
-                    filterYumiMiyamotoSceneEpisodes: false,
-                    filterYumiMiyamotoBackgroundEpisodes: false,
-                    filterYumiMiyamotoFlashbackEpisodes: false,
-                    filterYumiMiyamotoOtherEpisodes: false,
-                    filterLogicYumiMiyamoto: 'All',
-
-                    filterNaekoMiikeEpisodes: false,
-                    filterNaekoMiikeSceneEpisodes: false,
-                    filterNaekoMiikeBackgroundEpisodes: false,
-                    filterNaekoMiikeFlashbackEpisodes: false,
-                    filterNaekoMiikeOtherEpisodes: false,
-                    filterLogicNaekoMiike: 'All',
-
-                    filterKiyonagaMatsumotoEpisodes: false,
-                    filterKiyonagaMatsumotoSceneEpisodes: false,
-                    filterKiyonagaMatsumotoBackgroundEpisodes: false,
-                    filterKiyonagaMatsumotoFlashbackEpisodes: false,
-                    filterKiyonagaMatsumotoOtherEpisodes: false,
-                    filterLogicKiyonagaMatsumoto: 'All',
-
-                    filterInspectorYuminagaEpisodes: false,
-                    filterInspectorYuminagaSceneEpisodes: false,
-                    filterInspectorYuminagaBackgroundEpisodes: false,
-                    filterInspectorYuminagaFlashbackEpisodes: false,
-                    filterInspectorYuminagaOtherEpisodes: false,
-                    filterLogicInspectorYuminaga: 'All',
-
-                    filterShintaroChakiEpisodes: false,
-                    filterShintaroChakiSceneEpisodes: false,
-                    filterShintaroChakiBackgroundEpisodes: false,
-                    filterShintaroChakiFlashbackEpisodes: false,
-                    filterShintaroChakiOtherEpisodes: false,
-                    filterLogicShintaroChaki: 'All',
-
-
-                    filterHyoueKurodaEpisodes: false,
-                    filterHyoueKurodaSceneEpisodes: false,
-                    filterHyoueKurodaBackgroundEpisodes: false,
-                    filterHyoueKurodaFlashbackEpisodes: false,
-                    filterHyoueKurodaOtherEpisodes: false,
-                    filterLogicHyoueKuroda: 'All',
-
-                    filterJinpeiMatsudaEpisodes: false,
-                    filterJinpeiMatsudaSceneEpisodes: false,
-                    filterJinpeiMatsudaBackgroundEpisodes: false,
-                    filterJinpeiMatsudaFlashbackEpisodes: false,
-                    filterJinpeiMatsudaOtherEpisodes: false,
-                    filterLogicJinpeiMatsuda: 'All',
-
-                    filterKenjiHagiwaraEpisodes: false,
-                    filterKenjiHagiwaraSceneEpisodes: false,
-                    filterKenjiHagiwaraBackgroundEpisodes: false,
-                    filterKenjiHagiwaraFlashbackEpisodes: false,
-                    filterKenjiHagiwaraOtherEpisodes: false,
-                    filterLogicKenjiHagiwara: 'All',
-
-                    filterWataruDateEpisodes: false,
-                    filterWataruDateSceneEpisodes: false,
-                    filterWataruDateBackgroundEpisodes: false,
-                    filterWataruDateFlashbackEpisodes: false,
-                    filterWataruDateOtherEpisodes: false,
-                    filterLogicWataruDate: 'All',
-
-                    filterHeizoHattoriEpisodes: false,
-                    filterHeizoHattoriSceneEpisodes: false,
-                    filterHeizoHattoriBackgroundEpisodes: false,
-                    filterHeizoHattoriFlashbackEpisodes: false,
-                    filterHeizoHattoriOtherEpisodes: false,
-                    filterLogicHeizoHattori: 'All',
-
-                    filterGinshiroToyamaEpisodes: false,
-                    filterGinshiroToyamaSceneEpisodes: false,
-                    filterGinshiroToyamaBackgroundEpisodes: false,
-                    filterGinshiroToyamaFlashbackEpisodes: false,
-                    filterGinshiroToyamaOtherEpisodes: false,
-                    filterLogicGinshiroToyama: 'All',
-
-                    filterGoroOtakiEpisodes: false,
-                    filterGoroOtakiSceneEpisodes: false,
-                    filterGoroOtakiBackgroundEpisodes: false,
-                    filterGoroOtakiFlashbackEpisodes: false,
-                    filterGoroOtakiOtherEpisodes: false,
-                    filterLogicGoroOtaki: 'All',
-
-                    filterKansukeYamatoEpisodes: false,
-                    filterKansukeYamatoSceneEpisodes: false,
-                    filterKansukeYamatoBackgroundEpisodes: false,
-                    filterKansukeYamatoFlashbackEpisodes: false,
-                    filterKansukeYamatoOtherEpisodes: false,
-                    filterLogicKansukeYamato: 'All',
-
-                    filterYuiUeharaEpisodes: false,
-                    filterYuiUeharaSceneEpisodes: false,
-                    filterYuiUeharaBackgroundEpisodes: false,
-                    filterYuiUeharaFlashbackEpisodes: false,
-                    filterYuiUeharaOtherEpisodes: false,
-                    filterLogicYuiUehara: 'All',
-
-                    filterTakaakiMorofushiEpisodes: false,
-                    filterTakaakiMorofushiSceneEpisodes: false,
-                    filterTakaakiMorofushiBackgroundEpisodes: false,
-                    filterTakaakiMorofushiFlashbackEpisodes: false,
-                    filterTakaakiMorofushiOtherEpisodes: false,
-                    filterLogicTakaakiMorofushi: 'All',
-
-                    filterSangoYokomizoEpisodes: false,
-                    filterSangoYokomizoSceneEpisodes: false,
-                    filterSangoYokomizoBackgroundEpisodes: false,
-                    filterSangoYokomizoFlashbackEpisodes: false,
-                    filterSangoYokomizoOtherEpisodes: false,
-                    filterLogicSangoYokomizo: 'All',
-
-                    filterMisaoYamamuraEpisodes: false,
-                    filterMisaoYamamuraSceneEpisodes: false,
-                    filterMisaoYamamuraBackgroundEpisodes: false,
-                    filterMisaoYamamuraFlashbackEpisodes: false,
-                    filterMisaoYamamuraOtherEpisodes: false,
-                    filterLogicMisaoYamamura: 'All',
-
-                    filterJugoYokomizoEpisodes: false,
-                    filterJugoYokomizoSceneEpisodes: false,
-                    filterJugoYokomizoBackgroundEpisodes: false,
-                    filterJugoYokomizoFlashbackEpisodes: false,
-                    filterJugoYokomizoOtherEpisodes: false,
-                    filterLogicJugoYokomizo: 'All',
-
-                    filterChihayaHagiwaraEpisodes: false,
-                    filterChihayaHagiwaraSceneEpisodes: false,
-                    filterChihayaHagiwaraBackgroundEpisodes: false,
-                    filterChihayaHagiwaraFlashbackEpisodes: false,
-                    filterChihayaHagiwaraOtherEpisodes: false,
-                    filterLogicChihayaHagiwara: 'All',
-
-                    filterFumimaroAyanokojiEpisodes: false,
-                    filterFumimaroAyanokojiSceneEpisodes: false,
-                    filterFumimaroAyanokojiBackgroundEpisodes: false,
-                    filterFumimaroAyanokojiFlashbackEpisodes: false,
-                    filterFumimaroAyanokojiOtherEpisodes: false,
-                    filterLogicFumimaroAyanokoji: 'All',
-
-                    filterReiFuruyaEpisodes: false,
-                    filterReiFuruyaSceneEpisodes: false,
-                    filterReiFuruyaBackgroundEpisodes: false,
-                    filterReiFuruyaFlashbackEpisodes: false,
-                    filterReiFuruyaOtherEpisodes: false,
-                    filterLogicReiFuruya: 'All',
-
-                    filterHiromitsuMorofushiEpisodes: false,
-                    filterHiromitsuMorofushiSceneEpisodes: false,
-                    filterHiromitsuMorofushiBackgroundEpisodes: false,
-                    filterHiromitsuMorofushiFlashbackEpisodes: false,
-                    filterHiromitsuMorofushiOtherEpisodes: false,
-                    filterLogicHiromitsuMorofushi: 'All',
-
-                    filterYuyaKazamiEpisodes: false,
-                    filterYuyaKazamiSceneEpisodes: false,
-                    filterYuyaKazamiBackgroundEpisodes: false,
-                    filterYuyaKazamiFlashbackEpisodes: false,
-                    filterYuyaKazamiOtherEpisodes: false,
-                    filterLogicYuyaKazami: 'All',
-
-                    filterShuichiAkaiEpisodes: false,
-                    filterShuichiAkaiSceneEpisodes: false,
-                    filterShuichiAkaiBackgroundEpisodes: false,
-                    filterShuichiAkaiFlashbackEpisodes: false,
-                    filterShuichiAkaiOtherEpisodes: false,
-                    filterLogicShuichiAkai: 'All',
-
-                    filterJodieStarlingEpisodes: false,
-                    filterJodieStarlingSceneEpisodes: false,
-                    filterJodieStarlingBackgroundEpisodes: false,
-                    filterJodieStarlingFlashbackEpisodes: false,
-                    filterJodieStarlingOtherEpisodes: false,
-                    filterLogicJodieStarling: 'All',
-
-                    filterJamesBlackEpisodes: false,
-                    filterJamesBlackSceneEpisodes: false,
-                    filterJamesBlackBackgroundEpisodes: false,
-                    filterJamesBlackFlashbackEpisodes: false,
-                    filterJamesBlackOtherEpisodes: false,
-                    filterLogicJamesBlack: 'All',
-
-                    filterAndreCamelEpisodes: false,
-                    filterAndreCamelSceneEpisodes: false,
-                    filterAndreCamelBackgroundEpisodes: false,
-                    filterAndreCamelFlashbackEpisodes: false,
-                    filterAndreCamelOtherEpisodes: false,
-                    filterLogicAndreCamel: 'All',
-
-                    filterHidemiHondouEpisodes: false,
-                    filterHidemiHondouSceneEpisodes: false,
-                    filterHidemiHondouBackgroundEpisodes: false,
-                    filterHidemiHondouFlashbackEpisodes: false,
-                    filterHidemiHondouOtherEpisodes: false,
-                    filterLogicHidemiHondou: 'All',
-
-                    filterEthanHondouEpisodes: false,
-                    filterEthanHondouSceneEpisodes: false,
-                    filterEthanHondouBackgroundEpisodes: false,
-                    filterEthanHondouFlashbackEpisodes: false,
-                    filterEthanHondouOtherEpisodes: false,
-                    filterLogicEthanHondou: 'All',
-
-                    filterMarySeraEpisodes: false,
-                    filterMarySeraSceneEpisodes: false,
-                    filterMarySeraBackgroundEpisodes: false,
-                    filterMarySeraFlashbackEpisodes: false,
-                    filterMarySeraOtherEpisodes: false,
-                    filterLogicMarySera: 'All',
-
-                    filterTsutomuAkaiEpisodes: false,
-                    filterTsutomuAkaiSceneEpisodes: false,
-                    filterTsutomuAkaiBackgroundEpisodes: false,
-                    filterTsutomuAkaiFlashbackEpisodes: false,
-                    filterTsutomuAkaiOtherEpisodes: false,
-                    filterLogicTsutomuAkai: 'All',
-
-                    filterRenyaKarasumaEpisodes: false,
-                    filterRenyaKarasumaSceneEpisodes: false,
-                    filterRenyaKarasumaBackgroundEpisodes: false,
-                    filterRenyaKarasumaFlashbackEpisodes: false,
-                    filterRenyaKarasumaOtherEpisodes: false,
-                    filterLogicRenyaKarasuma: 'All',
-
-                    filterRumEpisodes: false,
-                    filterRumSceneEpisodes: false,
-                    filterRumBackgroundEpisodes: false,
-                    filterRumFlashbackEpisodes: false,
-                    filterRumOtherEpisodes: false,
-                    filterLogicRum: 'All',
-
-                    filterGinEpisodes: false,
-                    filterGinSceneEpisodes: false,
-                    filterGinBackgroundEpisodes: false,
-                    filterGinFlashbackEpisodes: false,
-                    filterGinOtherEpisodes: false,
-                    filterLogicGin: 'All',
-
-                    filterVodkaEpisodes: false,
-                    filterVodkaSceneEpisodes: false,
-                    filterVodkaBackgroundEpisodes: false,
-                    filterVodkaFlashbackEpisodes: false,
-                    filterVodkaOtherEpisodes: false,
-                    filterLogicVodka: 'All',
-
-                    filterChrisVineyardEpisodes: false,
-                    filterChrisVineyardSceneEpisodes: false,
-                    filterChrisVineyardBackgroundEpisodes: false,
-                    filterChrisVineyardFlashbackEpisodes: false,
-                    filterChrisVineyardOtherEpisodes: false,
-                    filterLogicChrisVineyard: 'All',
-
-                    filterChiantiEpisodes: false,
-                    filterChiantiSceneEpisodes: false,
-                    filterChiantiBackgroundEpisodes: false,
-                    filterChiantiFlashbackEpisodes: false,
-                    filterChiantiOtherEpisodes: false,
-                    filterLogicChianti: 'All',
-
-                    filterKornEpisodes: false,
-                    filterKornSceneEpisodes: false,
-                    filterKornBackgroundEpisodes: false,
-                    filterKornFlashbackEpisodes: false,
-                    filterKornOtherEpisodes: false,
-                    filterLogicKorn: 'All',
-
-                    filterShihoMiyanoEpisodes: false,
-                    filterShihoMiyanoSceneEpisodes: false,
-                    filterShihoMiyanoBackgroundEpisodes: false,
-                    filterShihoMiyanoFlashbackEpisodes: false,
-                    filterShihoMiyanoOtherEpisodes: false,
-                    filterLogicShihoMiyano: 'All',
-
-                    filterAkemiMiyanoEpisodes: false,
-                    filterAkemiMiyanoSceneEpisodes: false,
-                    filterAkemiMiyanoBackgroundEpisodes: false,
-                    filterAkemiMiyanoFlashbackEpisodes: false,
-                    filterAkemiMiyanoOtherEpisodes: false,
-                    filterLogicAkemiMiyano: 'All',
-
-                    filterElenaMiyanoEpisodes: false,
-                    filterElenaMiyanoSceneEpisodes: false,
-                    filterElenaMiyanoBackgroundEpisodes: false,
-                    filterElenaMiyanoFlashbackEpisodes: false,
-                    filterElenaMiyanoOtherEpisodes: false,
-                    filterLogicElenaMiyano: 'All',
-
-                    filterAtsushiMiyanoEpisodes: false,
-                    filterAtsushiMiyanoSceneEpisodes: false,
-                    filterAtsushiMiyanoBackgroundEpisodes: false,
-                    filterAtsushiMiyanoFlashbackEpisodes: false,
-                    filterAtsushiMiyanoOtherEpisodes: false,
-                    filterLogicAtsushiMiyano: 'All',
-
-                    filterKohjiHanedaEpisodes: false,
-                    filterKohjiHanedaSceneEpisodes: false,
-                    filterKohjiHanedaBackgroundEpisodes: false,
-                    filterKohjiHanedaFlashbackEpisodes: false,
-                    filterKohjiHanedaOtherEpisodes: false,
-                    filterLogicKohjiHaneda: 'All',
-
-                    filterAmandaHughesEpisodes: false,
-                    filterAmandaHughesSceneEpisodes: false,
-                    filterAmandaHughesBackgroundEpisodes: false,
-                    filterAmandaHughesFlashbackEpisodes: false,
-                    filterAmandaHughesOtherEpisodes: false,
-                    filterLogicAmandaHughes: 'All',
-
-                    filterKaitouKidEpisodes: false,
-                    filterKaitouKidSceneEpisodes: false,
-                    filterKaitouKidBackgroundEpisodes: false,
-                    filterKaitouKidFlashbackEpisodes: false,
-                    filterKaitouKidOtherEpisodes: false,
-                    filterLogicKaitouKid: 'All',
-
-                    filterGinzoNakamoriEpisodes: false,
-                    filterGinzoNakamoriSceneEpisodes: false,
-                    filterGinzoNakamoriBackgroundEpisodes: false,
-                    filterGinzoNakamoriFlashbackEpisodes: false,
-                    filterGinzoNakamoriOtherEpisodes: false,
-                    filterLogicGinzoNakamori: 'All',
-
-                    filterToichiKurobaEpisodes: false,
-                    filterToichiKurobaSceneEpisodes: false,
-                    filterToichiKurobaBackgroundEpisodes: false,
-                    filterToichiKurobaFlashbackEpisodes: false,
-                    filterToichiKurobaOtherEpisodes: false,
-                    filterLogicToichiKuroba: 'All',
 
                     spoilerVisible: false,
                     nextEpisodeExists: false,
