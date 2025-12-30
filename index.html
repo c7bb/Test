@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1853,7 +1852,7 @@
                             <fieldset class="border p-4 rounded">
                                 <legend class="font-bold text-lg px-2 mb-2">{{ section.title }}</legend>
 
-                                <div v-if="section.kind === 'basic'" class="space-y-3">
+                                <div v-if="section.kind === 'basic'" class="space-y-4">
                                     <label
                                         v-for="opt in filterUi[section.optionsKey]"
                                         :key="section.inputType === 'radio' ? opt.value : opt.modelKey"
@@ -1882,7 +1881,7 @@
                                     <fieldset v-for="group in filterUi.characterGroups" :key="group.title" class="border p-4 rounded">
                                         <legend class="font-bold text-lg px-2 mb-2">{{ group.title }}</legend>
 
-                                        <div class="space-y-3">
+                                        <div class="space-y-4">
                                             <div v-for="id in group.ids" :key="id" class="space-y-2">
                                                 <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
                                                     <input
@@ -2270,7 +2269,7 @@
                                     {{ isCapturingEpisodeTableImages ? `جاري الالتقاط (${captureEpisodeTableImagesDone}/${captureEpisodeTableImagesTotal})` : 'التقاط الجدول كصور' }}
                                 </button>
 
-                                <div v-if="isCapturingEpisodeTableImages && captureEpisodeTableDelayRemainingMs > 0" class="text-base font-black" style="color: rgb(108 255 0);">
+                                <div v-if="isCapturingEpisodeTableImages && captureEpisodeTableDelayRemainingMs > 0" class="text-base font-black" style="color: rgb(0 0 0);">
                                     انتظار الإرسال التالي: {{ Math.ceil(captureEpisodeTableDelayRemainingMs / 1000) }} ثانية
                                 </div>
 
