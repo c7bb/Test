@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1497,6 +1496,21 @@
                 </div>
             </div>
 
+            <div v-if="showCaptureInProgressConfirmation" class="fixed z-[95] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
+                    <h3 class="text-xl mb-4">تأكيد الإيقاف</h3>
+                    <p class="mb-6">عملية التصوير قيد التنفيذ، هل تريد إيقافها</p>
+                    <div class="flex gap-4">
+                        <button @click="confirmCancelCapture" class="flex-1 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-all duration-100 active:scale-90">
+                            نعم
+                        </button>
+                        <button @click="cancelCaptureInProgressClose" class="flex-1 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-all duration-100 active:scale-90">
+                            لا
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Limit Reached Modal -->
             <div v-if="showLimitModal" class="fixed z-[80] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                 <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[90vh] overflow-hidden flex flex-col text-center p-6">
@@ -2243,7 +2257,7 @@
                                     ({{ totalEpisodes }})
                                 </span>
                             </div>
-                            <div v-if="showEpisodeTableCaptureButton" class="mt-2 flex justify-center">
+                            <div v-if="showEpisodeTableCaptureButton" class="mt-2 flex flex-col items-center gap-2">
                                 <button
                                     type="button"
                                     @click="captureEpisodeTableImages"
@@ -2251,6 +2265,19 @@
                                     class="bg-slate-900 text-white font-bold px-4 py-1 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                                 >
                                     {{ isCapturingEpisodeTableImages ? `جاري الالتقاط (${captureEpisodeTableImagesDone}/${captureEpisodeTableImagesTotal})` : 'التقاط الجدول كصور' }}
+                                </button>
+
+                                <div v-if="isCapturingEpisodeTableImages && captureEpisodeTableDelayRemainingMs > 0" class="text-base font-black" style="color: rgb(108 255 0);">
+                                    انتظار الإرسال التالي: {{ Math.ceil(captureEpisodeTableDelayRemainingMs / 1000) }} ثانية
+                                </div>
+
+                                <button
+                                    v-if="isCapturingEpisodeTableImages"
+                                    type="button"
+                                    @click="openCaptureCancelConfirmation"
+                                    class="bg-red-500 text-white font-bold px-4 py-1 rounded hover:bg-red-600 transition-all duration-100 active:scale-90"
+                                >
+                                    إيقاف عملية التصوير الحالية
                                 </button>
                             </div>
                         </th>
@@ -3549,8 +3576,11 @@
                     isRetryQueuePauseRequested: false,
                     showRetryStopConfirmation: false,
                     showSendInProgressConfirmation: false,
+                    showCaptureInProgressConfirmation: false,
                     pendingCloseTarget: null,
                     sendCancelGeneration: 0,
+                    captureCancelRequested: false,
+                    captureEpisodeTableDelayRemainingMs: 0,
                     failedMangaQueue: [], // Array of objects { chapter, ... } reference from mangaFailedLog
                     failedQueueStats: {
                         total: 0,
@@ -7484,6 +7514,20 @@
                     this.pendingCloseTarget = null;
                 },
 
+                openCaptureCancelConfirmation() {
+                    if (!this.isCapturingEpisodeTableImages) return;
+                    this.showCaptureInProgressConfirmation = true;
+                },
+
+                confirmCancelCapture() {
+                    this.captureCancelRequested = true;
+                    this.showCaptureInProgressConfirmation = false;
+                },
+
+                cancelCaptureInProgressClose() {
+                    this.showCaptureInProgressConfirmation = false;
+                },
+
                 selectTrailerGroup(groupKey) {
                     this.selectedTrailerGroupKey = groupKey;
                     const firstProvider = this.activeTrailerProviders[0];
@@ -8069,6 +8113,34 @@
                     return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
                 },
 
+                async sleepWithCountdown(ms) {
+                    const total = Math.max(0, Number(ms || 0));
+                    if (!total) {
+                        this.captureEpisodeTableDelayRemainingMs = 0;
+                        return true;
+                    }
+
+                    const tickMs = 250;
+                    const start = Date.now();
+                    this.captureEpisodeTableDelayRemainingMs = total;
+
+                    while (true) {
+                        if (this.captureCancelRequested) {
+                            this.captureEpisodeTableDelayRemainingMs = 0;
+                            return false;
+                        }
+
+                        const elapsed = Date.now() - start;
+                        const remaining = Math.max(0, total - elapsed);
+                        this.captureEpisodeTableDelayRemainingMs = remaining;
+                        if (remaining <= 0) break;
+                        await this.sleep(Math.min(tickMs, remaining));
+                    }
+
+                    this.captureEpisodeTableDelayRemainingMs = 0;
+                    return true;
+                },
+
                 sanitizeFilenamePart(text) {
                     return String(text || '')
                         .replace(/[\\/:*?"<>|]/g, '_')
@@ -8138,7 +8210,7 @@
                     }
                 },
 
-                buildEpisodeTableCaptureNode(episodes, headerNumber, headerTitle) {
+                buildEpisodeTableCaptureNode(episodes, headerNumber, headerTitle, captureTitleText, footerLine1, footerLine2) {
                     const wrapper = document.createElement('div');
                     wrapper.style.position = 'fixed';
                     wrapper.style.left = '0';
@@ -8147,10 +8219,20 @@
                     wrapper.style.opacity = '0';
                     wrapper.style.pointerEvents = 'none';
                     wrapper.style.background = '#ffffff';
+                    // wrapper.style.padding = '16px';
                     wrapper.style.width = '1024px';
                     wrapper.style.boxSizing = 'border-box';
                     wrapper.style.direction = 'rtl';
-                    wrapper.style.fontFamily = 'Expo Arabic Light, Arial, sans-serif';
+                    wrapper.style.fontFamily = '"Expo Arabic Light", Arial, sans-serif';
+
+                    const titleWrap = document.createElement('div');
+                    titleWrap.style.textAlign = 'center';
+                    titleWrap.style.fontSize = '20px';
+                    titleWrap.style.fontWeight = '800';
+                    titleWrap.style.marginBottom = '12px';
+                    titleWrap.style.whiteSpace = 'pre-line';
+                    titleWrap.textContent = String(captureTitleText || '');
+                    wrapper.appendChild(titleWrap);
 
                     const table = document.createElement('table');
                     table.style.width = '100%';
@@ -8167,7 +8249,8 @@
                     th1.style.fontSize = '22px';
                     th1.style.fontWeight = '700';
                     th1.style.width = '16%';
-                    th1.style.background = '#e5e7eb';
+                    th1.style.background = '#2a2a2a';
+                    th1.style.color = 'rgb(108, 255, 0)';
                     th1.textContent = String(headerNumber || '');
                     const th2 = document.createElement('th');
                     th2.style.border = '1px solid #d1d5db';
@@ -8176,7 +8259,8 @@
                     th2.style.fontSize = '22px';
                     th2.style.fontWeight = '700';
                     th2.style.width = '84%';
-                    th2.style.background = '#e5e7eb';
+                    th2.style.background = '#2a2a2a';
+                    th2.style.color = 'rgb(108, 255, 0)';
                     th2.textContent = String(headerTitle || '');
                     headRow.appendChild(th1);
                     headRow.appendChild(th2);
@@ -8212,6 +8296,16 @@
                     table.appendChild(tbody);
 
                     wrapper.appendChild(table);
+
+                    const footerWrap = document.createElement('div');
+                    footerWrap.style.textAlign = 'center';
+                    footerWrap.style.marginTop = '14px';
+                    footerWrap.style.fontSize = '16px';
+                    footerWrap.style.fontWeight = '800';
+                    footerWrap.style.whiteSpace = 'pre-line';
+                    const footerText = [footerLine1, footerLine2].map(v => String(v || '').trim()).filter(Boolean).join('\n');
+                    footerWrap.textContent = footerText;
+                    wrapper.appendChild(footerWrap);
                     return wrapper;
                 },
 
@@ -8261,15 +8355,24 @@
                     if (this.isCapturingEpisodeTableImages) return;
 
                     const episodes = Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes.slice() : [];
-                    const chunkSize = 10;
+                    const chunkSize = 15;
                     const total = Math.ceil(episodes.length / chunkSize);
                     if (!total) return;
 
                     this.isCapturingEpisodeTableImages = true;
+                    this.captureCancelRequested = false;
                     this.captureEpisodeTableImagesDone = 0;
                     this.captureEpisodeTableImagesTotal = total;
+                    this.captureEpisodeTableDelayRemainingMs = 0;
 
                     try {
+                        try {
+                            if (document.fonts && typeof document.fonts.load === 'function') {
+                                await document.fonts.load('16px "Expo Arabic Light"');
+                                if (document.fonts.ready) await document.fonts.ready;
+                            }
+                        } catch (e) {}
+
                         const enabledLabels = this.getCaptureEnabledFilterLabels();
                         const enabledLabelText = enabledLabels.join(' - ');
                         const enabledKeyParts = [
@@ -8280,9 +8383,19 @@
                         const baseName = enabledKeyParts.slice(0, 10).join('_') || 'table';
 
                         for (let i = 0; i < total; i += 1) {
+                            if (this.captureCancelRequested) break;
                             const start = i * chunkSize;
                             const chunk = episodes.slice(start, start + chunkSize);
-                            const node = this.buildEpisodeTableCaptureNode(chunk, this.episodeNumberHeader, this.episodeTitleHeader);
+                            const part = i + 1;
+                            const titleText = `التصفية: ${enabledLabelText}\nالجزء: ${part}/${total}`;
+                            const node = this.buildEpisodeTableCaptureNode(
+                                chunk,
+                                this.episodeNumberHeader,
+                                this.episodeTitleHeader,
+                                titleText,
+                                'أنشت الصورة بواسطة دليل المحقق كونان | @DCRef_bot',
+                                't.me/DCRef_bot'
+                            );
                             document.body.appendChild(node);
                             await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
@@ -8293,24 +8406,32 @@
                                 node.remove();
                             }
 
-                            const part = i + 1;
                             const rowStart = start + 1;
                             const rowEnd = Math.min(start + chunkSize, episodes.length);
                             const filename = `${baseName}_rows_${rowStart}-${rowEnd}.png`;
 
-                            const caption = `التصفية: ${enabledLabelText}\nالصفوف: ${rowStart}-${rowEnd}\nالجزء: ${part}/${total}`;
+                            const caption = `التصفية: ${enabledLabelText}\nالصفوف: ${rowEnd}-${rowStart}\nالجزء: ${part}/${total}`;
                             await this.sendPhotoResponse(blob, filename, caption);
-                            await this.sleep(2000);
-
                             this.captureEpisodeTableImagesDone = part;
+                            this.showSuccessHint(`تم إرسال الصورة (${this.captureEpisodeTableImagesDone}/${this.captureEpisodeTableImagesTotal}) للخاص`);
+
+                            if (part < total) {
+                                const ok = await this.sleepWithCountdown(2000);
+                                if (!ok) break;
+                            }
                         }
 
-                        this.showSuccessHint('تم إرسال الصور للخاص');
+                        if (this.captureCancelRequested) {
+                            this.showSuccessHint('تم إيقاف عملية التصوير');
+                        } else {
+                            this.showSuccessHint('تم إرسال الصور للخاص');
+                        }
                     } catch (e) {
                         this.errorMessage = e?.message || String(e);
                         throw e;
                     } finally {
                         this.isCapturingEpisodeTableImages = false;
+                        this.captureEpisodeTableDelayRemainingMs = 0;
                         setTimeout(() => {
                             this.captureEpisodeTableImagesDone = 0;
                             this.captureEpisodeTableImagesTotal = 0;
@@ -10887,4 +11008,3 @@
     </style>
 </body>
 </html>
-
