@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -2267,7 +2266,7 @@
                                     :disabled="isCapturingEpisodeTableImages || totalEpisodes === 0"
                                     class="bg-slate-900 text-white font-bold px-4 py-1 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                                 >
-                                    {{ isCapturingEpisodeTableImages ? `جاري الالتقاط (${captureEpisodeTableImagesDone}/${captureEpisodeTableImagesTotal})` : 'التقاط الجدول كصور' }}
+                                    {{ isCapturingEpisodeTableImages ? `جاري الالتقاط (${captureEpisodeTableImagesDone}/${captureEpisodeTableImagesTotal})` : (totalEpisodes <= 15 ? 'حفظ الجدول كصورة' : 'حفظ الجدول كصور') }}
                                 </button>
 
                                 <div v-if="isCapturingEpisodeTableImages && captureEpisodeTableDelayRemainingMs > 0" class="text-base font-black" style="color: rgb(0 0 0);">
@@ -4903,6 +4902,9 @@
                     return false;
                 },
                 showEpisodeTableCaptureButton() {
+                    const rowCount = Number(this.totalEpisodes ?? (Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes.length : 0));
+                    if (rowCount < 1 || rowCount > 100) return false;
+
                     const allowedCategories = new Set([
                         'movies',
                         'hourly_special',
@@ -4931,7 +4933,24 @@
                         'filterFlashBackEpisodes',
                     ];
                     const characterIds = Object.keys(this.filterUi?.characterLabels || {});
+                    const characterBlacklist = new Set([
+                        'ConanEdogawa',
+                        'RanMouri',
+                        'KogoroMouri',
+                        'AyumiYoshida',
+                        'MitsuhikoTsuburaya',
+                        'GentaKojima',
+                        'AiHaibara',
+                        'SonokoSuzuki',
+                        'HiroshiAgasa',
+                        'JuzoMegure',
+                        'NinzaburoShiratori',
+                        'MiwakoSato',
+                        'WataruTakagi',
+                        'KazunobuChiba',
+                    ]);
                     for (const id of characterIds) {
+                        if (characterBlacklist.has(id)) continue;
                         allowedToggleKeys.push(this.characterEpisodesKey(id));
                     }
                     return allowedToggleKeys.some((key) => Boolean(this[key]));
@@ -8174,6 +8193,12 @@
                             if (!opt || !opt.modelKey) continue;
                             if (this[opt.modelKey]) add(opt.label);
                         }
+                    }
+
+                    const characterLabels = ui.characterLabels || {};
+                    for (const id of Object.keys(characterLabels)) {
+                        const key = typeof this.characterEpisodesKey === 'function' ? this.characterEpisodesKey(id) : `filter${id}Episodes`;
+                        if (this[key]) add(characterLabels[id]);
                     }
                     return labels;
                 },
