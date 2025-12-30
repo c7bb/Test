@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -281,6 +282,7 @@
                 // }
         </script>    
         <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/dist/html-to-image.min.js"></script>
         <script src="https://cdn.tailwindcss.com"></script>
         <style>
             /* Disable text selection */
@@ -2241,6 +2243,16 @@
                                     ({{ totalEpisodes }})
                                 </span>
                             </div>
+                            <div v-if="showEpisodeTableCaptureButton" class="mt-2 flex justify-center">
+                                <button
+                                    type="button"
+                                    @click="captureEpisodeTableImages"
+                                    :disabled="isCapturingEpisodeTableImages || totalEpisodes === 0"
+                                    class="bg-slate-900 text-white font-bold px-4 py-1 rounded hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                >
+                                    {{ isCapturingEpisodeTableImages ? `جاري الالتقاط (${captureEpisodeTableImagesDone}/${captureEpisodeTableImagesTotal})` : 'التقاط الجدول كصور' }}
+                                </button>
+                            </div>
                         </th>
                     </tr>
 
@@ -3856,6 +3868,9 @@
                     relatedEpisodeGroupIdByEpisodeKey: {},
                     episodesByEpisodeKey: {},
                     relatedEpisodeMenuOpen: false,
+                    isCapturingEpisodeTableImages: false,
+                    captureEpisodeTableImagesDone: 0,
+                    captureEpisodeTableImagesTotal: 0,
                     selectedTrailerGroupKey: null,
                     selectedTrailerProviderKey: null,
                     selectedTrailer: null,
@@ -4853,6 +4868,36 @@
                         if (this[key] !== FILTER_STATE_DEFAULTS[key]) return true;
                     }
                     return false;
+                },
+                showEpisodeTableCaptureButton() {
+                    const allowedCategories = new Set([
+                        'movies',
+                        'hourly_special',
+                        'two_hour_special',
+                        'short_story',
+                        'ova',
+                        'movie_special',
+                        'special_release',
+                        'magic_kaito',
+                        'zero_diaries',
+                        'criminal_hanzawa',
+                    ]);
+                    if (allowedCategories.has(this.selectedFilter)) return true;
+
+                    const allowedToggleKeys = [
+                        'filterBlackOrganization',
+                        'filterDetectiveBoys',
+                        'filterFBI',
+                        'filterPSB',
+                        'filterPoliceAcademy',
+                        'filterScaryEpisodes',
+                        'filterSadyEpisodes',
+                        'filterRomanceEpisodes',
+                        'filterNewCharacter',
+                        'filterDevelopmentCharacter',
+                        'filterFlashBackEpisodes',
+                    ];
+                    return allowedToggleKeys.some((key) => Boolean(this[key]));
                 },
             },
             watch: {
@@ -8016,6 +8061,182 @@
                     } catch (error) {
                         console.error(error);
                         throw new Error(error.message);
+                    }
+                },
+
+                downloadBlob(blob, filename) {
+                    const name = String(filename || 'image.png');
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = name;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(url), 1000);
+                },
+
+                async sendPhotoResponse(photoBlob, filename, caption) {
+                    if (!this.isTabOwner) {
+                        console.warn('sendPhotoResponse blocked: Tab is not the owner');
+                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
+                    }
+
+                    const fd = new FormData();
+                    fd.append('method', 'sendPhoto');
+                    fd.append('chat_id', webApp?.initDataUnsafe?.user?.id);
+                    fd.append('caption', caption || '');
+                    fd.append('parse_mode', 'Markdown');
+
+                    const safeName = String(filename || 'image.png');
+                    const file = new File([photoBlob], safeName, { type: photoBlob.type || 'image/png' });
+                    fd.append('photo', file);
+
+                    try {
+                        const response = await fetch(`${this.jsonUrl}/send`, {
+                            method: 'POST',
+                            body: fd,
+                        });
+
+                        const text = await response.text();
+                        let data;
+                        try {
+                            data = JSON.parse(text);
+                        } catch (e) {
+                            throw new Error('Invalid JSON response from Worker:\n' + text);
+                        }
+
+                        if (!response.ok) {
+                            const status = data?.status || response.status;
+                            throw new Error(`Telegram Error: (${status}) ` + (data.description || text) + ` (${webApp?.initDataUnsafe?.user?.id})`);
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        throw new Error(error.message);
+                    }
+                },
+
+                buildEpisodeTableCaptureNode(episodes, headerNumber, headerTitle) {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'fixed';
+                    wrapper.style.left = '-100000px';
+                    wrapper.style.top = '0';
+                    wrapper.style.background = '#ffffff';
+                    wrapper.style.padding = '16px';
+                    wrapper.style.width = '1024px';
+                    wrapper.style.direction = 'rtl';
+
+                    const table = document.createElement('table');
+                    table.className = 'min-w-full border-collapse border border-gray-300';
+
+                    const thead = document.createElement('thead');
+                    const headRow = document.createElement('tr');
+                    const th1 = document.createElement('th');
+                    th1.className = 'border border-gray-300 text-xl px-2 py-2 text-center w-1/6 bg-gray-200';
+                    th1.textContent = String(headerNumber || '');
+                    const th2 = document.createElement('th');
+                    th2.className = 'border border-gray-300 text-xl px-4 py-2 text-center w-5/6 bg-gray-200';
+                    th2.textContent = String(headerTitle || '');
+                    headRow.appendChild(th1);
+                    headRow.appendChild(th2);
+                    thead.appendChild(headRow);
+                    table.appendChild(thead);
+
+                    const tbody = document.createElement('tbody');
+                    const list = Array.isArray(episodes) ? episodes : [];
+                    for (const episode of list) {
+                        const tr = document.createElement('tr');
+                        const td1 = document.createElement('td');
+                        td1.className = 'border border-gray-300 px-2 text-lg font-bold py-2 text-center';
+                        td1.textContent = String(episode?.EpisodeNumber ?? '');
+                        const td2 = document.createElement('td');
+                        td2.className = 'border border-gray-300 px-4 text-lg font-bold py-2 text-center';
+                        td2.textContent = String(episode?.EpisodeTitle ?? '');
+                        tr.appendChild(td1);
+                        tr.appendChild(td2);
+                        tbody.appendChild(tr);
+                    }
+                    table.appendChild(tbody);
+
+                    wrapper.appendChild(table);
+                    return wrapper;
+                },
+
+                async renderEpisodeTableCaptureBlob(node) {
+                    if (!window.htmlToImage || typeof window.htmlToImage.toBlob !== 'function') {
+                        throw new Error('مكتبة html-to-image غير متاحة');
+                    }
+
+                    const attempt = async (pixelRatio) => {
+                        return await window.htmlToImage.toBlob(node, {
+                            backgroundColor: '#ffffff',
+                            pixelRatio,
+                            cacheBust: true,
+                        });
+                    };
+
+                    const blob2x = await attempt(2);
+                    if (blob2x && blob2x.size <= 9.5 * 1024 * 1024) return blob2x;
+
+                    const blob15x = await attempt(1.5);
+                    if (blob15x && blob15x.size <= 9.5 * 1024 * 1024) return blob15x;
+
+                    const blob1x = await attempt(1);
+                    if (blob1x) return blob1x;
+
+                    throw new Error('فشل إنشاء الصورة');
+                },
+
+                async captureEpisodeTableImages() {
+                    if (this.isCapturingEpisodeTableImages) return;
+
+                    const episodes = Array.isArray(this.filteredEpisodes) ? this.filteredEpisodes.slice() : [];
+                    const chunkSize = 10;
+                    const total = Math.ceil(episodes.length / chunkSize);
+                    if (!total) return;
+
+                    this.isCapturingEpisodeTableImages = true;
+                    this.captureEpisodeTableImagesDone = 0;
+                    this.captureEpisodeTableImagesTotal = total;
+
+                    try {
+                        const safeLabel = String(this.selectedFilterLabel || '').replace(/\s+/g, '_');
+                        const safeTypeLabel = String(this.episodeTypeFilterLabel || '').replace(/\s+/g, '_');
+
+                        for (let i = 0; i < total; i += 1) {
+                            const start = i * chunkSize;
+                            const chunk = episodes.slice(start, start + chunkSize);
+                            const node = this.buildEpisodeTableCaptureNode(chunk, this.episodeNumberHeader, this.episodeTitleHeader);
+                            document.body.appendChild(node);
+
+                            let blob;
+                            try {
+                                blob = await this.renderEpisodeTableCaptureBlob(node);
+                            } finally {
+                                node.remove();
+                            }
+
+                            const index1 = i + 1;
+                            const filename = `table_${safeLabel}_${safeTypeLabel}_${index1}.png`;
+
+                            this.downloadBlob(blob, filename);
+
+                            const caption = `${this.selectedFilterLabel} - ${this.episodeTypeFilterLabel}\n${index1}/${total}`;
+                            await this.sendPhotoResponse(blob, filename, caption);
+
+                            this.captureEpisodeTableImagesDone = index1;
+                        }
+
+                        this.showSuccessHint('تم حفظ الصور وإرسالها للخاص');
+                    } catch (e) {
+                        this.errorMessage = e?.message || String(e);
+                        throw e;
+                    } finally {
+                        this.isCapturingEpisodeTableImages = false;
+                        setTimeout(() => {
+                            this.captureEpisodeTableImagesDone = 0;
+                            this.captureEpisodeTableImagesTotal = 0;
+                        }, 2000);
                     }
                 },
 
