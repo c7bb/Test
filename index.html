@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1848,11 +1849,11 @@
                             <p class="text-base">اسماء الشخصيات بالترتيب الياباني (اسم العائلة + اسم الشخص)</p>
                         </div>
 
-                        <template v-for="section in filterUi.sections" :key="section.kind">
-                            <fieldset class="border p-4 rounded">
+                        <div class="space-y-4">
+                            <fieldset v-for="section in filterUi.sections" :key="section.kind" class="border p-4 rounded">
                                 <legend class="font-bold text-lg px-2 mb-2">{{ section.title }}</legend>
 
-                                <div v-if="section.kind === 'basic'" class="space-y-4">
+                                <div v-if="section.kind === 'basic'" class="space-y-5">
                                     <label
                                         v-for="opt in filterUi[section.optionsKey]"
                                         :key="section.inputType === 'radio' ? opt.value : opt.modelKey"
@@ -1881,7 +1882,7 @@
                                     <fieldset v-for="group in filterUi.characterGroups" :key="group.title" class="border p-4 rounded">
                                         <legend class="font-bold text-lg px-2 mb-2">{{ group.title }}</legend>
 
-                                        <div class="space-y-4">
+                                        <div class="space-y-5">
                                             <div v-for="id in group.ids" :key="id" class="space-y-2">
                                                 <label class="flex items-center space-x-2 transition-all duration-100 active:scale-90">
                                                     <input
@@ -1939,7 +1940,7 @@
                                     </fieldset>
                                 </div>
                             </fieldset>
-                        </template>
+                        </div>
                     </div>
                 </div>
             </div>   
@@ -4929,6 +4930,10 @@
                         'filterDevelopmentCharacter',
                         'filterFlashBackEpisodes',
                     ];
+                    const characterIds = Object.keys(this.filterUi?.characterLabels || {});
+                    for (const id of characterIds) {
+                        allowedToggleKeys.push(this.characterEpisodesKey(id));
+                    }
                     return allowedToggleKeys.some((key) => Boolean(this[key]));
                 },
             },
@@ -8232,6 +8237,21 @@
                     fontStyle.textContent = "@font-face { font-family: 'Expo Arabic Light'; src: url('https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/EAL.woff2') format('woff2'); font-style: normal; font-weight: 300; }";
                     wrapper.appendChild(fontStyle);
 
+                    const tailwindBgToHex = {
+                        'bg-cyan-500': '#06b6d4',
+                        'bg-amber-800': '#92400e',
+                        'bg-sky-800': '#075985',
+                        'bg-orange-600': '#ea580c',
+                        'bg-green-600': '#16a34a',
+                        'bg-yellow-600': '#ca8a04',
+                        'bg-purple-500': '#a855f7',
+                        'bg-indigo-600': '#4f46e5',
+                        'bg-pink-600': '#db2777',
+                        'bg-stone-600': '#57534e',
+                        'bg-teal-900': '#134e4a',
+                        'bg-red-900': '#7f1d1d',
+                    };
+
                     const titleWrap = document.createElement('div');
                     titleWrap.style.textAlign = 'center';
                     titleWrap.style.fontSize = '20px';
@@ -8288,6 +8308,18 @@
                         td1.style.fontWeight = '700';
                         td1.style.width = '16%';
                         td1.style.background = '#2a2a2a';
+                        try {
+                            const bgClass = typeof this.getBackgroundColor === 'function'
+                                ? this.getBackgroundColor({
+                                    ...episode,
+                                    EpisodeNumber: String(episode?.EpisodeNumber ?? ''),
+                                    EpisodeSpecial: String(episode?.EpisodeSpecial ?? ''),
+                                    EpisodeType: String(episode?.EpisodeType ?? ''),
+                                })
+                                : '';
+                            const bg = tailwindBgToHex[bgClass];
+                            if (bg) td1.style.background = bg;
+                        } catch (e) {}
                         td1.textContent = String(episode?.EpisodeNumber ?? '');
                         const td2 = document.createElement('td');
                         td2.style.border = '1px solid #d1d5db';
