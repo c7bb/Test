@@ -2277,7 +2277,7 @@
                                     @click="openCaptureCancelConfirmation"
                                     class="bg-red-500 text-white font-bold px-4 py-1 rounded hover:bg-red-600 transition-all duration-100 active:scale-90"
                                 >
-                                    إيقاف عملية التصوير الحالية
+                                    إيقاف عملية التصوير
                                 </button>
                             </div>
                         </th>
@@ -8218,17 +8218,23 @@
                     wrapper.style.transform = 'none';
                     wrapper.style.opacity = '0';
                     wrapper.style.pointerEvents = 'none';
-                    wrapper.style.background = 'rgb(31 41 55 / var(--tw-bg-opacity, 1));';
+                    wrapper.style.setProperty('--tw-bg-opacity', '1');
+                    wrapper.style.backgroundColor = 'rgb(31 41 55 / var(--tw-bg-opacity, 1))';
                     // wrapper.style.padding = '16px';
                     wrapper.style.width = '1024px';
                     wrapper.style.boxSizing = 'border-box';
                     wrapper.style.direction = 'rtl';
                     wrapper.style.fontFamily = '"Expo Arabic Light", Arial, sans-serif';
 
+                    const fontStyle = document.createElement('style');
+                    fontStyle.textContent = "@font-face { font-family: 'Expo Arabic Light'; src: url('https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/EAL.woff2') format('woff2'); font-style: normal; font-weight: 300; }";
+                    wrapper.appendChild(fontStyle);
+
                     const titleWrap = document.createElement('div');
                     titleWrap.style.textAlign = 'center';
                     titleWrap.style.fontSize = '20px';
                     titleWrap.style.fontWeight = '800';
+                    titleWrap.style.color = 'rgb(108, 255, 0)';
                     titleWrap.style.marginBottom = '12px';
                     titleWrap.style.whiteSpace = 'pre-line';
                     titleWrap.textContent = String(captureTitleText || '');
@@ -8239,6 +8245,7 @@
                     table.style.borderCollapse = 'collapse';
                     table.style.border = '1px solid #d1d5db';
                     table.style.tableLayout = 'fixed';
+                    table.style.background = '#ffffff';
 
                     const thead = document.createElement('thead');
                     const headRow = document.createElement('tr');
@@ -8278,6 +8285,7 @@
                         td1.style.fontSize = '18px';
                         td1.style.fontWeight = '700';
                         td1.style.width = '16%';
+                        td1.style.background = '#ffffff';
                         td1.textContent = String(episode?.EpisodeNumber ?? '');
                         const td2 = document.createElement('td');
                         td2.style.border = '1px solid #d1d5db';
@@ -8288,6 +8296,7 @@
                         td2.style.width = '84%';
                         td2.style.wordBreak = 'break-word';
                         td2.style.overflowWrap = 'anywhere';
+                        td2.style.background = '#ffffff';
                         td2.textContent = String(episode?.EpisodeTitle ?? '');
                         tr.appendChild(td1);
                         tr.appendChild(td2);
@@ -8302,6 +8311,7 @@
                     footerWrap.style.marginTop = '14px';
                     footerWrap.style.fontSize = '16px';
                     footerWrap.style.fontWeight = '800';
+                    footerWrap.style.color = 'rgb(108, 255, 0)';
                     footerWrap.style.whiteSpace = 'pre-line';
                     const footerText = [footerLine1, footerLine2].map(v => String(v || '').trim()).filter(Boolean).join('\n');
                     footerWrap.textContent = footerText;
@@ -8314,20 +8324,30 @@
                         throw new Error('مكتبة html-to-image غير متاحة');
                     }
 
+                    let fontEmbedCSS = '';
+                    try {
+                        if (typeof window.htmlToImage.getFontEmbedCSS === 'function') {
+                            fontEmbedCSS = await window.htmlToImage.getFontEmbedCSS(node);
+                        }
+                    } catch (e) {
+                        fontEmbedCSS = '';
+                    }
+
                     const attempt = async (pixelRatio) => {
                         const width = Math.ceil(Number(node?.scrollWidth || node?.offsetWidth || 0)) || 1024;
                         const height = Math.ceil(Number(node?.scrollHeight || node?.offsetHeight || 0)) || 1;
                         return await window.htmlToImage.toBlob(node, {
-                            backgroundColor: '#ffffff',
+                            backgroundColor: 'rgb(31 41 55 / 1)',
                             pixelRatio,
                             cacheBust: true,
-                            fontEmbedCSS: '',
+                            fontEmbedCSS,
                             skipFonts: true,
                             style: {
                                 opacity: '1',
                                 transform: 'none',
                                 left: '0',
                                 top: '0',
+                                background: 'rgb(31 41 55 / 1)',
                             },
                             width,
                             height,
@@ -11008,4 +11028,3 @@
     </style>
 </body>
 </html>
-
