@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -8076,6 +8075,41 @@
                     setTimeout(() => URL.revokeObjectURL(url), 1000);
                 },
 
+                sleep(ms) {
+                    const n = Number(ms || 0);
+                    return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
+                },
+
+                sanitizeFilenamePart(text) {
+                    return String(text || '')
+                        .replace(/[\\/:*?"<>|]/g, '_')
+                        .replace(/\s+/g, '_')
+                        .replace(/_+/g, '_')
+                        .replace(/^_+|_+$/g, '');
+                },
+
+                getCaptureEnabledFilterLabels() {
+                    const labels = [];
+                    const add = (v) => {
+                        const s = String(v || '').trim();
+                        if (s) labels.push(s);
+                    };
+
+                    add(this.selectedFilterLabel);
+                    if (this.episodeTypeFilter && this.episodeTypeFilter !== 'All') add(this.episodeTypeFilterLabel);
+
+                    const ui = this.filterUi || {};
+                    const toggleLists = [ui.groupOptions, ui.sceneOptions];
+                    for (const list of toggleLists) {
+                        if (!Array.isArray(list)) continue;
+                        for (const opt of list) {
+                            if (!opt || !opt.modelKey) continue;
+                            if (this[opt.modelKey]) add(opt.label);
+                        }
+                    }
+                    return labels;
+                },
+
                 async sendPhotoResponse(photoBlob, filename, caption) {
                     if (!this.isTabOwner) {
                         console.warn('sendPhotoResponse blocked: Tab is not the owner');
@@ -8086,7 +8120,6 @@
                     fd.append('method', 'sendPhoto');
                     fd.append('chat_id', webApp?.initDataUnsafe?.user?.id);
                     fd.append('caption', caption || '');
-                    fd.append('parse_mode', 'Markdown');
 
                     const safeName = String(filename || 'image.png');
                     const file = new File([photoBlob], safeName, { type: photoBlob.type || 'image/png' });
@@ -8119,23 +8152,39 @@
                 buildEpisodeTableCaptureNode(episodes, headerNumber, headerTitle) {
                     const wrapper = document.createElement('div');
                     wrapper.style.position = 'fixed';
-                    wrapper.style.left = '-100000px';
+                    wrapper.style.left = '0';
                     wrapper.style.top = '0';
+                    wrapper.style.transform = 'translateX(-200vw)';
                     wrapper.style.background = '#ffffff';
                     wrapper.style.padding = '16px';
                     wrapper.style.width = '1024px';
                     wrapper.style.direction = 'rtl';
+                    wrapper.style.fontFamily = 'Arial, sans-serif';
 
                     const table = document.createElement('table');
-                    table.className = 'min-w-full border-collapse border border-gray-300';
+                    table.style.width = '100%';
+                    table.style.borderCollapse = 'collapse';
+                    table.style.border = '1px solid #d1d5db';
 
                     const thead = document.createElement('thead');
                     const headRow = document.createElement('tr');
                     const th1 = document.createElement('th');
-                    th1.className = 'border border-gray-300 text-xl px-2 py-2 text-center w-1/6 bg-gray-200';
+                    th1.style.border = '1px solid #d1d5db';
+                    th1.style.padding = '10px 8px';
+                    th1.style.textAlign = 'center';
+                    th1.style.fontSize = '22px';
+                    th1.style.fontWeight = '700';
+                    th1.style.width = '16%';
+                    th1.style.background = '#e5e7eb';
                     th1.textContent = String(headerNumber || '');
                     const th2 = document.createElement('th');
-                    th2.className = 'border border-gray-300 text-xl px-4 py-2 text-center w-5/6 bg-gray-200';
+                    th2.style.border = '1px solid #d1d5db';
+                    th2.style.padding = '10px 12px';
+                    th2.style.textAlign = 'center';
+                    th2.style.fontSize = '22px';
+                    th2.style.fontWeight = '700';
+                    th2.style.width = '84%';
+                    th2.style.background = '#e5e7eb';
                     th2.textContent = String(headerTitle || '');
                     headRow.appendChild(th1);
                     headRow.appendChild(th2);
@@ -8147,10 +8196,18 @@
                     for (const episode of list) {
                         const tr = document.createElement('tr');
                         const td1 = document.createElement('td');
-                        td1.className = 'border border-gray-300 px-2 text-lg font-bold py-2 text-center';
+                        td1.style.border = '1px solid #d1d5db';
+                        td1.style.padding = '10px 8px';
+                        td1.style.textAlign = 'center';
+                        td1.style.fontSize = '18px';
+                        td1.style.fontWeight = '700';
                         td1.textContent = String(episode?.EpisodeNumber ?? '');
                         const td2 = document.createElement('td');
-                        td2.className = 'border border-gray-300 px-4 text-lg font-bold py-2 text-center';
+                        td2.style.border = '1px solid #d1d5db';
+                        td2.style.padding = '10px 12px';
+                        td2.style.textAlign = 'center';
+                        td2.style.fontSize = '18px';
+                        td2.style.fontWeight = '700';
                         td2.textContent = String(episode?.EpisodeTitle ?? '');
                         tr.appendChild(td1);
                         tr.appendChild(td2);
@@ -8172,6 +8229,7 @@
                             backgroundColor: '#ffffff',
                             pixelRatio,
                             cacheBust: true,
+                            fontEmbedCSS: '',
                         });
                     };
 
@@ -8200,8 +8258,14 @@
                     this.captureEpisodeTableImagesTotal = total;
 
                     try {
-                        const safeLabel = String(this.selectedFilterLabel || '').replace(/\s+/g, '_');
-                        const safeTypeLabel = String(this.episodeTypeFilterLabel || '').replace(/\s+/g, '_');
+                        const enabledLabels = this.getCaptureEnabledFilterLabels();
+                        const enabledLabelText = enabledLabels.join(' - ');
+                        const enabledKeyParts = [
+                            this.selectedFilter,
+                            this.episodeTypeFilter,
+                            ...(enabledLabels.length ? enabledLabels : []),
+                        ].map((p) => this.sanitizeFilenamePart(p)).filter(Boolean);
+                        const baseName = enabledKeyParts.slice(0, 10).join('_') || 'table';
 
                         for (let i = 0; i < total; i += 1) {
                             const start = i * chunkSize;
@@ -8217,12 +8281,13 @@
                             }
 
                             const index1 = i + 1;
-                            const filename = `table_${safeLabel}_${safeTypeLabel}_${index1}.png`;
+                            const filename = `${baseName}_${index1}_من_${total}.png`;
 
                             this.downloadBlob(blob, filename);
 
-                            const caption = `${this.selectedFilterLabel} - ${this.episodeTypeFilterLabel}\n${index1}/${total}`;
+                            const caption = `التصفية: ${enabledLabelText}\nالجزء: ${index1}/${total}`;
                             await this.sendPhotoResponse(blob, filename, caption);
+                            await this.sleep(2000);
 
                             this.captureEpisodeTableImagesDone = index1;
                         }
