@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -8063,18 +8064,6 @@
                     }
                 },
 
-                downloadBlob(blob, filename) {
-                    const name = String(filename || 'image.png');
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = name;
-                    document.body.appendChild(a);
-                    a.click();
-                    a.remove();
-                    setTimeout(() => URL.revokeObjectURL(url), 1000);
-                },
-
                 sleep(ms) {
                     const n = Number(ms || 0);
                     return new Promise((resolve) => setTimeout(resolve, Math.max(0, n)));
@@ -8154,10 +8143,13 @@
                     wrapper.style.position = 'fixed';
                     wrapper.style.left = '0';
                     wrapper.style.top = '0';
-                    wrapper.style.transform = 'translateX(-200vw)';
+                    wrapper.style.transform = 'none';
+                    wrapper.style.opacity = '0';
+                    wrapper.style.pointerEvents = 'none';
                     wrapper.style.background = '#ffffff';
                     wrapper.style.padding = '16px';
                     wrapper.style.width = '1024px';
+                    wrapper.style.boxSizing = 'border-box';
                     wrapper.style.direction = 'rtl';
                     wrapper.style.fontFamily = 'Arial, sans-serif';
 
@@ -8165,6 +8157,7 @@
                     table.style.width = '100%';
                     table.style.borderCollapse = 'collapse';
                     table.style.border = '1px solid #d1d5db';
+                    table.style.tableLayout = 'fixed';
 
                     const thead = document.createElement('thead');
                     const headRow = document.createElement('tr');
@@ -8201,6 +8194,7 @@
                         td1.style.textAlign = 'center';
                         td1.style.fontSize = '18px';
                         td1.style.fontWeight = '700';
+                        td1.style.width = '16%';
                         td1.textContent = String(episode?.EpisodeNumber ?? '');
                         const td2 = document.createElement('td');
                         td2.style.border = '1px solid #d1d5db';
@@ -8208,6 +8202,9 @@
                         td2.style.textAlign = 'center';
                         td2.style.fontSize = '18px';
                         td2.style.fontWeight = '700';
+                        td2.style.width = '84%';
+                        td2.style.wordBreak = 'break-word';
+                        td2.style.overflowWrap = 'anywhere';
                         td2.textContent = String(episode?.EpisodeTitle ?? '');
                         tr.appendChild(td1);
                         tr.appendChild(td2);
@@ -8225,11 +8222,27 @@
                     }
 
                     const attempt = async (pixelRatio) => {
+                        const width = Math.ceil(Number(node?.scrollWidth || node?.offsetWidth || 0)) || 1024;
+                        const height = Math.ceil(Number(node?.scrollHeight || node?.offsetHeight || 0)) || 1;
                         return await window.htmlToImage.toBlob(node, {
                             backgroundColor: '#ffffff',
                             pixelRatio,
                             cacheBust: true,
                             fontEmbedCSS: '',
+                            skipFonts: true,
+                            style: {
+                                opacity: '1',
+                                transform: 'none',
+                                left: '0',
+                                top: '0',
+                            },
+                            width,
+                            height,
+                            filter: (n) => {
+                                const tag = String(n?.tagName || '').toUpperCase();
+                                if (tag === 'LINK') return false;
+                                return true;
+                            },
                         });
                     };
 
@@ -8272,6 +8285,7 @@
                             const chunk = episodes.slice(start, start + chunkSize);
                             const node = this.buildEpisodeTableCaptureNode(chunk, this.episodeNumberHeader, this.episodeTitleHeader);
                             document.body.appendChild(node);
+                            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
                             let blob;
                             try {
@@ -8280,19 +8294,19 @@
                                 node.remove();
                             }
 
-                            const index1 = i + 1;
-                            const filename = `${baseName}_${index1}_من_${total}.png`;
+                            const part = i + 1;
+                            const rowStart = start + 1;
+                            const rowEnd = Math.min(start + chunkSize, episodes.length);
+                            const filename = `${baseName}_rows_${rowStart}-${rowEnd}.png`;
 
-                            this.downloadBlob(blob, filename);
-
-                            const caption = `التصفية: ${enabledLabelText}\nالجزء: ${index1}/${total}`;
+                            const caption = `التصفية: ${enabledLabelText}\nالصفوف: ${rowStart}-${rowEnd}\nالجزء: ${part}/${total}`;
                             await this.sendPhotoResponse(blob, filename, caption);
                             await this.sleep(2000);
 
-                            this.captureEpisodeTableImagesDone = index1;
+                            this.captureEpisodeTableImagesDone = part;
                         }
 
-                        this.showSuccessHint('تم حفظ الصور وإرسالها للخاص');
+                        this.showSuccessHint('تم إرسال الصور للخاص');
                     } catch (e) {
                         this.errorMessage = e?.message || String(e);
                         throw e;
