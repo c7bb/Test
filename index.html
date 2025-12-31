@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -7845,7 +7844,7 @@
                     
                     const payload = new URLSearchParams();
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
-                    payload.append("parse_mode", "Markdown");
+                    payload.append("parse_mode", "MarkdownV2");
                     
                     for (const [key, value] of Object.entries(payloadData)) {
                         if (value !== undefined && value !== null) {
@@ -8611,7 +8610,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
