@@ -1982,23 +1982,6 @@
             </div>
         </div>          
         <div v-else>
-            <!-- View Mode Toggle -->
-            <div class="flex justify-end mb-4 gap-2">
-                <button 
-                    @click="viewMode = 'table'" 
-                    :class="['px-4 py-2 rounded font-bold transition-all duration-200', viewMode === 'table' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300']"
-                >
-                    عرض الجدول
-                </button>
-                <button 
-                    @click="viewMode = 'card'" 
-                    :class="['px-4 py-2 rounded font-bold transition-all duration-200', viewMode === 'card' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-700 hover:bg-gray-300']"
-                >
-                    عرض البطاقات
-                </button>
-            </div>
-
-            <template v-if="viewMode === 'table'">
             <table class="min-w-full border-collapse border border-gray-300">
                 <thead>
                     <!-- Top full-width row -->
@@ -2668,110 +2651,6 @@
                         </div>
                     </div>
             </table>
-            </template>
-
-            <template v-else-if="viewMode === 'card'">
-                <!-- Card View Content -->
-                <div class="flex flex-col lg:flex-row gap-4 h-[85vh]">
-                    <!-- Master: Episode List -->
-                    <div class="lg:w-1/3 bg-white p-4 rounded shadow-lg overflow-y-auto custom-scrollbar border border-gray-200">
-                        <h3 class="text-xl font-bold mb-4 text-center sticky top-0 bg-white pb-2 border-b z-10 text-gray-800">قائمة الحلقات</h3>
-                        <div class="grid grid-cols-4 gap-2">
-                            <button 
-                                v-for="episode in paginatedEpisodes" 
-                                :key="episode.EpisodeNumber"
-                                @click="selectedEpisode = episode; resetStatusForEpisodeManga();"
-                                :class="[
-                                    'p-2 text-center rounded font-bold transition-all duration-100 text-sm border', 
-                                    selectedEpisode === episode ? 'bg-cyan-700 text-white ring-2 ring-yellow-400 border-transparent' : 'bg-gray-50 text-gray-800 border-gray-300 hover:bg-gray-100',
-                                    getBackgroundColor(episode) === 'bg-green-200' ? '!bg-green-100 !text-green-900' : '',
-                                    getBackgroundColor(episode) === 'bg-red-200' ? '!bg-red-100 !text-red-900' : ''
-                                ]"
-                            >
-                                {{ episode.EpisodeNumber }}
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Detail: "Amazing Container" -->
-                    <div class="lg:w-2/3 bg-cyan-900 text-slate-200 rounded-lg shadow-xl overflow-y-auto custom-scrollbar p-6 relative border border-cyan-700">
-                        <div v-if="selectedEpisode">
-                            <!-- Title -->
-                            <h2 class="text-2xl font-bold mb-6 text-center text-yellow-300 drop-shadow-md border-b border-cyan-700 pb-4">{{ selectedEpisode.EpisodeTitle }}</h2>
-                            
-                            <!-- Episode Number Badge -->
-                            <div class="mb-8 text-center">
-                                <span class="text-xl font-bold bg-black bg-opacity-40 px-6 py-2 rounded-full border border-cyan-500 shadow-inner">
-                                    {{ selectedEpisode.EpisodeNumber }}
-                                </span>
-                            </div>
-
-                            <!-- Video Buttons -->
-                            <div v-if="selectedEpisode.EpisodeVideosIDs && selectedEpisode.EpisodeVideosIDs.length > 0" class="mb-8 bg-cyan-950 bg-opacity-50 p-4 rounded-lg border border-cyan-800">
-                                <h3 class="text-xl font-bold mb-4 text-cyan-200 flex items-center gap-2">
-                                    <span class="text-2xl">📺</span> المشاهدة والتحميل
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    <button 
-                                        v-for="video in selectedEpisode.EpisodeVideosIDs" 
-                                        :key="video.Resolution"
-                                        @click="handleMediaSend(video, 'video')"
-                                        :disabled="video.status === 'sending' || video.status === 'ratelimiting'"
-                                        class="bg-blue-600 hover:bg-blue-500 text-white py-3 px-4 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-                                    >
-                                        <span>{{ video.Resolution }}</span>
-                                        <span v-if="video.status === 'sending'" class="animate-spin text-sm">⏳</span>
-                                    </button>
-                                </div>
-                            </div>
-                            
-                            <!-- Manga Buttons -->
-                            <div v-if="selectedEpisode.EpisodeMangasIDs && selectedEpisode.EpisodeMangasIDs.length > 0" class="mb-8 bg-cyan-950 bg-opacity-50 p-4 rounded-lg border border-cyan-800">
-                                <h3 class="text-xl font-bold mb-4 text-cyan-200 flex items-center gap-2">
-                                    <span class="text-2xl">📖</span> المانغا
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    <button 
-                                        v-for="manga in selectedEpisode.EpisodeMangasIDs"
-                                        :key="manga.ChapterNumber"
-                                        @click="sendMangaWrapper(manga)"
-                                        :disabled="manga.status === 'sending' || manga.status === 'ratelimiting'"
-                                        class="bg-green-600 hover:bg-green-500 text-white py-3 px-4 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-                                    >
-                                        <span>فصل {{ manga.ChapterNumber }}</span>
-                                        <span v-if="manga.status === 'sending'" class="animate-spin text-sm">⏳</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Trailers -->
-                            <div v-if="selectedEpisode.EpisodeTrailersIDs && selectedEpisode.EpisodeTrailersIDs.length > 0" class="mb-8 bg-cyan-950 bg-opacity-50 p-4 rounded-lg border border-cyan-800">
-                                <h3 class="text-xl font-bold mb-4 text-cyan-200 flex items-center gap-2">
-                                    <span class="text-2xl">🎬</span> الإعلانات
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    <button 
-                                        v-for="trailer in selectedEpisode.EpisodeTrailersIDs"
-                                        :key="trailer.TrailerNumber"
-                                        @click="handleMediaSend(trailer, 'trailer')"
-                                        :disabled="trailer.status === 'sending' || trailer.status === 'ratelimiting'"
-                                        class="bg-purple-600 hover:bg-purple-500 text-white py-3 px-4 rounded-lg transition-all shadow-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
-                                    >
-                                        <span>إعلان {{ trailer.TrailerNumber || '' }}</span>
-                                        <span v-if="trailer.status === 'sending'" class="animate-spin text-sm">⏳</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                        </div>
-                        <div v-else class="flex flex-col items-center justify-center h-full text-cyan-400 bg-cyan-950 bg-opacity-30 rounded-lg border-2 border-dashed border-cyan-800">
-                            <span class="text-6xl mb-4 opacity-50">👈</span>
-                            <p class="text-2xl font-bold">اختر حلقة من القائمة</p>
-                            <p class="text-lg opacity-70 mt-2">لعرض التفاصيل والروابط</p>
-                        </div>
-                    </div>
-                </div>
-            </template>
 
             <!-- Pagination Controls -->
             <div class="flex justify-between items-center mt-4">
@@ -3430,7 +3309,6 @@
         const app = createApp({
             data() {
                 return {
-                    viewMode: 'table',
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
