@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1604,8 +1603,8 @@
                             <h3 class="text-lg font-bold mb-2">الشرح التوضيحي</h3>
                             <ul class="list-disc pl-5 pr-2 text-base">
                                 <li class="mb-2">استخدم المرشحات الموجودة في الأسفل لتحديد المحتوى الذي ترغب في عرضه وتقييده داخل الجدول.</li>
-                                <li class="mb-2">لعرض نتائج التصفية، انتقل إلى الجدول عن طريق إغلاق هذه النافذة بالضغط على زر الإغلاق (الزر الأحمر) في الزاوية العلوية اليسرى.</li>
-                                <li>لإعادة التصفية إلى الوضع الافتراضي، اضغط على زر إعادة التعيين (الزر البرتقالي) في الزاوية العلوية اليسرى.</li>                                
+                                <li class="mb-2">لعرض نتائج المرشحات، انتقل إلى الجدول عن طريق إغلاق هذه النافذة بالضغط على زر الإغلاق (الزر الأحمر) في الزاوية العلوية اليسرى.</li>
+                                <li>لإعادة المرشحات إلى الوضع الافتراضي، اضغط على زر إعادة التعيين (الزر البرتقالي) في الزاوية العلوية اليسرى.</li>                                
                             </ul>
                         </div>
                         
@@ -8758,7 +8757,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
