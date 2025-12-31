@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -842,8 +843,9 @@
                     </div>
 
                     <!-- Refactored Direct Window Content -->
-                    <div v-for="category in directWindowCategories" :key="category.key" v-if="selectedCategory === category.key" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
-                        <div v-if="category.items.length" class="mb-4">
+                    <template v-for="category in directWindowCategories" :key="category.key">
+                        <div v-if="selectedCategory === category.key" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                            <div v-if="category.items.length" class="mb-4">
                             <!-- Group Buttons -->
                             <div class="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr">
                                 <button
@@ -990,6 +992,7 @@
                             </fieldset>
                         </div>
                     </div>
+                    </template>
                 </div>    
             </div>
 
