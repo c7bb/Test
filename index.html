@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -7972,6 +7971,10 @@
                     } else if (type === 'trailer') {
                         let episodeNumber = String(episodeRef.EpisodeNumber);
                         const isMovie = episodeNumber.includes("الفيلم");
+
+                        if (isMovie) {
+                            episodeNumber = episodeNumber.replace("الفيلم", "").trim();
+                        }
 
                         const trailerNumberRaw = itemRef.TrailerNumber == null ? '' : String(itemRef.TrailerNumber).trim();
                         const trailerNumberText = trailerNumberRaw ? ` ${trailerNumberRaw}` : '';
