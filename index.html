@@ -7819,7 +7819,8 @@
                         { key: "ماجيك كايتو2", label: "رقم حلقة ماجيك كايتو:", suffix: " (ج2)" },
                         { key: "ماجيك كايتو", label: "رقم حلقة ماجيك كايتو:" },
                         { key: "يوميات زيرو", label: "رقم حلقة يوميات زيرو:" },
-                        { key: "المجرم هانزاوا", label: "رقم حلقة المجرم هانزاوا:" }
+                        { key: "المجرم هانزاوا", label: "رقم حلقة المجرم هانزاوا:" },
+                        { key: "فيلم تعاوني", label: "رقم الفيلم التعاوني:" }
                     ];
 
                     for (const rule of rules) {
@@ -7986,7 +7987,7 @@
                              });
                         }
 
-                        caption = `*${cleanLabel} ${cleanNum} ${escapeMarkdown(episodeRef.EpisodeTitle || '')}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                        caption = `*${cleanLabel} ${cleanNum}\nالعنوان: ${escapeMarkdown(episodeRef.EpisodeTitle || '')}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
                         if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
                     }
 
@@ -8610,7 +8611,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
