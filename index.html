@@ -8614,23 +8614,28 @@
                 validateAllEpisodeTitlesMarkdown() {
                     const eps = Array.isArray(this.episodes) ? this.episodes : [];
                     const issues = [];
+                    const seen = new Set();
                     for (const ep of eps) {
                         const title = String(ep.EpisodeTitle || '');
                         const bad = this.findUnescapedMarkdownV2Chars(title);
                         if (bad.length) {
-                            issues.push({
-                                EpisodeNumber: ep.EpisodeNumber,
-                                title,
-                                badChars: bad.map(b => b.char).join('')
-                            });
+                            const sig = Array.from(new Set(bad.map(b => b.char))).sort().join('');
+                            if (sig && !seen.has(sig)) {
+                                issues.push({
+                                    EpisodeNumber: ep.EpisodeNumber,
+                                    title,
+                                    badChars: sig
+                                });
+                                seen.add(sig);
+                            }
                         }
                     }
                     try {
-                        console.table(issues.slice(0, 1500));
+                        console.table(issues);
                     } catch (_) {
-                        console.log(issues.slice(0, 1500));
+                        console.log(issues);
                     }
-                    return { total: eps.length, issuesCount: issues.length, sample: issues.slice(0, 10) };
+                    return { total: eps.length, issuesCount: issues.length, issues };
                 },
 
                 async checkTelegram() {
