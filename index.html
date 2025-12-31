@@ -1715,7 +1715,7 @@
                     
                     <div
                         v-if="activeFiltersCount > 0"
-                        class="sticky bottom-0 bg-cyan-800 text-white font-bold text-center px-4 py-3 cursor-pointer select-none"
+                        class="sticky bottom-0 bg-yellow-900 text-white font-bold text-center px-4 py-3 cursor-pointer select-none"
                         @click="cycleActiveFilterFocus"
                     >
                         عدد المرشحات المفعّلة حاليًا: {{ activeFiltersCount }}
@@ -3414,6 +3414,7 @@
                     lastActivityAt: Date.now(),
                     filterUi: markRaw(FILTER_UI),
                     activeFilterCycleIndex: -1,
+                    activeFilterHighlightedEl: null,
                     successHintVisible: false,
                     successHintAnimatingOut: false,
                     successHintMessage: '',
@@ -5002,6 +5003,14 @@
                 },
             },
             methods: {
+                clearActiveFilterHighlight() {
+                    const el = this.activeFilterHighlightedEl;
+                    if (!el) return;
+                    try {
+                        el.classList.remove('bg-yellow-300', 'text-black', 'ring-2', 'ring-yellow-300', 'rounded');
+                    } catch (e) {}
+                    this.activeFilterHighlightedEl = null;
+                },
                 cycleActiveFilterFocus() {
                     const list = this.activeFilters;
                     if (!Array.isArray(list) || list.length === 0) return;
@@ -5024,8 +5033,16 @@
                     }
                     if (!elem) return;
                     
+                    this.clearActiveFilterHighlight();
+                    
                     try { elem.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
                     try { elem.focus(); } catch (e) {}
+                    
+                    const label = elem.closest('label') || elem;
+                    try {
+                        label.classList.add('bg-yellow-300', 'text-black', 'ring-2', 'ring-yellow-300', 'rounded');
+                    } catch (e) {}
+                    this.activeFilterHighlightedEl = label;
                 },
                 // InstantDB Methods
                 async syncServerTime() {
@@ -7671,6 +7688,7 @@
                 closeEmptyPopup() {
                     this.showEmptyPopup = false; // Hide the popup
                     document.body.style.overflow = ''; // Restore background scrolling
+                    this.clearActiveFilterHighlight();
                 },
 
                 resetFilters() {
@@ -7680,6 +7698,7 @@
                         this[key] = value;
                     }
                     this.activeFilterCycleIndex = -1;
+                    this.clearActiveFilterHighlight();
                 },
 
                 toggleSpoiler() {
