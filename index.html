@@ -7944,11 +7944,11 @@
                     let caption = '';
                     
                     function escapeMarkdown(text) {
-                        return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&').replace(/\n/g, '\\n');
+                        return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
                     }
 
                     if (type === 'manga') {
-                        caption = `*الفصل: ${label}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                        caption = `*الفصل:* ${escapeMarkdown(label)}\n*الحجم:* ${escapeMarkdown(this.formatFileSize(mediaSize, true))}`;
                     } else if (type === 'trailer') {
                         let episodeNumber = String(episodeRef.EpisodeNumber);
                         const isMovie = episodeNumber.includes("الفيلم");
@@ -7963,7 +7963,7 @@
                             ? `إعلان${trailerNumberText} للفيلم ${episodeNumber}`
                             : `إعلان${trailerNumberText} للحلقة ${episodeNumber}`;
 
-                        caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                        caption = `*${escapeMarkdown(titleLine)}*\n*الجودة:* ${escapeMarkdown(resolution)}\n*الحجم:* ${escapeMarkdown(this.formatFileSize(mediaSize, true))}`;
                     } else {
                         const { cleanNum, cleanLabel } = this.parseEpisodeLabel(episodeRef.EpisodeNumber);
                         
@@ -7986,7 +7986,7 @@
                              });
                         }
 
-                        caption = `*${cleanLabel} ${cleanNum}\nالعنوان: ${escapeMarkdown(episodeRef.EpisodeTitle || '')}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                        caption = `*${escapeMarkdown(cleanLabel)}* ${escapeMarkdown(cleanNum)}\n*العنوان:* ${escapeMarkdown(episodeRef.EpisodeTitle || '')}\n*الجودة:* ${escapeMarkdown(resolution)}\n*الحجم:* ${escapeMarkdown(this.formatFileSize(mediaSize, true))}`;
                         if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
                     }
 
