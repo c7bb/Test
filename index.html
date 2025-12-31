@@ -826,414 +826,171 @@
                         <div class="flex justify-between items-center">
                             <h2 class="text-xl font-bold">النافذة المباشرة</h2>
                             <button @click="closeDirectWindow" class="text-red-600 hover:text-yellow-300 transition-all duration-100 active:scale-90">
-                                <img src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" alt="Close" class="h-8 w-8" />
+                                <img :src="imageBaseUrl + 'res/close.png'" alt="Close" class="h-8 w-8" />
                             </button>                              
                         </div>
                         
                         <fieldset class="border p-2 rounded mt-2">
                             <legend class="px-2">اختر نوع المحتوى:</legend>
                             <div class="flex justify-around">
-                                <label class="flex items-center transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedCategory" value="episodes" class="ml-2" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @change="resetEpisodesView">
-                                    حلقات
-                                </label>
-                                <label class="flex items-center transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedCategory" value="movies" class="ml-2" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @change="resetMoviesView">
-                                    أفلام
-                                </label>
-                                <label class="flex items-center transition-all duration-100 active:scale-90">
-                                    <input type="radio" v-model="selectedCategory" value="mangas" class="ml-2" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @change="resetMangasView">
-                                    مانغا
+                                <label v-for="category in directWindowCategories" :key="category.key" class="flex items-center transition-all duration-100 active:scale-90">
+                                    <input type="radio" v-model="selectedCategory" :value="category.key" class="ml-2" :disabled="isGlobalBusy" @change="category.handlers.resetView">
+                                    {{ category.label }}
                                 </label>
                             </div>
                         </fieldset>
                     </div>
 
-                    <!-- Episodes Content -->
-                    <div v-if="selectedCategory === 'episodes'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
-                        <div v-if="groupedEpisodes.length" class="mb-4">
-                            <div class="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr"> <!-- Align buttons to the left -->
-                                <button 
-                                v-for="(group, index) in groupedEpisodes" 
-                                :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')"
-                                @click="handleEpisodeGroupChange(index)" 
-                                :class="['px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90', activeTab.episodes === index ? 'bg-blue-500 text-white' : 'bg-gray-700']">
-                                {{ group.range }}
-                            </button>                            
-                            </div>
-                            <fieldset class="border p-2 rounded">
-                                <legend class="flex items-center gap-2">
-                                    <span>الحلقات المتاحة</span>
-                                    <button v-if="selectedEpisode" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="resetEpisodesView" class="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                        <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="رجوع" class="h-6 w-6" />
-                                    </button>
-                                </legend>
-                                
-                                <!-- GRID VIEW (Select Episode) -->
-                                <div v-if="!selectedEpisode" class="grid grid-cols-3 gap-2" dir="ltr">
-                                    <button 
-                                        v-for="episode in groupedEpisodes[activeTab.episodes]?.items" 
-                                        :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')"
-                                        @click="selectEpisode(episode)" 
-                                        class="bg-blue-500 text-white p-2 rounded hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                        {{ episode.EpisodeNumber }}
-                                    </button>                                
-                                </div>
-                                
-                                <!-- LIST VIEW (Videos in Selected Episode) -->
-                                <div v-else class="flex flex-col justify-center gap-4">
-                                    
-                                    <!-- Navigation Controls -->
-                                    <div class="flex items-center px-4">
-                                        <div class="w-8 flex justify-start">
-                                            <button v-if="showNextGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToNextEpisodeGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
-                                            </button>
-                                            <button v-if="!showNextGroupButton" :disabled="!hasNextEpisode || selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToNextEpisode(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next.png" alt="التالي" class="h-8 w-8" />
-                                            </button>
-                                        </div>
-                                        <div class="flex-grow text-center">
-                                            <button
-                                                :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')"
-                                                @click="preserveSelectedEpisodeOnModalClose = true; resetStatusForEpisodeManga(); openEpisodeModal(selectedEpisode.EpisodeNumber)"
-                                                class="text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                            >
-                                                {{ selectedEpisode.EpisodeNumber }}
-                                            </button>
-                                        </div>
-                                        <div class="w-8 flex justify-end">
-                                            <button v-if="showPreviousGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToPreviousEpisodeGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
-                                            </button>
-                                            <button v-if="!showPreviousGroupButton" :disabled="!hasPreviousEpisode || selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToPreviousEpisode(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="السابق" class="h-8 w-8" />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- START: UPDATED VIDEO LIST LOOP WITH GROUPING -->
-                                    <div v-for="group in groupedVideos" :key="group.key" class="relative">
-                                        <!-- Videos without metadata (rendered directly under main legend) -->
-                                        <template v-if="!group.EpisodeCategory && !group.EpisodeTranslator && !group.EpisodeRemastered">
-                                            <div v-for="video in group.videos" :key="video.VideoID" class="relative mb-2">
-                                                <div class="relative w-full">
-                                                    <!-- The Button -->
-                                                    <button
-                                                        :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                        @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                        class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
-                                                        <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                        <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                                        <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                    </button>
-
-                                                    <!-- Status Images (Pinned to Top Right of the Button area) -->
-                                                    <img 
-                                                        v-if="video.status === 'success'" 
-                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                        class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                    />
-                                                    <img 
-                                                        v-else-if="video.status === 'error'" 
-                                                        src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                        class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                    />
-
-                                                    <!-- Sending Overlay (Centered over the Button only) -->
-                                                    <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
-                                                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </template>
-                                        
-                                        <!-- Videos with metadata (grouped under a fieldset) -->
-                                        <fieldset v-else class="rounded relative border p-3 mb-4">
-                                            <!-- Group Legend -->
-                                            <legend class="px-2 text-sm">
-                                                <span v-if="group.EpisodeCategory">
-                                                    {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
-                                                </span>
-                                                <span v-if="group.EpisodeTranslator">
-                                                    <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
-                                                </span>
-                                                <span v-if="group.EpisodeRemastered">
-                                                    <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
-                                                    {{ group.EpisodeRemastered === 'TP' ? 'محسنة وخاصة' : (group.EpisodeRemastered === 'FP' ? 'غير محسنة وخاصة' : (group.EpisodeRemastered === 'P' ? 'حلقة خاصة' : (group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered)))) }}
-                                                </span>
-                                            </legend>
-                                            
-                                            <!-- Video buttons for this group -->
-                                            <div class="grid grid-cols-1 gap-2 mt-2">
-                                                <div v-for="video in group.videos" :key="video.VideoID" class="relative">
-                                                    <div class="relative w-full">
-                                                        <!-- The Button -->
-                                                        <button
-                                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                            @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                            class="w-full bg-blue-500 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
-                                                            <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                            <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                                            <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                        </button>
-
-                                                        <!-- Status Images (Pinned to Top Right of the Button area) -->
-                                                        <img 
-                                                            v-if="video.status === 'success'" 
-                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                        />
-                                                        <img 
-                                                            v-else-if="video.status === 'error'" 
-                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                        />
-
-                                                        <!-- Sending Overlay (Centered over the Button only) -->
-                                                        <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
-                                                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </fieldset>
-                                    </div>
-                                    <!-- END: UPDATED VIDEO LIST LOOP WITH GROUPING -->
-
-                                </div>
-                            </fieldset>
-                        </div>
-                    </div>
-
-                    <!-- Movies Content -->
-                    <div v-if="selectedCategory === 'movies'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
-                        <div v-if="groupedMovies.length" class="mb-4">
+                    <!-- Refactored Direct Window Content -->
+                    <div v-for="category in directWindowCategories" :key="category.key" v-if="selectedCategory === category.key" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                        <div v-if="category.items.length" class="mb-4">
+                            <!-- Group Buttons -->
                             <div class="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr">
                                 <button
-                                v-for="(group, index) in groupedMovies" 
-                                :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')"
-                                @click="handleMovieGroupChange(index)" 
-                                :class="['px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90', activeTab.movies === index ? 'bg-blue-500 text-white' : 'bg-gray-700']">
-                                {{ group.range }}
-                            </button>
+                                    v-for="(group, index) in category.items"
+                                    :key="index"
+                                    :disabled="isGlobalBusy"
+                                    @click="category.handlers.groupChange(index)"
+                                    :class="['px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90', category.activeTabIndex === index ? 'bg-blue-500 text-white' : 'bg-gray-700']">
+                                    {{ group.range }}
+                                </button>
                             </div>
+
                             <fieldset class="border p-2 rounded">
                                 <legend class="flex items-center gap-2">
-                                    <span>الأفلام المتاحة</span>
-                                    <button v-if="selectedEpisode" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="resetMoviesView" class="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                        <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="رجوع" class="h-6 w-6" />
+                                    <span>{{ category.label }} المتاحة</span>
+                                    <button v-if="category.selectedItem" :disabled="isGlobalBusy" @click="category.handlers.resetView" class="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
+                                        <img :src="imageBaseUrl + 'res/previous.png'" alt="رجوع" class="h-6 w-6" />
                                     </button>
                                 </legend>
-                                
-                                <!-- GRID VIEW: Movie Selection -->
-                                <div v-if="!selectedEpisode" class="grid grid-cols-3 gap-2" dir="ltr">
-                                    <button 
-                                        v-for="movie in groupedMovies[activeTab.movies]?.items" 
-                                        :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')"
-                                        @click="selectMovie(movie)" 
-                                        class="bg-amber-700 text-white p-2 rounded hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                        {{ movie.EpisodeNumber.replace('الفيلم ', '') }}
-                                    </button>                                
+
+                                <!-- GRID VIEW -->
+                                <div v-if="!category.selectedItem" class="grid grid-cols-3 gap-2" dir="ltr">
+                                    <button
+                                        v-for="item in category.items[category.activeTabIndex]?.items"
+                                        :key="category.getGridLabel(item)"
+                                        :disabled="isGlobalBusy"
+                                        @click="category.handlers.selectItem(item)"
+                                        :class="[category.gridButtonClass, 'disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90']">
+                                        {{ category.getGridLabel(item) }}
+                                    </button>
                                 </div>
-                                
-                                <!-- LIST VIEW: Videos in Selected Movie -->
+
+                                <!-- LIST VIEW -->
                                 <div v-else class="flex flex-col justify-center gap-4">
-                                    
                                     <!-- Navigation Controls -->
                                     <div class="flex items-center px-4">
                                         <div class="w-8 flex justify-start">
-                                            <button v-if="showNextMovieGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToNextMovieGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
+                                            <button v-if="category.navigation.showNextGroup" :disabled="isGlobalBusy" @click="category.handlers.nextGroup" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
+                                                <img :src="imageBaseUrl + 'res/next-tb.png'" alt="التالي" class="h-8 w-8" />
                                             </button>
-                                            <button v-if="!showNextMovieGroupButton" :disabled="!hasNextMovie || selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToNextMovie(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next.png" alt="التالي" class="h-8 w-8" />
+                                            <button v-if="!category.navigation.showNextGroup" :disabled="!category.navigation.hasNext || isGlobalBusy" @click="category.handlers.nextItem" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
+                                                <img :src="imageBaseUrl + 'res/next.png'" alt="التالي" class="h-8 w-8" />
                                             </button>
                                         </div>
                                         <div class="flex-grow text-center">
                                             <button
-                                                :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')"
-                                                @click="preserveSelectedEpisodeOnModalClose = true; resetStatusForEpisodeManga(); openEpisodeModal(selectedEpisode.EpisodeNumber)"
-                                                class="text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                            >
-                                                {{ selectedEpisode.EpisodeNumber.replace('الفيلم ', '') }}
+                                                v-if="category.key !== 'mangas'"
+                                                :disabled="isGlobalBusy"
+                                                @click="category.handlers.openModal"
+                                                class="text-lg font-bold underline text-yellow-300 bg-transparent border-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
+                                                {{ category.getListTitle() }}
                                             </button>
+                                            <span v-else class="text-lg font-bold">{{ category.getListTitle() }}</span>
                                         </div>
                                         <div class="w-8 flex justify-end">
-                                            <button v-if="showPreviousMovieGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToPreviousMovieGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
+                                            <button v-if="category.navigation.showPrevGroup" :disabled="isGlobalBusy" @click="category.handlers.prevGroup" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
+                                                <img :src="imageBaseUrl + 'res/previous-tb.png'" alt="السابق" class="h-8 w-8" />
                                             </button>
-                                            <button v-if="!showPreviousMovieGroupButton" :disabled="!hasPreviousMovie || selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" @click="navigateToPreviousMovie(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="السابق" class="h-8 w-8" />
+                                            <button v-if="!category.navigation.showPrevGroup" :disabled="!category.navigation.hasPrev || isGlobalBusy" @click="category.handlers.prevItem" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
+                                                <img :src="imageBaseUrl + 'res/previous.png'" alt="السابق" class="h-8 w-8" />
                                             </button>
                                         </div>
                                     </div>
-                                    
-                                    <!-- START: GROUPED MOVIE LIST LOOP -->
-                                    <div class="flex flex-col gap-4">
-                                        <template v-for="group in groupedVideos" :key="group.key">
-                                            <!-- No metadata: render directly under main legend -->
-                                            <template v-if="!group.hasMetadata">
-                                                <div v-for="video in group.videos" :key="`movie-no-md-${video.VideoID}`" class="relative">
+
+                                    <!-- CONTENT LIST -->
+                                    <div v-if="category.key !== 'mangas'" class="flex flex-col gap-4">
+                                        <div v-for="group in category.listData" :key="group.key" class="relative">
+                                            <!-- Condition for flat list (no metadata) -->
+                                            <template v-if="!group.EpisodeCategory && !group.EpisodeTranslator && !group.EpisodeRemastered && !group.hasMetadata">
+                                                <div v-for="video in group.videos" :key="video.VideoID" class="relative mb-2">
                                                     <div class="relative w-full">
                                                         <button
-                                                            :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                            @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                            class="w-full bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
+                                                            :disabled="['success', 'ratelimiting', 'sending'].includes(video.status)"
+                                                            @click="sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime)"
+                                                            :class="[category.actionButtonClass, 'w-full flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden']">
                                                             <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
                                                             <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
                                                             <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
                                                         </button>
-                                                        <img 
-                                                            v-if="video.status === 'success'" 
-                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                        />
-                                                        <img 
-                                                            v-else-if="video.status === 'error'" 
-                                                            src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                            class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                        />
+                                                        <img v-if="video.status === 'success'" :src="imageBaseUrl + 'res/true.png'" class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none" />
+                                                        <img v-else-if="video.status === 'error'" :src="imageBaseUrl + 'res/close.png'" class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none" />
                                                         <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
                                                             <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </template>
-
-                                            <!-- With metadata: show grouped legend -->
-                                            <div v-else class="relative">
-                                                <fieldset class="rounded relative border p-3">
-                                                    <legend class="px-2 text-sm">
-                                                        <span v-if="group.EpisodeCategory">
-                                                            {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
-                                                        </span>
-                                                        <span v-if="group.EpisodeTranslator">
-                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
-                                                        </span>
-                                                        <span v-if="group.EpisodeRemastered">
-                                                            <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
-                                                            {{ group.EpisodeRemastered === 'TP' ? 'محسنة وخاصة' : (group.EpisodeRemastered === 'FP' ? 'غير محسنة وخاصة' : (group.EpisodeRemastered === 'P' ? 'حلقة خاصة' : (group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered)))) }}
-                                                        </span>
-                                                    </legend>
-
-                                                    <div class="grid grid-cols-1 gap-2 mt-2">
-                                                        <div v-for="video in group.videos" :key="video.VideoID" class="relative">
-                                                            <div class="relative w-full">
-                                                                <button
-                                                                    :disabled="video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending'"
-                                                                    @click="() => { sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime); }"
-                                                                    class="w-full bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden">
-                                                                    <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                                    <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
-                                                                    <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
-                                                                </button>
-                                                                <img 
-                                                                    v-if="video.status === 'success'" 
-                                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png" 
-                                                                    class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                                />
-                                                                <img 
-                                                                    v-else-if="video.status === 'error'" 
-                                                                    src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" 
-                                                                    class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none"
-                                                                />
-                                                                <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
-                                                                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                                                                </div>
+                                            <!-- Condition for grouped list (metadata) -->
+                                            <fieldset v-else class="rounded relative border p-3 mb-4">
+                                                <legend class="px-2 text-sm">
+                                                    <span v-if="group.EpisodeCategory">
+                                                        {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
+                                                    </span>
+                                                    <span v-if="group.EpisodeTranslator">
+                                                        <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
+                                                    </span>
+                                                    <span v-if="group.EpisodeRemastered">
+                                                        <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
+                                                        {{ group.EpisodeRemastered === 'TP' ? 'محسنة وخاصة' : (group.EpisodeRemastered === 'FP' ? 'غير محسنة وخاصة' : (group.EpisodeRemastered === 'P' ? 'حلقة خاصة' : (group.EpisodeRemastered === 'T' ? 'محسنة' : (group.EpisodeRemastered === 'F' ? 'غير محسنة' : group.EpisodeRemastered)))) }}
+                                                    </span>
+                                                </legend>
+                                                <div class="grid grid-cols-1 gap-2 mt-2">
+                                                    <div v-for="video in group.videos" :key="video.VideoID" class="relative">
+                                                        <div class="relative w-full">
+                                                            <button
+                                                                :disabled="['success', 'ratelimiting', 'sending'].includes(video.status)"
+                                                                @click="sendEpisodeToBot(video.VideoID, video.Resolution, video.Size, video.originalIndex, video.IntroductionTime, video.StartStoryTime, video.EpisodeSuspenseTime, video.StartSongTime, video.ChapterOneTime, video.ChapterTwoTime, video.EndSongTime, video.ChapterThreeTime, video.NextEpisodeTeaserTime, video.NextEpisodeHintTime)"
+                                                                :class="[category.actionButtonClass, 'w-full flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden']">
+                                                                <span v-if="video.status === 'ratelimiting'">{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                                <span v-else-if="video.countdown !== undefined">{{ video.countdown }}</span>
+                                                                <span v-else>{{ video.Resolution }} ({{ formatFileSize(video.Size) }})</span>
+                                                            </button>
+                                                            <img v-if="video.status === 'success'" :src="imageBaseUrl + 'res/true.png'" class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none" />
+                                                            <img v-else-if="video.status === 'error'" :src="imageBaseUrl + 'res/close.png'" class="absolute right-0 top-0 w-6 h-6 z-10 pointer-events-none" />
+                                                            <div v-if="video.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded z-20">
+                                                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </fieldset>
-                                            </div>
-                                        </template>
+                                                </div>
+                                            </fieldset>
+                                        </div>
                                     </div>
-                                    <!-- END: GROUPED MOVIE LIST LOOP -->
-                                </div>
-                            </fieldset>
-                        </div>
-                    </div>
 
-                    <!-- Mangas Content -->
-                    <div v-if="selectedCategory === 'mangas'" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
-                        <div v-if="groupedMangas.length" class="mb-4">
-                            <div class="flex flex-wrap gap-2 mb-4 justify-center" dir="ltr"> <!-- Align buttons to the left -->
-                                <button 
-                                v-for="(group, index) in groupedMangas" 
-                                :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'"
-                                @click="handleMangaGroupChange(index)" 
-                                :class="['px-3 py-1 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90', activeTab.mangas === index ? 'bg-blue-500 text-white' : 'bg-gray-700']">
-                                {{ group.range }}
-                            </button>                            
-                            </div>
-                            <fieldset class="border p-2 rounded">
-                                <legend class="flex items-center gap-2">
-                                    <span>الفصول المتاحة</span>
-                                    <button v-if="selectedManga" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @click="resetMangasView" class="p-1 hover:bg-gray-700 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                        <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="رجوع" class="h-6 w-6" />
-                                    </button>
-                                </legend>
-                                <div v-if="!selectedManga" class="grid grid-cols-3 gap-2" dir="ltr">
-                                    <button 
-                                    v-for="manga in groupedMangas[activeTab.mangas]?.items" 
-                                    :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'"
-                                    @click="selectManga(manga)" 
-                                    class="bg-green-500 text-white p-2 rounded hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                    {{ manga.MangaNumber }}
-                                </button>                                
-                                </div>
-                                <div v-else class="flex flex-col justify-center gap-4">
-                                    <div class="flex items-center px-4">
-                                        <div class="w-8 flex justify-start">
-                                            <button v-if="showNextMangaGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @click="navigateToNextMangaGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
-                                            </button>
-                                            <button v-if="!showNextMangaGroupButton" :disabled="!hasNextManga || selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @click="navigateToNextManga(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next.png" alt="التالي" class="h-8 w-8" />
-                                            </button>
-                                        </div>
-                                        <div class="flex-grow text-center">
-                                            <span class="text-lg font-bold">{{ selectedManga.MangaNumber }}</span>
-                                        </div>
-                                        <div class="w-8 flex justify-end">
-                                            <button v-if="showPreviousMangaGroupButton" :disabled="selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @click="navigateToPreviousMangaGroup(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
-                                            </button>
-                                            <button v-if="!showPreviousMangaGroupButton" :disabled="!hasPreviousManga || selectedEpisode?.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode?.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending') || selectedManga?.status === 'success' || selectedManga?.status === 'ratelimiting' || selectedManga?.status === 'sending'" @click="navigateToPreviousManga(); resetStatusForEpisodeManga();" class="transition-opacity disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90">
-                                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="السابق" class="h-8 w-8" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div class="relative flex flex-col gap-4">
-                                        <div class="relative w-full">    
+                                    <!-- MANGAS -->
+                                    <div v-else class="relative flex flex-col gap-4">
+                                        <div class="relative w-full">
                                             <button
-                                                :disabled="selectedManga.status === 'success' || selectedManga.status === 'ratelimiting' || selectedManga.status === 'sending'"
-                                                @click="sendMangaToBotD(selectedManga.MangaFileID, selectedManga.MangaNumber, 0)"
-                                                class="w-full bg-green-500 text-white px-6 py-2 rounded hover:bg-blue-500 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed" dir="ltr">
-                                                <span v-if="selectedManga.status === 'ratelimiting'">{{ formatFileSize(selectedManga.MangaFileSize) }}</span>
-                                                <span v-else-if="selectedManga.countdown !== undefined">{{ selectedManga.countdown }}</span>
-                                                <span v-else>{{ formatFileSize(selectedManga.MangaFileSize) }}</span>
+                                                :disabled="['success', 'ratelimiting', 'sending'].includes(category.selectedItem.status)"
+                                                @click="sendMangaWrapper(category.selectedItem.MangaFileID, category.selectedItem.MangaNumber, 0, true)"
+                                                :class="[category.actionButtonClass, 'w-full flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed']" dir="ltr">
+                                                <span v-if="category.selectedItem.status === 'ratelimiting'">{{ formatFileSize(category.selectedItem.MangaFileSize) }}</span>
+                                                <span v-else-if="category.selectedItem.countdown !== undefined">{{ category.selectedItem.countdown }}</span>
+                                                <span v-else>{{ formatFileSize(category.selectedItem.MangaFileSize) }}</span>
                                             </button>
-                                            <img 
-                                                v-if="selectedManga.status === 'success'" 
-                                                src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/true.png"
-                                                class="absolute right-0 top-0 w-6 h-6 ml-2"
-                                            />
-                                            <img 
-                                                v-if="selectedManga.status === 'error'" 
-                                                src="https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png"
-                                                class="absolute right-0 top-0 w-6 h-6 ml-2"
-                                            />
-                                            <div v-if="selectedManga.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded">
+                                            <img v-if="category.selectedItem.status === 'success'" :src="imageBaseUrl + 'res/true.png'" class="absolute right-0 top-0 w-6 h-6 ml-2" />
+                                            <img v-else-if="category.selectedItem.status === 'error'" :src="imageBaseUrl + 'res/close.png'" class="absolute right-0 top-0 w-6 h-6 ml-2" />
+                                            <div v-if="category.selectedItem.status === 'sending'" class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded">
                                                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                                             </div>
-                                        </div>   
+                                        </div>
                                     </div>
                                 </div>
                             </fieldset>
                         </div>
                     </div>
-                </div>
+                </div>    
             </div>
 
             <!-- النافذة السريعة Modal -->
@@ -2524,7 +2281,7 @@
                                         >
                                         <button
                                             :disabled="manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending'"
-                                            @click="() => { sendMangaToBot(manga.MangaFileID, manga.MangaNumber, index); }"
+                                            @click="() => { sendMangaWrapper(manga.MangaFileID, manga.MangaNumber, index, false); }"
                                             class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed"
                                             dir="ltr"
                                         >
@@ -2858,7 +2615,7 @@
                                     >
                                         <button
                                             :disabled="t.status === 'success' || t.status === 'ratelimiting' || t.status === 'sending'"
-                                            @click="sendTrailerToBot(t)"
+                                            @click="sendTrailerWrapper(t)"
                                             class="w-full bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 flex items-center justify-center shadow-md disabled:opacity-50 transition-all duration-100 active:scale-90 disabled:cursor-not-allowed relative overflow-hidden"
                                         >
                                             <span v-if="t.status === 'ratelimiting'">{{ t.Resolution }} ({{ formatFileSize(t.Size) }})</span>
@@ -2979,6 +2736,27 @@
         const webApp = window.Telegram?.WebApp || null;
         const { createApp, markRaw } = Vue;
         const WEB_APP_URL = "https://euz.pages.dev/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/";
+
+        const DIRECT_WINDOW_CONFIG = [
+            { 
+                key: 'episodes', 
+                label: 'حلقات',
+                gridButtonClass: 'bg-blue-500 text-white p-2 rounded hover:bg-green-500',
+                actionButtonClass: 'bg-blue-500 text-white px-6 py-2 rounded hover:bg-green-500'
+            },
+            { 
+                key: 'movies', 
+                label: 'أفلام',
+                gridButtonClass: 'bg-amber-700 text-white p-2 rounded hover:bg-green-500',
+                actionButtonClass: 'bg-amber-700 text-white px-6 py-2 rounded hover:bg-green-500'
+            },
+            { 
+                key: 'mangas', 
+                label: 'مانغا',
+                gridButtonClass: 'bg-green-500 text-white p-2 rounded hover:bg-blue-500',
+                actionButtonClass: 'bg-green-500 text-white px-6 py-2 rounded hover:bg-blue-500'
+            }
+        ];
 
         const FILTER_UI = {
             categoryOptions: [
@@ -3878,6 +3656,7 @@
                     "خمسون": ["50", "الخمسون", "خمسون"],
                     },
                     jsonUrl: "https://enc.mdccxxixix.workers.dev",
+                    imageBaseUrl: "https://raw.githubusercontent.com/c7bb/6Y9/main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/",
                     episodeNotesDebug: false,  // Enable for debugging episode notes processing
                     episodeLinkClickHandler: null,
                     episodeTypeFilter: 'All',
@@ -3978,6 +3757,131 @@
                 };
             },
             computed: {
+                isGlobalBusy() {
+                    const isEpisodeBusy = this.selectedEpisode?.EpisodeVideosIDs?.some(video => ['success', 'ratelimiting', 'sending'].includes(video.status)) ||
+                                          this.selectedEpisode?.EpisodeMangasIDs?.some(manga => ['success', 'ratelimiting', 'sending'].includes(manga.status));
+                    const isMangaBusy = ['success', 'ratelimiting', 'sending'].includes(this.selectedManga?.status);
+                    return isEpisodeBusy || isMangaBusy;
+                },
+                directWindowCategories() {
+                    return DIRECT_WINDOW_CONFIG.map(config => {
+                        const isEpisodes = config.key === 'episodes';
+                        const isMovies = config.key === 'movies';
+                        const isMangas = config.key === 'mangas';
+                        
+                        let items = [];
+                        let activeTabIndex = 0;
+                        let selectedItem = null;
+                        let handlers = {};
+                        let gridData = [];
+                        let listData = []; // For Episodes/Movies: groupedVideos
+                        
+                        if (isEpisodes) {
+                            items = this.groupedEpisodes;
+                            gridData = this.groupedEpisodes;
+                            listData = this.groupedVideos;
+                            activeTabIndex = this.activeTab.episodes;
+                            selectedItem = this.selectedEpisode;
+                            handlers = {
+                                groupChange: this.handleEpisodeGroupChange,
+                                resetView: this.resetEpisodesView,
+                                selectItem: this.selectEpisode,
+                                nextGroup: () => { this.navigateToNextEpisodeGroup(); this.resetStatusForEpisodeManga(); },
+                                prevGroup: () => { this.navigateToPreviousEpisodeGroup(); this.resetStatusForEpisodeManga(); },
+                                nextItem: () => { this.navigateToNextEpisode(); this.resetStatusForEpisodeManga(); },
+                                prevItem: () => { this.navigateToPreviousEpisode(); this.resetStatusForEpisodeManga(); },
+                                openModal: () => { this.preserveSelectedEpisodeOnModalClose = true; this.resetStatusForEpisodeManga(); this.openEpisodeModal(this.selectedEpisode.EpisodeNumber); }
+                            };
+                        } else if (isMovies) {
+                            items = this.groupedMovies;
+                            gridData = this.groupedMovies;
+                            listData = this.groupedVideos;
+                            activeTabIndex = this.activeTab.movies;
+                            selectedItem = this.selectedEpisode; // Movies use selectedEpisode
+                            handlers = {
+                                groupChange: this.handleMovieGroupChange,
+                                resetView: this.resetMoviesView,
+                                selectItem: this.selectMovie,
+                                nextGroup: () => { this.navigateToNextMovieGroup(); this.resetStatusForEpisodeManga(); },
+                                prevGroup: () => { this.navigateToPreviousMovieGroup(); this.resetStatusForEpisodeManga(); },
+                                nextItem: () => { this.navigateToNextMovie(); this.resetStatusForEpisodeManga(); },
+                                prevItem: () => { this.navigateToPreviousMovie(); this.resetStatusForEpisodeManga(); },
+                                openModal: () => { this.preserveSelectedEpisodeOnModalClose = true; this.resetStatusForEpisodeManga(); this.openEpisodeModal(this.selectedEpisode.EpisodeNumber); }
+                            };
+                        } else if (isMangas) {
+                            items = this.groupedMangas;
+                            gridData = this.groupedMangas;
+                            // Mangas don't use listData (groupedVideos) in the same way, handled separately or via single item
+                            activeTabIndex = this.activeTab.mangas;
+                            selectedItem = this.selectedManga;
+                            handlers = {
+                                groupChange: this.handleMangaGroupChange,
+                                resetView: this.resetMangasView,
+                                selectItem: this.selectManga,
+                                nextGroup: () => { this.navigateToNextMangaGroup(); this.resetStatusForEpisodeManga(); },
+                                prevGroup: () => { this.navigateToPreviousMangaGroup(); this.resetStatusForEpisodeManga(); },
+                                nextItem: () => { this.navigateToNextManga(); this.resetStatusForEpisodeManga(); },
+                                prevItem: () => { this.navigateToPreviousManga(); this.resetStatusForEpisodeManga(); }
+                            };
+                        }
+
+                        // Determine navigation flags
+                        let showNextGroup = false;
+                        let showPrevGroup = false;
+                        let hasNext = false;
+                        let hasPrev = false;
+
+                        if (isEpisodes) {
+                            showNextGroup = this.showNextGroupButton;
+                            showPrevGroup = this.showPreviousGroupButton;
+                            hasNext = this.hasNextEpisode;
+                            hasPrev = this.hasPreviousEpisode;
+                        } else if (isMovies) {
+                            showNextGroup = this.showNextMovieGroupButton;
+                            showPrevGroup = this.showPreviousMovieGroupButton;
+                            hasNext = this.hasNextMovie;
+                            hasPrev = this.hasPreviousMovie;
+                        } else if (isMangas) {
+                            showNextGroup = this.showNextMangaGroupButton;
+                            showPrevGroup = this.showPreviousMangaGroupButton;
+                            hasNext = this.hasNextManga;
+                            hasPrev = this.hasPreviousManga;
+                        }
+
+                        const getGridLabel = (item) => {
+                            if (!item) return '';
+                            if (isEpisodes) return item.EpisodeNumber;
+                            if (isMovies) return item.EpisodeNumber.replace('الفيلم ', '');
+                            if (isMangas) return item.MangaNumber;
+                            return '';
+                        };
+
+                        const getListTitle = () => {
+                             if (isEpisodes) return this.selectedEpisode?.EpisodeNumber;
+                             if (isMovies) return this.selectedEpisode?.EpisodeNumber.replace('الفيلم ', '');
+                             if (isMangas) return this.selectedManga?.MangaNumber;
+                             return '';
+                        };
+
+                        return {
+                            ...config,
+                            items,
+                            gridData,
+                            listData,
+                            activeTabIndex,
+                            selectedItem,
+                            handlers,
+                            getGridLabel,
+                            getListTitle,
+                            navigation: {
+                                showNextGroup,
+                                showPrevGroup,
+                                hasNext,
+                                hasPrev
+                            }
+                        };
+                    });
+                },
                 mangaStartNumberModel: {
                     get() {
                         return this.mangaStartNumber ?? '';
@@ -5843,10 +5747,42 @@
                     }
                 },
                 goToBot() {
-                    if (window.Telegram?.WebApp) {
-                        Telegram.WebApp.openTelegramLink('https://t.me/DCRef_bot');
-                    } else {
-                        window.open('https://t.me/DCRef_bot', '_blank');
+                    const username = 'DCRef_bot';
+                    const url = `https://t.me/${username}`;
+                    const deep = `tg://resolve?domain=${username}`;
+                    const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+                    if (isIOS) {
+                        try { window.location.href = deep; } catch (e) {}
+                        setTimeout(() => { window.location.href = url; }, 600);
+                        return;
+                    }
+                    if (window.Telegram?.WebApp?.openTelegramLink) {
+                        try { Telegram.WebApp.openTelegramLink(url); } catch (e) {}
+                        setTimeout(() => {
+                            try {
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.target = '_blank';
+                                a.rel = 'noopener noreferrer';
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                            } catch (e2) {
+                                window.location.href = url;
+                            }
+                        }, 500);
+                        return;
+                    }
+                    try {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                    } catch (e3) {
+                        window.location.href = url;
                     }
                 },
                 parseNextEpisodeDate(dateStr) {
@@ -7669,110 +7605,14 @@
                     window.open(url, '_blank', 'noopener,noreferrer');
                 },
 
-                async sendTrailerToBot(trailer) {
-                    if (!trailer || !this.selectedEpisode?.EpisodeNumber) return;
-                    const sendGen = this.sendCancelGeneration;
-
-                    const videoId = trailer.TrailerID;
-                    const resolution = trailer.Resolution;
-                    const size = trailer.Size;
-
-                    let episodeNumber = String(this.selectedEpisode.EpisodeNumber);
-                    const isMovie = episodeNumber.includes("الفيلم");
-
-                    if (episodeNumber.includes("خاصة بالفيلم")) {
-                        episodeNumber = episodeNumber.replace("خاصة بالفيلم", "").trim();
-                    } else if (episodeNumber.includes("الفيلم")) {
-                        episodeNumber = episodeNumber.replace("الفيلم", "").trim();
-                    } else if (episodeNumber.includes("قصة قصيرة")) {
-                        episodeNumber = episodeNumber.replace("قصة قصيرة", "").trim();
-                    } else if (episodeNumber.includes("أوفا3")) {
-                        episodeNumber = episodeNumber.replace("أوفا3", "").trim();
-                    } else if (episodeNumber.includes("أوفا2")) {
-                        episodeNumber = episodeNumber.replace("أوفا2", "").trim();
-                    } else if (episodeNumber.includes("أوفا")) {
-                        episodeNumber = episodeNumber.replace("أوفا", "").trim();
-                    } else if (episodeNumber.includes("إصدار خاص")) {
-                        episodeNumber = episodeNumber.replace("إصدار خاص", "").trim();
-                    } else if (episodeNumber.includes("ماجيك كايتو")) {
-                        episodeNumber = episodeNumber.replace("ماجيك كايتو1", "").trim();
-                        episodeNumber = episodeNumber.replace("ماجيك كايتو2", "").trim();
-                    } else if (episodeNumber.includes("يوميات زيرو")) {
-                        episodeNumber = episodeNumber.replace("يوميات زيرو", "").trim();
-                    } else if (episodeNumber.includes("المجرم هانزاوا")) {
-                        episodeNumber = episodeNumber.replace("المجرم هانزاوا", "").trim();
-                    }
-
-                    const trailerNumberRaw = trailer.TrailerNumber == null ? '' : String(trailer.TrailerNumber).trim();
-                    const trailerNumberText = trailerNumberRaw ? ` ${trailerNumberRaw}` : '';
-                    const titleLine = isMovie
-                        ? `إعلان${trailerNumberText} للفيلم ${episodeNumber}`
-                        : `إعلان${trailerNumberText} للحلقة ${episodeNumber}`;
-
-                    function escapeMarkdown(text) {
-                        return String(text)
-                            .replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&')
-                            .replace(/\n/g, '\\n');
-                    }
-
-                    let details = "";
-                    if (trailer.IntroductionTime) details += `\n*المقدمة:* ${escapeMarkdown(trailer.IntroductionTime)}`;
-                    if (trailer.StartStoryTime) details += `\n*بداية القصة:* ${escapeMarkdown(trailer.StartStoryTime)}`;
-                    if (trailer.EpisodeSuspenseTime) details += `\n*تشويق الحلقة:* ${escapeMarkdown(trailer.EpisodeSuspenseTime)}`;
-                    if (trailer.StartSongTime) details += `\n*أغنية البداية:* ${escapeMarkdown(trailer.StartSongTime)}`;
-                    if (trailer.ChapterOneTime) details += `\n*الفصل الأول:* ${escapeMarkdown(trailer.ChapterOneTime)}`;
-                    if (trailer.ChapterTwoTime) details += `\n*الفصل الثاني:* ${escapeMarkdown(trailer.ChapterTwoTime)}`;
-                    if (trailer.EndSongTime) details += `\n*أغنية النهاية:* ${escapeMarkdown(trailer.EndSongTime)}`;
-                    if (trailer.ChapterThreeTime) details += `\n*الفصل الثالث:* ${escapeMarkdown(trailer.ChapterThreeTime)}`;
-                    if (trailer.NextEpisodeTeaserTime) details += `\n*تشويق الحلقة القادمة:* ${escapeMarkdown(trailer.NextEpisodeTeaserTime)}`;
-                    if (trailer.NextEpisodeHintTime) details += `\n*تلميح الحلقة القادمة:* ${escapeMarkdown(trailer.NextEpisodeHintTime)}`;
-
-                    let caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${this.formatFileSize(size, true)}*`;
-                    if (details) caption += `\n\n*✦✦— محتويات الإعلان —✦✦*${details}`;
-
-                    this.errorMessage = "";
-                    this.ratelimiting = true;
-
-                    const trailersRef = Array.isArray(this.activeTrailerProviderTrailers) ? this.activeTrailerProviderTrailers.slice() : [];
-                    trailersRef.forEach((t) => {
-                        if (t && t !== trailer) t.status = 'ratelimiting';
+                async sendTrailerWrapper(trailer) {
+                    this.handleMediaSend({
+                        type: 'trailer',
+                        fileId: trailer.TrailerID,
+                        resolution: trailer.Resolution,
+                        size: trailer.Size,
+                        trailerItem: trailer
                     });
-                    trailer.status = 'sending';
-
-                    try {
-                        await this.sendVideoResponse(videoId, caption);
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        trailer.status = 'success';
-                        this.showSuccessHint('تم إرسال الإعلان للخاص');
-                        this.startCountdownForTrailer(trailer);
-                    } catch (error) {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        trailer.status = 'error';
-                        this.errorMessage = error?.message || String(error);
-                        return;
-                    }
-
-                    setTimeout(() => {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        if (trailer.countdownInterval) {
-                            clearInterval(trailer.countdownInterval);
-                            trailer.countdownInterval = null;
-                        }
-                        trailer.countdown = undefined;
-                        trailer.status = null;
-
-                        trailersRef.forEach((t) => {
-                            if (!t || t === trailer) return;
-                            if (t.countdownInterval) {
-                                clearInterval(t.countdownInterval);
-                                t.countdownInterval = null;
-                            }
-                            t.countdown = undefined;
-                            if (t.status === 'ratelimiting') t.status = null;
-                        });
-
-                        this.ratelimiting = false;
-                    }, this.statusClearTimeout);
                 },
 
                 openEmptyPopup() {
@@ -7980,170 +7820,58 @@
                     return { inline_keyboard };
                 },
 
-                async sendEpisodeToBot(videoID, resolution, size, index, introductionTime, startStoryTime, episodeSuspenseTime, startSongTime, chapterOneTime, chapterTwoTime, endSongTime, chapterThreeTime, nextEpisodeTeaserTime, nextEpisodeHintTime) {
-                    const episodeRef = this.selectedEpisode;
-                    if (!episodeRef?.EpisodeNumber) {
-                        return;
-                    }
-                    const sendGen = this.sendCancelGeneration;
-
-                    // Set ratelimiting for all other buttons
-                    this.ratelimiting = true;
-                    if (episodeRef.EpisodeVideosIDs) {
-                        episodeRef.EpisodeVideosIDs.forEach((video, i) => {
-                            if (i !== index) {
-                                video.status = 'ratelimiting';
-                            }
-                        });
-                    }
-                    if (episodeRef.EpisodeMangasIDs) {
-                        episodeRef.EpisodeMangasIDs.forEach((manga) => {
-                            manga.status = 'ratelimiting';
-                        });
-                    }
-
-                    let episodeNumber = episodeRef.EpisodeNumber;
+                parseEpisodeLabel(episodeNumber) {
                     let label = "رقم الحلقة:";
-
-                    if (episodeNumber.includes("خاصة بالفيلم")) {
-                        label = "رقم الحلقة الخاصة:";
-                        episodeNumber = episodeNumber.replace("خاصة بالفيلم", "").trim();
-                    } else if (episodeNumber.includes("الفيلم")) {
-                        label = "رقم الفيلم:";
-                        episodeNumber = episodeNumber.replace("الفيلم", "").trim();
-                    } else if (episodeNumber.includes("قصة قصيرة")) {
-                        label = "رقم القصة القصيرة:";
-                        episodeNumber = episodeNumber.replace("قصة قصيرة", "").trim();
-                    } else if (episodeNumber.includes("أوفا3")) {
-                        label = "رقم الأوفا الثالثة:";
-                        episodeNumber = episodeNumber.replace("أوفا3", "").trim();
-                    } else if (episodeNumber.includes("أوفا2")) {
-                        label = "رقم الأوفا الثانية:";
-                        episodeNumber = episodeNumber.replace("أوفا2", "").trim();
-                    } else if (episodeNumber.includes("أوفا")) {
-                        label = "رقم الأوفا:";
-                        episodeNumber = episodeNumber.replace("أوفا", "").trim();
-                    } else if (episodeNumber.includes("إصدار خاص")) {
-                        label = "رقم الإصدار الخاص:";
-                        episodeNumber = episodeNumber.replace("إصدار خاص", "").trim();
-                    } else if (episodeNumber.includes("ماجيك كايتو")) {
-                        episodeNumber = episodeNumber.replace("ماجيك كايتو1", "").trim();
-                        episodeNumber = episodeNumber.replace("ماجيك كايتو2", "").trim();
-                    } else if (episodeNumber.includes("يوميات زيرو")) {
-                        episodeNumber = episodeNumber.replace("يوميات زيرو", "").trim();
-                    } else if (episodeNumber.includes("المجرم هانزاوا")) {
-                        episodeNumber = episodeNumber.replace("المجرم هانزاوا", "").trim();
-                    }
-
-                    function escapeMarkdown(text) {
-                        return text
-                            .replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&')
-                            .replace(/\n/g, '\\n');
-                    }
+                    let num = episodeNumber;
                     
-                    let details = "";
-                    if (introductionTime) details += `\n*المقدمة:* ${escapeMarkdown(introductionTime)}`;
-                    if (startStoryTime) details += `\n*بداية القصة:* ${escapeMarkdown(startStoryTime)}`;
-                    if (episodeSuspenseTime) details += `\n*تشويق الحلقة:* ${escapeMarkdown(episodeSuspenseTime)}`;
-                    if (startSongTime) details += `\n*أغنية البداية:* ${escapeMarkdown(startSongTime)}`;
-                    if (chapterOneTime) details += `\n*الفصل الأول:* ${escapeMarkdown(chapterOneTime)}`;
-                    if (chapterTwoTime) details += `\n*الفصل الثاني:* ${escapeMarkdown(chapterTwoTime)}`;
-                    if (endSongTime) details += `\n*أغنية النهاية:* ${escapeMarkdown(endSongTime)}`;
-                    if (chapterThreeTime) details += `\n*الفصل الثالث:* ${escapeMarkdown(chapterThreeTime)}`;
-                    if (nextEpisodeTeaserTime) details += `\n*تشويق الحلقة القادمة:* ${escapeMarkdown(nextEpisodeTeaserTime)}`;
-                    if (nextEpisodeHintTime) details += `\n*تلميح الحلقة القادمة:* ${escapeMarkdown(nextEpisodeHintTime)}`;
+                    const rules = [
+                        { key: "خاصة بالفيلم", label: "رقم الحلقة الخاصة:" },
+                        { key: "الفيلم", label: "رقم الفيلم:" },
+                        { key: "قصة قصيرة", label: "رقم القصة القصيرة:" },
+                        { key: "أوفا3", label: "رقم الأوفا الثالثة:" },
+                        { key: "أوفا2", label: "رقم الأوفا الثانية:" },
+                        { key: "أوفا", label: "رقم الأوفا:" },
+                        { key: "إصدار خاص", label: "رقم الإصدار الخاص:" },
+                        { key: "ماجيك كايتو", replace: ["ماجيك كايتو1", "ماجيك كايتو2"] },
+                        { key: "يوميات زيرو", replace: ["يوميات زيرو"] },
+                        { key: "المجرم هانزاوا", replace: ["المجرم هانزاوا"] }
+                    ];
 
-                    let caption = `*${label} ${episodeNumber}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(size, true)}*`;
-                    if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
-
-                    const videoEntry = episodeRef?.EpisodeVideosIDs?.[index] || null;
-                    if (videoEntry) videoEntry.status = 'sending';
-                    const replyMarkup = this.buildEpisodePartsReplyMarkup(episodeRef);
-
-                    try {
-                        await this.sendVideoResponse(videoID, caption, replyMarkup);
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        if (videoEntry) videoEntry.status = 'success';
-                        const isMovie = String(episodeRef?.EpisodeNumber ?? '').includes('الفيلم');
-                        this.movie.status = isMovie ? 'success' : null;
-                        this.episode.status = isMovie ? null : 'success';
-                        this.showSuccessHint(isMovie ? 'تم إرسال الفيلم للخاص' : 'تم إرسال الحلقة للخاص');
-                        if (videoEntry && this.selectedEpisode === episodeRef) {
-                            this.startCountdown(index);
-                        }
-                        this.errorMessage = "";
-                    } catch (error) {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        if (videoEntry) videoEntry.status = 'error';
-                        this.errorMessage = error?.message || String(error);
-                        if (Array.isArray(episodeRef?.EpisodeVideosIDs) && episodeRef.EpisodeVideosIDs.some((video) => video.status === "error")) {
-                            return;
+                    for (const rule of rules) {
+                        if (num.includes(rule.key)) {
+                            if (rule.label) label = rule.label;
+                            if (rule.replace) {
+                                rule.replace.forEach(r => num = num.replace(r, ""));
+                            } else {
+                                num = num.replace(rule.key, "");
+                            }
+                            num = num.trim();
+                            break;
                         }
                     }
-
-                    // Clear status after 2 seconds
-                    setTimeout(() => {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        // Check if references still exist before accessing them
-                        if (episodeRef?.EpisodeVideosIDs?.[index]) {
-                            // Clear countdown and interval for the clicked button
-                            if (episodeRef.EpisodeVideosIDs[index].countdownInterval) {
-                                clearInterval(episodeRef.EpisodeVideosIDs[index].countdownInterval);
-                                episodeRef.EpisodeVideosIDs[index].countdownInterval = null;
-                            }
-                            episodeRef.EpisodeVideosIDs[index].countdown = undefined;
-                            episodeRef.EpisodeVideosIDs[index].status = null;
-                        }
-                        
-                        this.ratelimiting = false;
-                        
-                        // Clear ratelimiting status from all other buttons
-                        if (episodeRef?.EpisodeVideosIDs) {
-                            episodeRef.EpisodeVideosIDs.forEach((video) => {
-                                if (video.status === 'ratelimiting') {
-                                    video.status = null;
-                                }
-                                // Clear countdown for ratelimiting buttons as well
-                                if (video.countdownInterval) {
-                                    clearInterval(video.countdownInterval);
-                                    video.countdownInterval = null;
-                                }
-                                video.countdown = undefined;
-                            });
-                        }
-                        if (episodeRef?.EpisodeMangasIDs) {
-                            episodeRef.EpisodeMangasIDs.forEach((manga) => {
-                                if (manga.status === 'ratelimiting') {
-                                    manga.status = null;
-                                }
-                                // Clear countdown for ratelimiting buttons as well
-                                if (manga.countdownInterval) {
-                                    clearInterval(manga.countdownInterval);
-                                    manga.countdownInterval = null;
-                                }
-                                manga.countdown = undefined;
-                            });
-                        }
-                        this.episode.status = null;
-                        this.movie.status = null;
-                    }, this.statusClearTimeout);
+                    return { cleanNum: num, cleanLabel: label };
                 },
 
-                async sendVideoResponse(fileId, caption, replyMarkup) {
+                async sendTelegramMedia(payloadData) {
                     // Block API request if this tab is not the owner
                     if (!this.isTabOwner) {
-                        console.warn('sendVideoResponse blocked: Tab is not the owner');
+                        console.warn('sendTelegramMedia blocked: Tab is not the owner');
                         throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
                     }
                     
                     const payload = new URLSearchParams();
-                    payload.append("method", "sendVideo");
                     payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
-                    payload.append("file_id", fileId);
-                    payload.append("caption", caption);
                     payload.append("parse_mode", "Markdown");
-                    payload.append("cover", "AgACAgQAAxkBAAI39mewS5AKaNozUttDedMhI3xOcZdzAAJ7xzEb4AyBUdi6fgZXlnXYAQADAgADdwADNgQ");
-                    if (replyMarkup) payload.append("reply_markup", JSON.stringify(replyMarkup));
+                    
+                    for (const [key, value] of Object.entries(payloadData)) {
+                        if (value !== undefined && value !== null) {
+                            if (typeof value === 'object' && (key === 'reply_markup' || key === 'videoDetails')) {
+                                payload.append(key, JSON.stringify(value));
+                            } else {
+                                payload.append(key, value);
+                            }
+                        }
+                    }
 
                     try {
                         const response = await fetch(`${this.jsonUrl}/send`, {
@@ -8169,6 +7897,242 @@
                         console.error(error);
                         throw new Error(error.message);
                     }
+                },
+
+                async handleMediaSend({ type, fileId, index, label, size, resolution, videoDetails, isDirectManga, trailerItem }) {
+                    if (!this.isTabOwner) {
+                        console.warn(`${type} send blocked: Tab is not the owner`);
+                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
+                    }
+
+                    const episodeRef = this.selectedEpisode;
+                    let itemRef = null;
+                    let parentRefForRateLimit = episodeRef;
+
+                    if (type === 'video') {
+                        if (!episodeRef?.EpisodeNumber) return;
+                        itemRef = episodeRef?.EpisodeVideosIDs?.[index];
+                    } else if (type === 'manga') {
+                        if (isDirectManga) {
+                            itemRef = this.selectedManga;
+                            if (!itemRef?.MangaNumber) return;
+                        } else {
+                            if (!episodeRef?.EpisodeNumber) return;
+                            itemRef = episodeRef?.EpisodeMangasIDs?.[index];
+                        }
+                    } else if (type === 'trailer') {
+                        if (!episodeRef?.EpisodeNumber) return;
+                        itemRef = trailerItem;
+                    }
+
+                    if (!itemRef) return;
+
+                    const sendGen = this.sendCancelGeneration;
+
+                    // Resolve size if not provided
+                    let mediaSize = size;
+                    if (!mediaSize) {
+                        if (type === 'video') mediaSize = itemRef.Size;
+                        else if (type === 'manga') mediaSize = itemRef.MangaFileSize;
+                        else if (type === 'trailer') mediaSize = itemRef.Size;
+                    }
+
+                    this.ratelimiting = true;
+                    if (type === 'trailer') {
+                        const trailersRef = Array.isArray(this.activeTrailerProviderTrailers) ? this.activeTrailerProviderTrailers : [];
+                        trailersRef.forEach((t) => {
+                            if (t && t !== itemRef) t.status = 'ratelimiting';
+                        });
+                    } else {
+                        if (parentRefForRateLimit?.EpisodeVideosIDs) {
+                            parentRefForRateLimit.EpisodeVideosIDs.forEach((video, i) => {
+                                if (type === 'video' && i === index) return;
+                                video.status = 'ratelimiting';
+                            });
+                        }
+                        if (parentRefForRateLimit?.EpisodeMangasIDs) {
+                            parentRefForRateLimit.EpisodeMangasIDs.forEach((manga, i) => {
+                                if (type === 'manga' && !isDirectManga && i === index) return;
+                                manga.status = 'ratelimiting';
+                            });
+                        }
+                    }
+
+                    let caption = '';
+                    
+                    function escapeMarkdown(text) {
+                        return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&').replace(/\n/g, '\\n');
+                    }
+
+                    if (type === 'manga') {
+                        caption = `*الفصل: ${label}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                    } else if (type === 'trailer') {
+                        let episodeNumber = String(episodeRef.EpisodeNumber);
+                        const isMovie = episodeNumber.includes("الفيلم");
+
+                        const trailerNumberRaw = itemRef.TrailerNumber == null ? '' : String(itemRef.TrailerNumber).trim();
+                        const trailerNumberText = trailerNumberRaw ? ` ${trailerNumberRaw}` : '';
+                        const titleLine = isMovie
+                            ? `إعلان${trailerNumberText} للفيلم ${episodeNumber}`
+                            : `إعلان${trailerNumberText} للحلقة ${episodeNumber}`;
+
+                        caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                    } else {
+                        const { cleanNum, cleanLabel } = this.parseEpisodeLabel(episodeRef.EpisodeNumber);
+                        
+                        let details = "";
+                        if (videoDetails) {
+                             const fields = [
+                                 { key: 'introductionTime', label: 'المقدمة' },
+                                 { key: 'startStoryTime', label: 'بداية القصة' },
+                                 { key: 'episodeSuspenseTime', label: 'تشويق الحلقة' },
+                                 { key: 'startSongTime', label: 'أغنية البداية' },
+                                 { key: 'chapterOneTime', label: 'الفصل الأول' },
+                                 { key: 'chapterTwoTime', label: 'الفصل الثاني' },
+                                 { key: 'endSongTime', label: 'أغنية النهاية' },
+                                 { key: 'chapterThreeTime', label: 'الفصل الثالث' },
+                                 { key: 'nextEpisodeTeaserTime', label: 'تشويق الحلقة القادمة' },
+                                 { key: 'nextEpisodeHintTime', label: 'تلميح الحلقة القادمة' }
+                             ];
+                             fields.forEach(f => {
+                                 if (videoDetails[f.key]) details += `\n*${f.label}:* ${escapeMarkdown(videoDetails[f.key])}`;
+                             });
+                        }
+
+                        caption = `*${cleanLabel} ${cleanNum}\nالجودة: ${resolution}\nالحجم: ${this.formatFileSize(mediaSize, true)}*`;
+                        if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
+                    }
+
+                    itemRef.status = 'sending';
+
+                    try {
+                        if (type === 'video') {
+                            const replyMarkup = this.buildEpisodePartsReplyMarkup(episodeRef);
+                            await this.sendTelegramMedia({
+                                method: "sendVideo",
+                                file_id: fileId,
+                                caption: caption,
+                                cover: "AgACAgQAAxkBAAI39mewS5AKaNozUttDedMhI3xOcZdzAAJ7xzEb4AyBUdi6fgZXlnXYAQADAgADdwADNgQ",
+                                reply_markup: replyMarkup
+                            });
+                        } else if (type === 'trailer') {
+                            await this.sendTelegramMedia({
+                                method: "sendVideo",
+                                file_id: fileId,
+                                caption: caption,
+                                cover: "AgACAgQAAxkBAAI39mewS5AKaNozUttDedMhI3xOcZdzAAJ7xzEb4AyBUdi6fgZXlnXYAQADAgADdwADNgQ"
+                            });
+                        } else {
+                            await this.sendTelegramMedia({
+                                method: "sendDocument",
+                                file_id: fileId,
+                                caption: caption
+                            });
+                        }
+
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        
+                        itemRef.status = 'success';
+                        
+                        if (type === 'video') {
+                            const isMovie = String(episodeRef?.EpisodeNumber ?? '').includes('الفيلم');
+                            this.movie.status = isMovie ? 'success' : null;
+                            this.episode.status = isMovie ? null : 'success';
+                            this.showSuccessHint(isMovie ? 'تم إرسال الفيلم للخاص' : 'تم إرسال الحلقة للخاص');
+                            if (this.selectedEpisode === episodeRef) {
+                                this.startCountdown(index);
+                            }
+                        } else if (type === 'trailer') {
+                            this.showSuccessHint('تم إرسال الإعلان للخاص');
+                            this.startCountdownForTrailer(itemRef);
+                        } else {
+                            this.showSuccessHint('تم إرسال الفصل للخاص');
+                            if (isDirectManga) {
+                                if (this.selectedManga === itemRef) this.startCountdownForMangaD();
+                            } else {
+                                if (this.selectedEpisode === episodeRef) this.startCountdownForManga(index);
+                            }
+                        }
+                        this.errorMessage = "";
+
+                    } catch (error) {
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        itemRef.status = 'error';
+                        this.errorMessage = error?.message || String(error);
+                        
+                        if (type === 'trailer') return;
+
+                        const group = type === 'video' ? episodeRef?.EpisodeVideosIDs : episodeRef?.EpisodeMangasIDs;
+                        if (Array.isArray(group) && group.some(item => item.status === "error")) {
+                             return;
+                        }
+                    }
+
+                    setTimeout(() => {
+                        if (this.sendCancelGeneration !== sendGen) return;
+                        
+                        if (itemRef) {
+                             if (itemRef.countdownInterval) {
+                                clearInterval(itemRef.countdownInterval);
+                                itemRef.countdownInterval = null;
+                            }
+                            itemRef.countdown = undefined;
+                            itemRef.status = null;
+                        }
+
+                        if (type === 'trailer') {
+                            const trailersRef = Array.isArray(this.activeTrailerProviderTrailers) ? this.activeTrailerProviderTrailers : [];
+                            trailersRef.forEach((t) => {
+                                if (!t || t === itemRef) return;
+                                t.status = null;
+                            });
+                        }
+
+                        this.ratelimiting = false;
+
+                        if (type !== 'trailer') {
+                            if (episodeRef?.EpisodeVideosIDs) {
+                                episodeRef.EpisodeVideosIDs.forEach((video) => {
+                                    if (video.status === 'ratelimiting') video.status = null;
+                                    if (video.countdownInterval) {
+                                        clearInterval(video.countdownInterval);
+                                        video.countdownInterval = null;
+                                    }
+                                    video.countdown = undefined;
+                                });
+                            }
+                            if (episodeRef?.EpisodeMangasIDs) {
+                                episodeRef.EpisodeMangasIDs.forEach((manga) => {
+                                    if (manga.status === 'ratelimiting') manga.status = null;
+                                    if (manga.countdownInterval) {
+                                        clearInterval(manga.countdownInterval);
+                                        manga.countdownInterval = null;
+                                    }
+                                    manga.countdown = undefined;
+                                });
+                            }
+                        }
+                        
+                        if (type === 'video') {
+                             this.episode.status = null;
+                             this.movie.status = null;
+                        }
+                    }, this.statusClearTimeout);
+                },
+
+                async sendEpisodeToBot(videoID, resolution, size, index, introductionTime, startStoryTime, episodeSuspenseTime, startSongTime, chapterOneTime, chapterTwoTime, endSongTime, chapterThreeTime, nextEpisodeTeaserTime, nextEpisodeHintTime) {
+                    this.handleMediaSend({
+                        type: 'video',
+                        fileId: videoID,
+                        index,
+                        size,
+                        resolution,
+                        videoDetails: {
+                            introductionTime, startStoryTime, episodeSuspenseTime, startSongTime, 
+                            chapterOneTime, chapterTwoTime, endSongTime, chapterThreeTime, 
+                            nextEpisodeTeaserTime, nextEpisodeHintTime
+                        }
+                    });
                 },
 
                 sleep(ms) {
@@ -8561,227 +8525,14 @@
                     }
                 },
 
-                async sendMangaResponse(fileId, caption) {
-                    // Block API request if this tab is not the owner
-                    if (!this.isTabOwner) {
-                        console.warn('sendMangaResponse blocked: Tab is not the owner');
-                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
-                    }
-                    
-                    const payload = new URLSearchParams();
-                    payload.append("method", "sendDocument");
-                    payload.append("chat_id", webApp?.initDataUnsafe?.user?.id);
-                    payload.append("file_id", fileId);
-                    payload.append("caption", caption);
-                    payload.append("parse_mode", "Markdown");
-
-                    try {
-                        const response = await fetch(`${this.jsonUrl}/send`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                            body: payload.toString(),
-                        });
-
-                        const text = await response.text();
-                        let data;
-                        try {
-                            data = JSON.parse(text);
-                        } catch (e) {
-                            throw new Error("Invalid JSON response from Worker:\n" + text);
-                        }
-
-                        if (!response.ok) {
-                            const status = data?.status || response.status;
-                            throw new Error(`Telegram Error: (${status}) ` + (data.description || text) + ` (${webApp?.initDataUnsafe?.user?.id})`);
-                        }
-
-                    } catch (error) {
-                        console.error(error);
-                        throw new Error(error.message);
-                    }
-                },
-
-                async sendMangaToBot(fileId, mangaNumber, index) {
-                    // Block API request if this tab is not the owner
-                    if (!this.isTabOwner) {
-                        console.warn('sendMangaToBot blocked: Tab is not the owner');
-                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
-                    }
-                    
-                    const episodeRef = this.selectedEpisode;
-                    if (!episodeRef?.EpisodeNumber) {
-                        return;
-                    }
-                    const sendGen = this.sendCancelGeneration;
-
-                    // Set ratelimiting for all other buttons
-                    this.ratelimiting = true;
-                    if (episodeRef.EpisodeVideosIDs) {
-                        episodeRef.EpisodeVideosIDs.forEach((video) => {
-                            video.status = 'ratelimiting';
-                        });
-                    }
-                    if (episodeRef.EpisodeMangasIDs) {
-                        episodeRef.EpisodeMangasIDs.forEach((manga, i) => {
-                            if (i !== index) {
-                                manga.status = 'ratelimiting';
-                            }
-                        });
-                    }
-
-                    const caption = `*الفصل: ${mangaNumber}\nالحجم: ${this.formatFileSize(episodeRef?.EpisodeMangasIDs?.[index]?.MangaFileSize, true)}*`;
-
-                    const mangaEntry = episodeRef?.EpisodeMangasIDs?.[index] || null;
-                    if (mangaEntry) mangaEntry.status = 'sending';
-
-                    try {
-                        await this.sendMangaResponse(fileId, caption);
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        if (mangaEntry) mangaEntry.status = 'success';
-                        this.showSuccessHint('تم إرسال الفصل للخاص');
-                        if (mangaEntry && this.selectedEpisode === episodeRef) this.startCountdownForManga(index);
-                        this.errorMessage = "";
-                    } catch (error) {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        if (mangaEntry) mangaEntry.status = 'error';
-                        this.errorMessage = error?.message || String(error);
-                        if (Array.isArray(episodeRef?.EpisodeMangasIDs) && episodeRef.EpisodeMangasIDs.some(manga => manga.status === "error")) {
-                            return;
-                        }
-                    }
-
-                    // Clear status after 2 seconds
-                    setTimeout(() => {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        // Check if references still exist before accessing them
-                        if (episodeRef?.EpisodeMangasIDs?.[index]) {
-                            // Clear countdown and interval for the clicked button
-                            if (episodeRef.EpisodeMangasIDs[index].countdownInterval) {
-                                clearInterval(episodeRef.EpisodeMangasIDs[index].countdownInterval);
-                                episodeRef.EpisodeMangasIDs[index].countdownInterval = null;
-                            }
-                            episodeRef.EpisodeMangasIDs[index].countdown = undefined;
-                            episodeRef.EpisodeMangasIDs[index].status = null;
-                        }
-                        
-                        this.ratelimiting = false;
-                        
-                        // Clear ratelimiting status from all other buttons
-                        if (episodeRef?.EpisodeVideosIDs) {
-                            episodeRef.EpisodeVideosIDs.forEach((video) => {
-                                if (video.status === 'ratelimiting') {
-                                    video.status = null;
-                                }
-                                // Clear countdown for ratelimiting buttons as well
-                                if (video.countdownInterval) {
-                                    clearInterval(video.countdownInterval);
-                                    video.countdownInterval = null;
-                                }
-                                video.countdown = undefined;
-                            });
-                        }
-                        if (episodeRef?.EpisodeMangasIDs) {
-                            episodeRef.EpisodeMangasIDs.forEach((manga) => {
-                                if (manga.status === 'ratelimiting') {
-                                    manga.status = null;
-                                }
-                                // Clear countdown for ratelimiting buttons as well
-                                if (manga.countdownInterval) {
-                                    clearInterval(manga.countdownInterval);
-                                    manga.countdownInterval = null;
-                                }
-                                manga.countdown = undefined;
-                            });
-                        }
-                    }, this.statusClearTimeout);
-                },
-
-                async sendMangaToBotD(fileId, mangaNumber, index) {
-                    // Block API request if this tab is not the owner
-                    if (!this.isTabOwner) {
-                        console.warn('sendMangaToBotD blocked: Tab is not the owner');
-                        throw new Error('This tab is not the active tab. Please close other tabs and refresh.');
-                    }
-                    
-                    const mangaRef = this.selectedManga;
-                    const episodeRef = this.selectedEpisode;
-                    if (!mangaRef?.MangaNumber) return;
-                    const sendGen = this.sendCancelGeneration;
-
-                    // Set ratelimiting for all other buttons
-                    this.ratelimiting = true;
-                    if (episodeRef?.EpisodeVideosIDs) {
-                        episodeRef.EpisodeVideosIDs.forEach((video) => {
-                            video.status = 'ratelimiting';
-                        });
-                    }
-                    if (episodeRef?.EpisodeMangasIDs) {
-                        episodeRef.EpisodeMangasIDs.forEach((manga) => {
-                            manga.status = 'ratelimiting';
-                        });
-                    }
-
-                    const caption = `*الفصل: ${mangaNumber}\nالحجم: ${this.formatFileSize(mangaRef?.MangaFileSize, true)}*`;
-
-                    mangaRef.status = 'sending';
-
-                    try {
-                        await this.sendMangaResponse(fileId, caption);
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        mangaRef.status = 'success';
-                        this.showSuccessHint('تم إرسال الفصل للخاص');
-                        if (this.selectedManga === mangaRef) this.startCountdownForMangaD();
-                        this.errorMessage = "";
-                    } catch (error) {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        mangaRef.status = 'error';
-                        this.errorMessage = error?.message || String(error);
-                        if (mangaRef.status === "error") return;
-                    }
-
-                    // Clear status after 2 seconds
-                    setTimeout(() => {
-                        if (this.sendCancelGeneration !== sendGen) return;
-                        // Clear countdown and interval for the clicked button if it still exists
-                        if (mangaRef?.countdownInterval) {
-                            clearInterval(mangaRef.countdownInterval);
-                            mangaRef.countdownInterval = null;
-                        }
-                        if (mangaRef) {
-                            mangaRef.countdown = undefined;
-                            mangaRef.status = null;
-                        }
-                        
-                        this.ratelimiting = false;
-                        
-                        // Clear ratelimiting status from all other buttons
-                        if (episodeRef?.EpisodeVideosIDs) {
-                            episodeRef.EpisodeVideosIDs.forEach((video) => {
-                                if (video.status === 'ratelimiting') {
-                                    video.status = null;
-                                }
-                                // Clear countdown for ratelimiting buttons as well
-                                if (video.countdownInterval) {
-                                    clearInterval(video.countdownInterval);
-                                    video.countdownInterval = null;
-                                }
-                                video.countdown = undefined;
-                            });
-                        }
-                        if (episodeRef?.EpisodeMangasIDs) {
-                            episodeRef.EpisodeMangasIDs.forEach((manga) => {
-                                if (manga.status === 'ratelimiting') {
-                                    manga.status = null;
-                                }
-                                // Clear countdown for ratelimiting buttons as well
-                                if (manga.countdownInterval) {
-                                    clearInterval(manga.countdownInterval);
-                                    manga.countdownInterval = null;
-                                }
-                                manga.countdown = undefined;
-                            });
-                        }
-                    }, this.statusClearTimeout);
+                async sendMangaWrapper(fileId, mangaNumber, index, isDirect) {
+                    this.handleMediaSend({
+                        type: 'manga',
+                        fileId,
+                        index,
+                        label: mangaNumber,
+                        isDirectManga: isDirect
+                    });
                 },
 
                 openSpecificEpisode(episodeCode) {
@@ -8863,6 +8614,9 @@
 
                 async checkTelegram() {
                     try {
+                        if (!window.TelegramGameProxy || typeof window.TelegramGameProxy.receiveEvent !== 'function') {
+                            window.TelegramGameProxy = Object.assign({}, window.TelegramGameProxy, { receiveEvent: function () {} });
+                        }
                         console.log("=== Telegram WebApp Raw Data ===");
                         console.log("initData:", webApp?.initData);
                         console.log("initDataUnsafe:", webApp?.initDataUnsafe);
@@ -8905,10 +8659,16 @@
 
                         if (result?.error) {
                             const desc = String(result?.telegramError?.description || '');
-                            if (!desc.includes('PARTICIPANT_ID_INVALID')) {
+                            const dl = desc.toLowerCase();
+                            const allowed =
+                                dl.includes('participant_id_invalid') ||
+                                dl.includes('member not found') ||
+                                dl.includes('user not found') ||
+                                dl.includes('user_not_participant');
+                            if (!allowed) {
                                 throw new Error(result.error);
                             }
-                            console.warn('Telegram membership check returned PARTICIPANT_ID_INVALID', result);
+                            console.warn('Telegram membership check returned non-member case', result);
                         }
 
                         if (result?.banned) {
@@ -9043,10 +8803,42 @@
                             tgLink.addEventListener('click', (e) => {
                                 e.preventDefault();
 
+                                const username = 'CodeSubs';
+                                const url = `https://t.me/${username}`;
+                                const deep = `tg://resolve?domain=${username}`;
+                                const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent);
+                                if (isIOS) {
+                                    try { window.location.href = deep; } catch (e) {}
+                                    setTimeout(() => { window.location.href = url; }, 600);
+                                    return;
+                                }
                                 if (window.Telegram?.WebApp?.openTelegramLink) {
-                                    Telegram.WebApp.openTelegramLink('https://t.me/CodeSubs');
-                                } else {
-                                    window.location.href = 'https://t.me/CodeSubs';
+                                    try { Telegram.WebApp.openTelegramLink(url); } catch (e) {}
+                                    setTimeout(() => {
+                                        try {
+                                            const a = document.createElement('a');
+                                            a.href = url;
+                                            a.target = '_blank';
+                                            a.rel = 'noopener noreferrer';
+                                            document.body.appendChild(a);
+                                            a.click();
+                                            a.remove();
+                                        } catch (e2) {
+                                            window.location.href = url;
+                                        }
+                                    }, 500);
+                                    return;
+                                }
+                                try {
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.target = '_blank';
+                                    a.rel = 'noopener noreferrer';
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                } catch (e3) {
+                                    window.location.href = url;
                                 }
                             });
                         }
@@ -9485,7 +9277,11 @@
                             return;
                         }
                         
-                        await this.sendMangaResponse(entry.fileId, this.buildMangaCaption(entry.chapter, entry.fileSize));
+                        await this.sendTelegramMedia({
+                            method: "sendDocument",
+                            file_id: entry.fileId,
+                            caption: this.buildMangaCaption(entry.chapter, entry.fileSize)
+                        });
                         // Increment daily limit only on success
                         await this.incrementDailyLimit();
                         
@@ -9643,7 +9439,11 @@
                              };
 
                              const caption = this.buildMangaCaption(entry.chapter, entry.fileSize);
-                             await this.sendMangaResponse(entry.fileId, caption);
+                             await this.sendTelegramMedia({
+                                 method: "sendDocument",
+                                 file_id: entry.fileId,
+                                 caption: caption
+                             });
                              
                              await this.incrementDailyLimit();
                              this.recordMangaSuccess({ MangaNumber: entry.chapter });
@@ -9895,7 +9695,11 @@
                                 throw new Error(`Daily download limit of ${this.maxDailyDownloads} reached.`);
                             }
 
-                            await this.sendMangaResponse(manga.MangaFileID, this.buildMangaCaption(manga.MangaNumber, manga.MangaFileSize));
+                            await this.sendTelegramMedia({
+                                method: "sendDocument",
+                                file_id: manga.MangaFileID,
+                                caption: this.buildMangaCaption(manga.MangaNumber, manga.MangaFileSize)
+                            });
                             // Only increment if we're still on the same index (prevent duplicates)
                             if (this.mangaQueueIndex === currentIndex) {
                                 // Increment daily limit on success
@@ -10960,16 +10764,20 @@
                 // Ensure data is loaded before calling openSpecificEpisode
                 const urlParams = new URLSearchParams(window.location.search);
                 const episodeCode = urlParams.get("code");
+                if (episodeCode) console.log('code-param-init:', { code: episodeCode});
 
                 if (episodeCode && this.episodes && this.episodes.length > 0) {
                     this.openSpecificEpisode(episodeCode); // Open the episode if data is loaded
                 } else {
                     // If the data isn't loaded yet, watch for changes
-                    this.$watch('episodes', (newEpisodes) => {
-                        if (newEpisodes && newEpisodes.length > 0 && episodeCode) {
-                            this.openSpecificEpisode(episodeCode);
-                        }
-                    });
+                    if (episodeCode) {
+                        this.$watch('episodes', (newEpisodes) => {
+                            if (newEpisodes && newEpisodes.length > 0) {
+                                console.log('code-param-open:', { code: episodeCode, episodesCount: newEpisodes.length });
+                                this.openSpecificEpisode(episodeCode);
+                            }
+                        });
+                    }
                 }
 
                 this.updateFontSize();
