@@ -8626,9 +8626,9 @@
                         }
                     }
                     try {
-                        console.table(issues.slice(0, 50));
+                        console.table(issues.slice(0, 1500));
                     } catch (_) {
-                        console.log(issues.slice(0, 50));
+                        console.log(issues.slice(0, 1500));
                     }
                     return { total: eps.length, issuesCount: issues.length, sample: issues.slice(0, 10) };
                 },
@@ -10979,4 +10979,3 @@
     </style>
 </body>
 </html>
-
