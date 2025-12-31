@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -7948,7 +7949,7 @@
                     }
 
                     if (type === 'manga') {
-                        caption = `*الفصل:* ${escapeMarkdown(label)}\n*الحجم:* ${escapeMarkdown(this.formatFileSize(mediaSize, true))}`;
+                        caption = `*الفصل: ${escapeMarkdown(label)}\nالحجم: ${escapeMarkdown(this.formatFileSize(mediaSize, true))}*`;
                     } else if (type === 'trailer') {
                         let episodeNumber = String(episodeRef.EpisodeNumber);
                         const isMovie = episodeNumber.includes("الفيلم");
@@ -7963,7 +7964,7 @@
                             ? `إعلان${trailerNumberText} للفيلم ${episodeNumber}`
                             : `إعلان${trailerNumberText} للحلقة ${episodeNumber}`;
 
-                        caption = `*${escapeMarkdown(titleLine)}*\n*الجودة:* ${escapeMarkdown(resolution)}\n*الحجم:* ${escapeMarkdown(this.formatFileSize(mediaSize, true))}`;
+                        caption = `*${escapeMarkdown(titleLine)}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${escapeMarkdown(this.formatFileSize(mediaSize, true))}*`;
                     } else {
                         const { cleanNum, cleanLabel } = this.parseEpisodeLabel(episodeRef.EpisodeNumber);
                         
@@ -7986,7 +7987,7 @@
                              });
                         }
 
-                        caption = `*${escapeMarkdown(cleanLabel)}* ${escapeMarkdown(cleanNum)}\n*العنوان:* ${escapeMarkdown(episodeRef.EpisodeTitle || '')}\n*الجودة:* ${escapeMarkdown(resolution)}\n*الحجم:* ${escapeMarkdown(this.formatFileSize(mediaSize, true))}`;
+                        caption = `*${escapeMarkdown(cleanLabel)} ${escapeMarkdown(cleanNum)}\nالعنوان: ${escapeMarkdown(episodeRef.EpisodeTitle || '')}\nالجودة: ${escapeMarkdown(resolution)}\nالحجم: ${escapeMarkdown(this.formatFileSize(mediaSize, true))}*`;
                         if (details) caption += `\n\n*✦✦— محتويات الحلقة —✦✦*${details}`;
                     }
 
@@ -8483,7 +8484,7 @@
                             const rowEnd = Math.min(start + chunkSize, episodes.length);
                             const filename = `${baseName}_rows_${rowStart}-${rowEnd}.png`;
 
-                            const caption = `التصفية: ${enabledLabelText}\nالصفوف: ${rowEnd}-${rowStart}\nالجزء: ${part}/${total}`;
+                            const caption = `*التصفية: ${enabledLabelText}\nالصفوف: ${rowEnd}-${rowStart}\nالجزء: ${part}/${total}*`;
                             await this.sendPhotoResponse(blob, filename, caption);
                             this.captureEpisodeTableImagesDone = part;
                             this.showSuccessHint(`تم إرسال الصورة (${this.captureEpisodeTableImagesDone}/${this.captureEpisodeTableImagesTotal}) للخاص`);
@@ -8597,6 +8598,39 @@
                     // Always reset ratelimiting flag
                     this.ratelimiting = false;
                     this.errorMessage = "";
+                },
+
+                findUnescapedMarkdownV2Chars(text) {
+                    const re = /(?<!\\)[_*[\]()~`>#+\-=|{}.!]/g;
+                    const out = [];
+                    const s = String(text || '');
+                    let m;
+                    while ((m = re.exec(s)) !== null) {
+                        out.push({ index: m.index, char: m[0] });
+                    }
+                    return out;
+                },
+
+                validateAllEpisodeTitlesMarkdown() {
+                    const eps = Array.isArray(this.episodes) ? this.episodes : [];
+                    const issues = [];
+                    for (const ep of eps) {
+                        const title = String(ep.EpisodeTitle || '');
+                        const bad = this.findUnescapedMarkdownV2Chars(title);
+                        if (bad.length) {
+                            issues.push({
+                                EpisodeNumber: ep.EpisodeNumber,
+                                title,
+                                badChars: bad.map(b => b.char).join('')
+                            });
+                        }
+                    }
+                    try {
+                        console.table(issues.slice(0, 50));
+                    } catch (_) {
+                        console.log(issues.slice(0, 50));
+                    }
+                    return { total: eps.length, issuesCount: issues.length, sample: issues.slice(0, 10) };
                 },
 
                 async checkTelegram() {
