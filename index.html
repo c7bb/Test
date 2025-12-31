@@ -1574,7 +1574,7 @@
             </div>
             
             <!-- Empty popup window -->
-            <div v-if="showEmptyPopup" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div v-if="showEmptyPopup" ref="emptyPopupRoot" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="relative bg-sky-900 rounded shadow-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] overflow-hidden flex flex-col"> <!-- the defualt is 80vh in max-h-[90vh]-->
                     <!-- Sticky Header Section -->
                     <div class="sticky top-0 z-50 bg-sky-900 p-4">
@@ -1597,13 +1597,13 @@
                     </div>                    
                     
                     <!-- Scrollable Content -->
-                    <div class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
+                    <div ref="emptyPopupScroll" class="overflow-y-auto p-4 flex-1 always-visible-scrollbar">
 
                         <!-- User Guide Section -->
                         <div class="bg-gray-800 text-white p-4 rounded mb-4">
                             <h3 class="text-lg font-bold mb-2">الشرح التوضيحي</h3>
                             <ul class="list-disc pl-5 pr-2 text-base">
-                                <li class="mb-2">استخدم الفلاتر الموجودة في الأسفل لتحديد المحتوى الذي ترغب في عرضه وتقييده داخل الجدول.</li>
+                                <li class="mb-2">استخدم المرشحات الموجودة في الأسفل لتحديد المحتوى الذي ترغب في عرضه وتقييده داخل الجدول.</li>
                                 <li class="mb-2">لعرض نتائج التصفية، انتقل إلى الجدول عن طريق إغلاق هذه النافذة بالضغط على زر الإغلاق (الزر الأحمر) في الزاوية العلوية اليسرى.</li>
                                 <li>لإعادة التصفية إلى الوضع الافتراضي، اضغط على زر إعادة التعيين (الزر البرتقالي) في الزاوية العلوية اليسرى.</li>                                
                             </ul>
@@ -1630,6 +1630,8 @@
                                             class="scale-150"
                                             :value="opt.value"
                                             :checked="getByKey(section.modelKey) === opt.value"
+                                            :data-filter-key="section.modelKey"
+                                            :data-filter-value="opt.value"
                                             @change="setByKey(section.modelKey, opt.value)"
                                         >
                                         <input
@@ -1637,6 +1639,7 @@
                                             type="checkbox"
                                             class="scale-150"
                                             :checked="getByKey(opt.modelKey)"
+                                            :data-filter-key="opt.modelKey"
                                             @change="setByKey(opt.modelKey, $event.target.checked)"
                                         >
                                         <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
@@ -1654,6 +1657,7 @@
                                                         type="checkbox"
                                                         class="scale-150"
                                                         :checked="getByKey(characterEpisodesKey(id))"
+                                                        :data-filter-key="characterEpisodesKey(id)"
                                                         @change="onCharacterToggle(id, $event.target.checked)"
                                                     >
                                                     <span class="px-2 font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
@@ -1694,6 +1698,7 @@
                                                                 type="checkbox"
                                                                 class="scale-150"
                                                                 :checked="getByKey(characterDetailKey(id, detail.kind))"
+                                                                :data-filter-key="characterDetailKey(id, detail.kind)"
                                                                 @change="setByKey(characterDetailKey(id, detail.kind), $event.target.checked)"
                                                             >
                                                             <span class="px-2 font-bold">{{ detail.label }} ({{ getByKey(characterDetailCountKey(id, detail.kind)) }})</span>
@@ -1706,6 +1711,14 @@
                                 </div>
                             </fieldset>
                         </div>
+                    </div>
+                    
+                    <div
+                        v-if="activeFiltersCount > 0"
+                        class="sticky bottom-0 bg-cyan-800 text-white font-bold text-center px-4 py-3 cursor-pointer select-none"
+                        @click="cycleActiveFilterFocus"
+                    >
+                        عدد المرشحات المفعّلة حاليًا: {{ activeFiltersCount }}
                     </div>
                 </div>
             </div>   
@@ -3400,6 +3413,7 @@
                     inactivityListeners: [],
                     lastActivityAt: Date.now(),
                     filterUi: markRaw(FILTER_UI),
+                    activeFilterCycleIndex: -1,
                     successHintVisible: false,
                     successHintAnimatingOut: false,
                     successHintMessage: '',
@@ -3740,6 +3754,30 @@
                 };
             },
             computed: {
+                activeFilters() {
+                    const list = [];
+                    if (this.selectedFilter && this.selectedFilter !== 'all') {
+                        list.push({ key: 'selectedFilter', type: 'radio', value: this.selectedFilter });
+                    }
+                    if (this.episodeTypeFilter && this.episodeTypeFilter !== 'All') {
+                        list.push({ key: 'episodeTypeFilter', type: 'radio', value: this.episodeTypeFilter });
+                    }
+                    for (const opt of (this.filterUi?.groupOptions || [])) {
+                        if (this.getByKey(opt.modelKey)) list.push({ key: opt.modelKey, type: 'checkbox' });
+                    }
+                    for (const opt of (this.filterUi?.sceneOptions || [])) {
+                        if (this.getByKey(opt.modelKey)) list.push({ key: opt.modelKey, type: 'checkbox' });
+                    }
+                    const ids = getAllCharacterIds(this.filterUi);
+                    for (const id of ids) {
+                        const baseKey = this.characterEpisodesKey(id);
+                        if (this.getByKey(baseKey)) list.push({ key: baseKey, type: 'checkbox' });
+                    }
+                    return list;
+                },
+                activeFiltersCount() {
+                    return this.activeFilters.length;
+                },
                 isGlobalBusy() {
                     const isEpisodeBusy = this.selectedEpisode?.EpisodeVideosIDs?.some(video => ['success', 'ratelimiting', 'sending'].includes(video.status)) ||
                                           this.selectedEpisode?.EpisodeMangasIDs?.some(manga => ['success', 'ratelimiting', 'sending'].includes(manga.status));
@@ -4591,7 +4629,9 @@
                         } else if (this.selectedFilter === 'ova') {
                             return episode.EpisodeNumber.includes("أوفا");
                         } else if (this.selectedFilter === 'movie_special') {
-                            return episode.EpisodeNumber.includes("خاصة بالفيلم") || episode.EpisodeTitle.includes("خاصة بالفيلم");
+                            const isMovieSpecial = episode.EpisodeNumber.includes("خاصة بالفيلم") || episode.EpisodeTitle.includes("خاصة بالفيلم");
+                            const isSpecialRelease1 = String(episode.EpisodeNumber || '').trim() === "إصدار خاص 1";
+                            return isMovieSpecial && !isSpecialRelease1;
                         } else if (this.selectedFilter === 'special_release') {
                             return episode.EpisodeNumber.includes("إصدار خاص");
                         } else if (this.selectedFilter === 'magic_kaito') {
@@ -4962,6 +5002,31 @@
                 },
             },
             methods: {
+                cycleActiveFilterFocus() {
+                    const list = this.activeFilters;
+                    if (!Array.isArray(list) || list.length === 0) return;
+                    this.activeFilterCycleIndex = (Number.isInteger(this.activeFilterCycleIndex) ? this.activeFilterCycleIndex : -1) + 1;
+                    if (this.activeFilterCycleIndex >= list.length) this.activeFilterCycleIndex = 0;
+                    const target = list[this.activeFilterCycleIndex];
+                    if (!target || !target.key) return;
+                    
+                    let selector = `[data-filter-key="${String(target.key)}"]`;
+                    if (target.type === 'radio' && target.value != null) {
+                        selector += `[data-filter-value="${String(target.value)}"]`;
+                    }
+                    
+                    const root = this.$refs?.emptyPopupRoot || this.$el || document;
+                    let elem = null;
+                    try {
+                        elem = root.querySelector(selector) || document.querySelector(selector);
+                    } catch (e) {
+                        elem = document.querySelector(selector);
+                    }
+                    if (!elem) return;
+                    
+                    try { elem.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+                    try { elem.focus(); } catch (e) {}
+                },
                 // InstantDB Methods
                 async syncServerTime() {
                     try {
@@ -7614,6 +7679,7 @@
                     for (const [key, value] of Object.entries(FILTER_STATE_DEFAULTS)) {
                         this[key] = value;
                     }
+                    this.activeFilterCycleIndex = -1;
                 },
 
                 toggleSpoiler() {
