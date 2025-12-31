@@ -1632,7 +1632,7 @@
                                             :checked="getByKey(section.modelKey) === opt.value"
                                             :data-filter-key="section.modelKey"
                                             :data-filter-value="opt.value"
-                                            @change="setByKey(section.modelKey, opt.value)"
+                                            @change="onFilterRadioChange(section.modelKey, opt.value)"
                                         >
                                         <input
                                             v-else
@@ -1640,7 +1640,7 @@
                                             class="scale-150"
                                             :checked="getByKey(opt.modelKey)"
                                             :data-filter-key="opt.modelKey"
-                                            @change="setByKey(opt.modelKey, $event.target.checked)"
+                                            @change="onFilterCheckboxChange(opt.modelKey, $event)"
                                         >
                                         <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
                                     </label>
@@ -1699,7 +1699,7 @@
                                                                 class="scale-150"
                                                                 :checked="getByKey(characterDetailKey(id, detail.kind))"
                                                                 :data-filter-key="characterDetailKey(id, detail.kind)"
-                                                                @change="setByKey(characterDetailKey(id, detail.kind), $event.target.checked)"
+                                                                @change="onFilterCheckboxChange(characterDetailKey(id, detail.kind), $event)"
                                                             >
                                                             <span class="px-2 font-bold">{{ detail.label }} ({{ getByKey(characterDetailCountKey(id, detail.kind)) }})</span>
                                                         </label>
@@ -5011,6 +5011,18 @@
                     } catch (e) {}
                     this.activeFilterHighlightedEl = null;
                 },
+                onFilterCheckboxChange(key, event) {
+                    const checked = Boolean(event && event.target && event.target.checked);
+                    this.setByKey(key, checked);
+                    if (!checked) this.clearActiveFilterHighlight();
+                },
+                onFilterRadioChange(key, value) {
+                    this.setByKey(key, value);
+                    const inactive =
+                        (key === 'selectedFilter' && value === 'all') ||
+                        (key === 'episodeTypeFilter' && value === 'All');
+                    if (inactive) this.clearActiveFilterHighlight();
+                },
                 cycleActiveFilterFocus() {
                     const list = this.activeFilters;
                     if (!Array.isArray(list) || list.length === 0) return;
@@ -5171,6 +5183,7 @@
                         this[this.characterEpisodesKey(id)] = true;
                         return;
                     }
+                    this.clearActiveFilterHighlight();
                     this.resetCharacterFilters(id);
                 },
 
