@@ -10944,7 +10944,8 @@
                 }
             });
 
-		app.mount('#app');
+		const vm = app.mount('#app');
+        window.vm = vm;
     </script>
     <style scoped>
         @keyframes borderMove {
@@ -10978,3 +10979,4 @@
     </style>
 </body>
 </html>
+
