@@ -1995,23 +1995,25 @@
         <!-- Table -->
         <!-- Progress Spinner -->
         <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900-opacity-1">
-            <transition name="fade">
-                <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
-            </transition>
-            <div class="w-80">
-                <div class="relative h-6 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
-                    <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-blue-700 via-teal-500 to-emerald-500 animate-gradient-x"></div>
-                    <div class="absolute top-0 left-0 h-full w-full opacity-30 bg-[length:20px_20px] bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] animate-stripes"></div>
-                    <div class="absolute top-0 right-0 h-full bg-gray-800 transition-all duration-300 ease-out" :style="{ width: (100 - loadProgress) + '%' }"></div>
-                    <div class="absolute top-0 left-0 h-full w-full flex items-center justify-center">
-                        <span class="text-xs font-bold text-white shadow-black drop-shadow-md">{{ loadProgress }}%</span>
+            <div class="flex flex-col items-center">
+                <transition name="fade">
+                    <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
+                </transition>
+                <div class="w-70">
+                    <div class="relative h-6 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
+                        <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-blue-700 via-teal-500 to-emerald-500 animate-gradient-x"></div>
+                        <div class="absolute top-0 left-0 h-full w-full opacity-30 bg-[length:20px_20px] bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] animate-stripes"></div>
+                        <div class="absolute top-0 right-0 h-full bg-gray-800 transition-all duration-300 ease-out" :style="{ width: (100 - loadProgress) + '%' }"></div>
+                        <div class="absolute top-0 left-0 h-full w-full flex items-center justify-center">
+                            <span class="text-xs font-bold text-white shadow-black drop-shadow-md">{{ loadProgress }}%</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider animate-pulse">
+                        جاري تحميل البيانات...
                     </div>
                 </div>
-                <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider animate-pulse">
-                    جاري تحميل البيانات...
-                </div>
             </div>
-        </div>          
+        </div>         
         <div v-else>
             <table class="min-w-full border-collapse border border-gray-300">
                 <thead>
@@ -11151,3 +11153,4 @@
     </style>
 </body>
 </html>
+
