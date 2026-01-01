@@ -8820,7 +8820,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -10574,9 +10574,11 @@
                                     case 'ownership-status':
                                         this.isTabOwner = !!isOwner;
                                         this.tabLockModal = !this.isTabOwner;
-                                        if (this.userJoined && this.isTabOwner && this.loadDataDeferred) {
-                                            this.loadData(true);
-                                            this.loadDataDeferred = false;
+                                        if (this.userJoined && this.isTabOwner) {
+                                            if (this.loadDataDeferred || (this.episodes.length === 0 && !this.loading)) {
+                                                this.loadData(true);
+                                                this.loadDataDeferred = false;
+                                            }
                                         }
                                         break;
                                         
