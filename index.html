@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1978,9 +1979,10 @@
             <div 
                 id="loading-bar-container"
                 class="ldBar label-center mx-auto"
-                data-preset="circle"
-                data-stroke="#FF6448"
-                data-stroke-width="5"
+                data-type="fill"
+                data-img="loading.svg"
+                data-fill-dir="btt"
+                data-fill="#FF6448"
                 style="width: 100px; height: 100px;"
             ></div>
         </div>          
@@ -3657,6 +3659,14 @@
                     movies: [], // Movies will be populated separately
                     loading: false,
                     loadProgress: 0,
+                    inputSearchQuery: '',
+                    searchDebounceTimer: null,
+                    loadingRelated: false,
+                    loadingNextManga: false,
+                    loadingPreviousManga: false,
+                    loadingManga: false,
+                    loadingEpisode: false,
+                    circumference: 2 * Math.PI * 45, // 2πr where r=45
                     progressInterval: null,
                     error: null,
                     searchQuery: '',
@@ -4027,7 +4037,9 @@
                     return `${minutes}:${seconds}`;
                 },
 
-
+                strokeDashOffset() {
+                    return this.circumference - (this.loadProgress / 100) * this.circumference;
+                },
 
                 groupedEpisodes() {
                     // Sort episodes by EpisodeNumber numerically
@@ -4893,25 +4905,6 @@
                 },
             },
             watch: {
-                loading(val) {
-                    if (val) {
-                        this.$nextTick(() => {
-                            const el = document.getElementById('loading-bar-container');
-                            if (el) {
-                                if (!el.ldBar) {
-                                     new ldBar(el);
-                                }
-                                if (el.ldBar) el.ldBar.set(this.loadProgress);
-                            }
-                        });
-                    }
-                },
-                loadProgress(val) {
-                    const el = document.getElementById('loading-bar-container');
-                    if (el && el.ldBar) {
-                        el.ldBar.set(val);
-                    }
-                },
                 episodeSendInProgress(newValue) {
                     if (!newValue) this.handleAutoCloseIfRequested('modal');
                 },
@@ -4920,6 +4913,31 @@
                 },
                 trailerSendInProgress(newValue) {
                     if (!newValue) this.handleAutoCloseIfRequested('trailer');
+                },
+                loading(newValue) {
+                    if (newValue) {
+                        this.$nextTick(() => {
+                            const container = document.getElementById('loading-bar-container');
+                            if (container && !container.ldBar) {
+                                new ldBar(container);
+                            }
+                            if (container && container.ldBar) {
+                                container.ldBar.set(this.loadProgress);
+                            }
+                        });
+                    }
+                },
+                loadProgress(newValue) {
+                    const container = document.getElementById('loading-bar-container');
+                    if (container && container.ldBar) {
+                        container.ldBar.set(newValue);
+                    }
+                },
+                inputSearchQuery(newVal) {
+                    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+                    this.searchDebounceTimer = setTimeout(() => {
+                        this.searchQuery = newVal;
+                    }, 300);
                 },
                 selectedEpisode() {
                     // When episode changes, recalculate the countdown
@@ -7164,22 +7182,17 @@
                 // Method to load data from JSON
                 loadData() {
                     return new Promise((resolve, reject) => {
-                        // Block data loading if this tab is not the owner
                         if (this.loading) {
                             console.warn('loadData blocked: Already loading');
-                            resolve(); // Resolve immediately if already loading to prevent hanging
+                            resolve();
                             return;
                         }
-
                         if (!this.isTabOwner) {
                             console.warn('loadData blocked: Tab is not the owner');
                             reject('Tab is not the owner');
                             return;
                         }
-                        
-                        // Reset progress
                         this.loadProgress = 0;
-                        if (this.progressInterval) clearInterval(this.progressInterval);
 
                         if (this.userJoined) {
                             // Reset states before attempting to fetch
@@ -7194,7 +7207,8 @@
                                 this.waitTime = parseInt(storedWaitTime, 10);
                                 this.error = `لقد تجاوزت الحد المسموح به من الطلبات. يُرجى الانتظار ${this.waitTime} ثانية.`;
                                 this.startTimer(); // Continue the countdown
-                                this.loadProgress = 0; 
+                                clearInterval(this.progressInterval); // Stop progress animation
+                                this.loadProgress = 0; // Reset progress
                                 reject('Rate limit exceeded');
                                 return;
                             }
@@ -7206,39 +7220,30 @@
                                 .then(async response => {
                                     if (response.status === 429) {
                                         const data = await response.json();
-                                        // Only set loading = false if this tab is the owner
                                         if (this.isTabOwner) {
                                             this.loading = false;
                                         }
                                         this.loadProgress = 0;
-
                                         if (data.error === "User blocked") {
                                             this.error = "لقد تجاوزت الحد المسموح به من الطلبات لهذا اليوم.";
                                             reject('User blocked');
                                             return;
                                         }
-
                                         const resetTime = data.resetTime || Date.now() + 60000;
                                         this.waitTime = Math.max(0, Math.floor((resetTime - Date.now()) / 1000));
                                         this.error = `لقد تجاوزت الحد المسموح به من الطلبات. يُرجى الانتظار ${this.waitTime} ثانية.`;
                                         localStorage.setItem('waitTime', this.waitTime);
-                                        console.warn(data.message);
-
-                                        // Start a timer to update the wait time
                                         this.startTimer();
                                         reject('Rate limit exceeded');
                                         return;
                                     }
-
                                     if (!response.ok) {
                                         throw new Error(`HTTP error! status: ${response.status}`);
                                     }
-
                                     const reader = response.body.getReader();
                                     const contentLength = +response.headers.get('Content-Length');
                                     let receivedLength = 0;
                                     const chunks = [];
-
                                     while(true) {
                                         const {done, value} = await reader.read();
                                         if (done) break;
@@ -7250,21 +7255,20 @@
                                             this.loadProgress = Math.min(99, this.loadProgress + 1);
                                         }
                                     }
-
                                     const allChunks = new Uint8Array(receivedLength);
                                     let position = 0;
                                     for(let chunk of chunks) {
                                         allChunks.set(chunk, position);
                                         position += chunk.length;
                                     }
-
                                     const resultString = new TextDecoder("utf-8").decode(allChunks);
                                     return JSON.parse(resultString);
                                 })
                                 .then(data => {
                                     if (data) {
                                         // Data fetched successfully
-                                        this.loadProgress = 100;
+                                        clearInterval(this.progressInterval); // Stop progress animation
+                                        this.loadProgress = 100; // Set progress to 100%
                                         setTimeout(() => {
                                             // Only update data and set loading = false if this tab is the owner
                                             if (this.isTabOwner) {
@@ -7283,7 +7287,9 @@
                                     }
                                 })
                                 .catch(error => {
-                                    this.loadProgress = 0;
+                                    clearInterval(this.progressInterval); // Stop progress animation
+                                    this.loadProgress = 0; // Reset progress
+                                    // Only set loading = false if this tab is the owner
                                     if (this.isTabOwner) {
                                         this.loading = false;
                                     }
@@ -7294,7 +7300,9 @@
                                     reject(error);
                                 });
                         } else {
-                            this.loadProgress = 0;
+                            clearInterval(this.progressInterval); // Stop progress animation
+                            this.loadProgress = 0; // Reset progress
+                            // Only set loading = false if this tab is the owner
                             if (this.isTabOwner) {
                                 this.loading = false;
                             }
@@ -8789,7 +8797,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
