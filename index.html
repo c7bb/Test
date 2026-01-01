@@ -1546,12 +1546,7 @@
 
         <br>
         <!-- Search and Filters -->
-        <!-- <div v-if="loading">
-            <transition name="fade">
-                <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
-            </transition>
-        </div> -->
-        <div v-else class="flex flex-col gap-4 items-center">
+        <div v-if="!loading" class="flex flex-col gap-4 items-center">
             <div class="flex gap-4 w-full justify-center">
                 <select
                     v-model="selectedFilter"
