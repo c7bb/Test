@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -3687,6 +3688,7 @@
                     selectedMovie: null, // Track the selected movie for resolution/size view
                     selectedManga: null, // Track the selected manga for file size view
                     movies: [], // Movies will be populated separately
+                    mangas: [], // Declare mangas to avoid Vue render warn
                     loading: true,
                     loadProgress: 0,
                     inputSearchQuery: '',
