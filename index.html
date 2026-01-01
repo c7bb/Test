@@ -613,6 +613,14 @@
     
     <div id="app" v-cloak class="container mx-auto p-4 shadow-lg rounded"> <!-- Removed .bg-slate-700 -->
 
+        <!-- Global Loading Overlay -->
+        <div 
+            v-if="isGlobalLoading" 
+            class="fixed inset-0 z-[200] bg-black/50 backdrop-blur-[2px] flex items-center justify-center cursor-wait"
+        >
+            <div class="animate-spin rounded-full h-16 w-16 border-4 border-yellow-300 border-t-transparent shadow-lg"></div>
+        </div>
+
         <!-- Inactivity session modal -->
         <div 
             v-if="inactivityModal" 
@@ -754,7 +762,7 @@
                             
                             <div class="relative">
                                 <textarea
-                                v-model.trim="searchQuery"
+                                v-model.trim="inputSearchQuery"
                                 @focus="clearJumpHighlight"
                                 @keydown.enter.prevent
                                 :rows="(searchFilters.title || searchFilters.story || searchFilters.summary) ? 2 : 1"
@@ -1783,8 +1791,11 @@
                                 </legend>
 
                                 <!-- Upcoming Episode Notice -->
+                                <div v-if="isNextEpisodeLoading" class="flex justify-center py-2">
+                                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                                </div>
                                 <div
-                                    v-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
+                                    v-else-if="nextEpisodeInfo && nextEpisodeInfo.Enable !== false && nextEpisodeStatus"
                                     class="text-center space-y-1"
                                 >
                                     <p
@@ -1834,8 +1845,11 @@
                                 </div>
 
                                 <!-- Upcoming Manga Notice -->
+                                <div v-if="isNextMangaLoading" class="flex justify-center py-2">
+                                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                                </div>
                                 <div
-                                    v-if="nextMangaInfo && nextMangaInfo.Enable !== false && nextMangaStatus"
+                                    v-else-if="nextMangaInfo && nextMangaInfo.Enable !== false && nextMangaStatus"
                                     class="text-center space-y-1"
                                 >
                                     <p
@@ -2102,6 +2116,13 @@
                         </tr>
                     </tbody>
             
+                    <div v-if="isModalLoading" class="fixed z-50 inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                        <div class="bg-gray-800 p-4 rounded-lg shadow-lg flex flex-col items-center border border-gray-600">
+                            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
+                            <p class="text-white font-bold">جاري التحميل...</p>
+                        </div>
+                    </div>
+
                     <div v-if="showModal" class="fixed z-50 inset-0 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center">
                         
                         <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[90vh] flex flex-col"> <!-- the defualt is 80vh in max-h-[90vh]-->
@@ -2169,7 +2190,7 @@
                                 <div v-if="selectedEpisode" class="relative mb-4">
                                     <button
                                         type="button"
-                                        class="text-xl font-bold overflow-hidden text-ellipsis w-full"
+                                        class="text-xl font-bold overflow-hidden text-ellipsis w-full flex items-center justify-center gap-2"
                                         :class="[
                                             hasRelatedEpisodesForEpisode(selectedEpisode) && !isEpisodeSwitchBlocked(selectedEpisode) ? 'underline text-yellow-300 cursor-pointer' : '',
                                             isEpisodeSwitchBlocked(selectedEpisode) ? 'opacity-80 cursor-not-allowed' : ''
@@ -2177,6 +2198,7 @@
                                         @click.stop="toggleRelatedEpisodeMenu"
                                     >
                                         {{ selectedEpisode.EpisodeTitle }}
+                                        <div v-if="isRelatedEpisodesLoading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     </button>
 
                                     <div
@@ -2668,7 +2690,7 @@
             <div class="flex justify-between items-center mt-4">
 
                 <button @click="nextPage" 
-                        :disabled="currentPage === totalPages"
+                        :disabled="isPaginationLoading || currentPage === totalPages"
                         class="bg-blue-700 text-white font-bold px-4 py-2 rounded 
                             hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed 
                             transition-all duration-100 active:bg-blue-800 active:scale-90">
@@ -2676,10 +2698,12 @@
                 </button>
 
                 <div class="flex items-center gap-2 text-white font-bold">
+                    <div v-if="isPaginationLoading" class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <!-- <span>صفحة</span> -->
                     <select v-model="currentPage" 
+                            :disabled="isPaginationLoading"
                             @change="handlePageSelect" 
-                            class="w-24 px-2 py-2 rounded border border-gray-500 bg-gray-800 text-center font-bold">
+                            class="w-24 px-2 py-2 rounded border border-gray-500 bg-gray-800 text-center font-bold disabled:opacity-50">
                         <option v-for="page in totalPages" :key="page" :value="page">
                             {{ page }}
                         </option>
@@ -2688,7 +2712,7 @@
                 </div>
 
                 <button @click="prevPage" 
-                        :disabled="currentPage === 1"
+                        :disabled="isPaginationLoading || currentPage === 1"
                         class="bg-blue-700 text-white font-bold px-4 py-2 rounded 
                             hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed
                             transition-all duration-100 active:bg-blue-800 active:scale-90">
@@ -2701,7 +2725,7 @@
             </div>
 
             <!-- Page Size Controls (Right) -->
-            <div class="text-center font-bold justify-center">
+            <div class="text-center font-bold justify-center" :class="{'opacity-50 pointer-events-none': isPaginationLoading}">
                 <label class="inline-flex items-center mx-1 transition-all duration-100 active:scale-90">
                     <input type="radio" v-model="pageSize" :value="5" class="form-radio text-blue-500 mx-1" />
                     <span class="ml-2">5</span>
@@ -3321,6 +3345,13 @@
         const app = createApp({
             data() {
                 return {
+                    isPaginationLoading: false,
+                    isModalLoading: false,
+                    isRelatedEpisodesLoading: false,
+                    isNextMangaLoading: false,
+                    isNextEpisodeLoading: false,
+                    inputSearchQuery: '',
+                    searchDebounceTimer: null,
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -3754,6 +3785,14 @@
                 };
             },
             computed: {
+                isGlobalLoading() {
+                    return this.loading || 
+                           this.isPaginationLoading || 
+                           this.isModalLoading || 
+                           this.isRelatedEpisodesLoading || 
+                           this.isNextMangaLoading || 
+                           this.isNextEpisodeLoading;
+                },
                 activeFilters() {
                     const list = [];
                     if (this.selectedFilter && this.selectedFilter !== 'all') {
@@ -4925,7 +4964,17 @@
                         this.intervalZikrId = null;
                     }
                 },
+                inputSearchQuery(newVal) {
+                    if (this.searchDebounceTimer) clearTimeout(this.searchDebounceTimer);
+                    this.searchDebounceTimer = setTimeout(() => {
+                        this.searchQuery = newVal;
+                    }, 500);
+                },
                 searchQuery(newQuery) {
+                    // Sync back if changed programmatically
+                    if (this.inputSearchQuery !== newQuery) {
+                        this.inputSearchQuery = newQuery;
+                    }
                     const trimmed = newQuery.trim();
 
                     if (trimmed.endsWith('+')) {
@@ -5009,6 +5058,9 @@
                         el.classList.remove('bg-yellow-300', 'text-black', 'ring-2', 'ring-yellow-300', 'rounded');
                     } catch (e) {}
                     this.activeFilterHighlightedEl = null;
+                },
+                escapeMarkdown(text) {
+                    return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
                 },
                 onFilterCheckboxChange(key, event) {
                     const checked = Boolean(event && event.target && event.target.checked);
@@ -5662,6 +5714,7 @@
                 },
 
                 async loadNextMangaInfo() {
+                    this.isNextMangaLoading = true;
                     try {
                         const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
                         const payload = await response.json();
@@ -5670,6 +5723,8 @@
                     } catch (error) {
                         console.error('Error loading next manga info:', error);
                         this.nextMangaInfo = null;
+                    } finally {
+                        this.isNextMangaLoading = false;
                     }
                 },
                 parseNextMangaDate(dateStr) {
@@ -5813,6 +5868,7 @@
                 },
 
                 async loadNextEpisodeInfo() {
+                    this.isNextEpisodeLoading = true;
                     try {
                         const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
                         const payload = await response.json();
@@ -5821,6 +5877,8 @@
                     } catch (error) {
                         console.error('Error loading next episode info:', error);
                         this.nextEpisodeInfo = null;
+                    } finally {
+                        this.isNextEpisodeLoading = false;
                     }
                 },
                 goToBot() {
@@ -6734,38 +6792,63 @@
                 },
 
                 nextPage() {
-                    this.clearJumpHighlight();
-                    if (this.currentPage < this.totalPages) {
-                        this.currentPage++;
-                        this.trackLastPage();
-                    }
+                    if (this.isPaginationLoading) return;
+                    this.isPaginationLoading = true;
+                    setTimeout(() => {
+                        this.clearJumpHighlight();
+                        if (this.currentPage < this.totalPages) {
+                            this.currentPage++;
+                            this.trackLastPage();
+                        }
+                        this.$nextTick(() => { this.isPaginationLoading = false; });
+                    }, 10);
                 },
                 prevPage() {
-                    this.clearJumpHighlight();
-                    if (this.currentPage > 1) {
-                        this.currentPage--;
-                        this.trackLastPage();
-                    }
+                    if (this.isPaginationLoading) return;
+                    this.isPaginationLoading = true;
+                    setTimeout(() => {
+                        this.clearJumpHighlight();
+                        if (this.currentPage > 1) {
+                            this.currentPage--;
+                            this.trackLastPage();
+                        }
+                        this.$nextTick(() => { this.isPaginationLoading = false; });
+                    }, 10);
                 },
                 goToPage(page) {
-                    this.clearJumpHighlight();
-                    if (page >= 1 && page <= this.totalPages) {
-                        this.currentPage = page;
-                        this.trackLastPage();
-                    }
+                    if (this.isPaginationLoading) return;
+                    this.isPaginationLoading = true;
+                    setTimeout(() => {
+                        this.clearJumpHighlight();
+                        if (page >= 1 && page <= this.totalPages) {
+                            this.currentPage = page;
+                            this.trackLastPage();
+                        }
+                        this.$nextTick(() => { this.isPaginationLoading = false; });
+                    }, 10);
                 },
                 trackLastPage() {
                     this.lastPage = this.currentPage;
                 },
                 goToFirstPage() {
-                    this.clearJumpHighlight();
-                    this.currentPage = 1;
-                    this.trackLastPage();
+                    if (this.isPaginationLoading) return;
+                    this.isPaginationLoading = true;
+                    setTimeout(() => {
+                        this.clearJumpHighlight();
+                        this.currentPage = 1;
+                        this.trackLastPage();
+                        this.$nextTick(() => { this.isPaginationLoading = false; });
+                    }, 10);
                 },
                 goToLastPage() {
-                    this.clearJumpHighlight();
-                    this.currentPage = this.totalPages;
-                    this.trackLastPage();
+                    if (this.isPaginationLoading) return;
+                    this.isPaginationLoading = true;
+                    setTimeout(() => {
+                        this.clearJumpHighlight();
+                        this.currentPage = this.totalPages;
+                        this.trackLastPage();
+                        this.$nextTick(() => { this.isPaginationLoading = false; });
+                    }, 10);
                 },
                 clearJumpHighlight() {
                     this.jumpHighlightIdentifier = null;
@@ -6777,43 +6860,57 @@
                     );
                 },
                 handlePageSelect(event) {
-                    this.clearJumpHighlight();
-                    let pageInput = event.target.value;
+                    this.isPaginationLoading = true;
+                    const target = event.target;
+                    const value = target.value;
+                    
+                    setTimeout(() => {
+                        this.clearJumpHighlight();
+                        let pageInput = value;
 
-                    // If the value is empty or invalid, set it to 1
-                    if (isNaN(parseInt(pageInput, 10))) {
-                        pageInput = 1;
-                    }
+                        // If the value is empty or invalid, set it to 1
+                        if (isNaN(parseInt(pageInput, 10))) {
+                            pageInput = 1;
+                        }
 
-                    let pageNumber = parseInt(pageInput, 10);
+                        let pageNumber = parseInt(pageInput, 10);
 
-                    // Ensure the page number is within the valid range
-                    if (pageNumber < 1) {
-                        pageNumber = 1;
-                    } else if (pageNumber > this.totalPages) {
-                        pageNumber = this.totalPages;
-                    }
+                        // Ensure the page number is within the valid range
+                        if (pageNumber < 1) {
+                            pageNumber = 1;
+                        } else if (pageNumber > this.totalPages) {
+                            pageNumber = this.totalPages;
+                        }
 
-                    // Update the current page and adjust the select value
-                    this.currentPage = pageNumber;
-                    event.target.value = pageNumber; // Reset the value of the dropdown to the corrected page number
-                    this.trackLastPage();
+                        // Update the current page and adjust the select value
+                        this.currentPage = pageNumber;
+                        target.value = pageNumber; // Reset the value of the dropdown to the corrected page number
+                        this.trackLastPage();
+                        
+                        this.$nextTick(() => {
+                            this.isPaginationLoading = false;
+                        });
+                    }, 10);
                 },
 
                 // Update page size and recalculate total pages
                 handlePageSizeChange() {
-                    const startIndex = (this.currentPage - 1) * this.oldPageSize;
-                    this.currentPage = Math.floor(startIndex / this.pageSize) + 1;
+                    this.isPaginationLoading = true;
+                    setTimeout(() => {
+                        const startIndex = (this.currentPage - 1) * this.oldPageSize;
+                        this.currentPage = Math.floor(startIndex / this.pageSize) + 1;
 
-                    if (this.currentPage > this.totalPages) {
-                        this.currentPage = this.totalPages;
-                    }
-                    if (this.currentPage < 1) {
-                        this.currentPage = 1;
-                    }
-                    
-                    this.oldPageSize = this.pageSize;
-                    this.trackLastPage();
+                        if (this.currentPage > this.totalPages) {
+                            this.currentPage = this.totalPages;
+                        }
+                        if (this.currentPage < 1) {
+                            this.currentPage = 1;
+                        }
+                        
+                        this.oldPageSize = this.pageSize;
+                        this.trackLastPage();
+                        this.$nextTick(() => { this.isPaginationLoading = false; });
+                    }, 10);
                 },
 
                 // Convert Eastern-Arabic / Persian numerals to Western numerals
@@ -6966,6 +7063,7 @@
                 },
 
                 async loadRelatedEpisodesData() {
+                    this.isRelatedEpisodesLoading = true;
                     const baseUrl = new URL(window.location.href);
                     const relatedUrl = new URL('relatedEpisodes.json', baseUrl).toString();
                     this.relatedEpisodesDataUrl = relatedUrl;
@@ -6997,6 +7095,8 @@
                         this.relatedEpisodeGroups = [];
                         this.relatedEpisodeGroupById = {};
                         this.relatedEpisodeGroupIdByEpisodeKey = {};
+                    } finally {
+                        this.isRelatedEpisodesLoading = false;
                     }
                 },
 
@@ -7147,6 +7247,10 @@
 
                 // Method to load data from JSON
                 loadData() {
+                    if (this.loading) {
+                        console.log('Data loading already in progress, skipping...');
+                        return Promise.resolve();
+                    }
                     return new Promise((resolve, reject) => {
                         // Block data loading if this tab is not the owner
                         if (!this.isTabOwner) {
@@ -7377,37 +7481,45 @@
                     return ''; // Default case
                 },
                 openModal(episode) { 
-                    this.selectedEpisode = episode;
-                    this.showModal = true;
-                    document.body.style.overflow = 'hidden'; // Block background scrolling
+                    if (this.isModalLoading) return;
+                    this.isModalLoading = true;
+                    setTimeout(() => {
+                        this.selectedEpisode = episode;
+                        this.showModal = true;
+                        document.body.style.overflow = 'hidden'; // Block background scrolling
 
-                    const currentIndex = this.episodes.findIndex(
-                        (ep) => ep.EpisodeNumber === episode.EpisodeNumber
-                    );
-
-                    // Check if there are more episodes with the same EpisodeParts
-                    if (episode.EpisodeParts) {
-                        // Check for next episode existence
-                        this.nextEpisodeExists = this.episodes.some(
-                            (ep, index) =>
-                                index > currentIndex &&
-                                ep.EpisodeParts === episode.EpisodeParts
+                        const currentIndex = this.episodes.findIndex(
+                            (ep) => ep.EpisodeNumber === episode.EpisodeNumber
                         );
 
-                        // Check for previous episode existence
-                        this.previousEpisodeExists = this.episodes.some(
-                            (ep, index) =>
-                                index < currentIndex &&
-                                ep.EpisodeParts === episode.EpisodeParts
-                        );
-                    } else {
-                        this.nextEpisodeExists = false; // Hide button if EpisodeParts is null/undefined
-                        this.previousEpisodeExists = false;
-                    }
+                        // Check if there are more episodes with the same EpisodeParts
+                        if (episode.EpisodeParts) {
+                            // Check for next episode existence
+                            this.nextEpisodeExists = this.episodes.some(
+                                (ep, index) =>
+                                    index > currentIndex &&
+                                    ep.EpisodeParts === episode.EpisodeParts
+                            );
 
-                    // Check for next/previous episode by number order
-                    this.nextEpisodeByNumberExists = currentIndex < this.episodes.length - 1;
-                    this.previousEpisodeByNumberExists = currentIndex > 0;
+                            // Check for previous episode existence
+                            this.previousEpisodeExists = this.episodes.some(
+                                (ep, index) =>
+                                    index < currentIndex &&
+                                    ep.EpisodeParts === episode.EpisodeParts
+                            );
+                        } else {
+                            this.nextEpisodeExists = false; // Hide button if EpisodeParts is null/undefined
+                            this.previousEpisodeExists = false;
+                        }
+
+                        // Check for next/previous episode by number order
+                        this.nextEpisodeByNumberExists = currentIndex < this.episodes.length - 1;
+                        this.previousEpisodeByNumberExists = currentIndex > 0;
+
+                        this.$nextTick(() => {
+                            this.isModalLoading = false;
+                        });
+                    }, 10);
                 },
                 closeModal() {
                     if (this.episodeSendInProgress) {
@@ -10259,28 +10371,34 @@
 
                 openMangaModal(chapterNumber) {
                     if (this.guardIfCapturing()) return;
-                    document.body.style.overflow = 'hidden'; // Block background scrolling
-                    const chapterString = String(chapterNumber);
-                    // Search through all available mangas
-                    const allMangas = this.groupedMangas.flatMap(group => group.items);
-                    const manga = allMangas.find(m => m.MangaNumber === chapterString);
-                    
-                    if (manga) {
-                        this.selectedManga = manga;
-                        this.selectedCategory = 'mangas';
-                        this.showDirectWindow = true;
+                    if (this.isModalLoading) return;
+                    this.isModalLoading = true;
+
+                    setTimeout(() => {
+                        document.body.style.overflow = 'hidden'; // Block background scrolling
+                        const chapterString = String(chapterNumber);
+                        // Search through all available mangas
+                        const allMangas = this.groupedMangas.flatMap(group => group.items);
+                        const manga = allMangas.find(m => m.MangaNumber === chapterString);
                         
-                        // Find which group contains this manga
-                        const groupIndex = this.groupedMangas.findIndex(group => 
-                            group.items.some(m => m.MangaNumber === chapterString)
-                        );
-                        if (groupIndex > -1) {
-                            this.activeTab.mangas = groupIndex;
+                        if (manga) {
+                            this.selectedManga = manga;
+                            this.selectedCategory = 'mangas';
+                            this.showDirectWindow = true;
+                            
+                            // Find which group contains this manga
+                            const groupIndex = this.groupedMangas.findIndex(group => 
+                                group.items.some(m => m.MangaNumber === chapterString)
+                            );
+                            if (groupIndex > -1) {
+                                this.activeTab.mangas = groupIndex;
+                            }
+                        } else {
+                            const enableDebug = false; // Set to true to enable debug logging
+                            if (enableDebug) console.log("Manga chapter not found");
                         }
-                    } else {
-                        const enableDebug = false; // Set to true to enable debug logging
-                        if (enableDebug) console.log("Manga chapter not found");
-                    }
+                        this.$nextTick(() => { this.isModalLoading = false; });
+                    }, 10);
                 },
 
                 clearSearch() {
