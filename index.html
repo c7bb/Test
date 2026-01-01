@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -5725,17 +5726,21 @@
                     this.openModal(episode);
                 },
 
-                async loadNextMangaInfo() {
+                async loadUpcomingDates() {
                     try {
                         const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
                         const payload = await response.json();
+                        this.nextEpisodeInfo = payload?.nextEpisode ? { ...payload.nextEpisode } : null;
                         this.nextMangaInfo = payload?.nextManga ? { ...payload.nextManga } : null;
+                        this.refreshNextEpisodeState();
                         this.refreshNextMangaState();
                     } catch (error) {
-                        console.error('Error loading next manga info:', error);
+                        console.error('Error loading upcoming dates:', error);
+                        this.nextEpisodeInfo = null;
                         this.nextMangaInfo = null;
                     }
                 },
+
                 parseNextMangaDate(dateStr) {
                     if (!dateStr) return null;
                     const parts = String(dateStr).trim().split('-');
@@ -5874,18 +5879,6 @@
                         return;
                     }
                     this.showEnglishNextMangaCountdown = !this.showEnglishNextMangaCountdown;
-                },
-
-                async loadNextEpisodeInfo() {
-                    try {
-                        const response = await fetch(`./UpcomingDates.json?cb=${Date.now()}`);
-                        const payload = await response.json();
-                        this.nextEpisodeInfo = payload?.nextEpisode ? { ...payload.nextEpisode } : null;
-                        this.refreshNextEpisodeState();
-                    } catch (error) {
-                        console.error('Error loading next episode info:', error);
-                        this.nextEpisodeInfo = null;
-                    }
                 },
                 goToBot() {
                     const username = 'DCRef_bot';
@@ -11037,7 +11030,7 @@
                     this.updateMovieTiming();
                 }, 60000);
 
-                this.loadNextEpisodeInfo();
+                this.loadUpcomingDates();
                 this.$watch('episodes', () => {
                     this.refreshNextEpisodeState();
                 });
@@ -11052,7 +11045,7 @@
                     this.refreshNextEpisodeState();
                 }, 60000);
 
-                this.loadNextMangaInfo();
+                // Already loaded via loadUpcomingDates()
                 this.$watch(
                     'nextMangaInfo',
                     () => {
