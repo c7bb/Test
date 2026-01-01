@@ -601,6 +601,24 @@
     <script src="https://cdn.jsdelivr.net/npm/tippy.js@6.3.7/dist/tippy.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@loadingio/loading-bar@0.1.1/dist/loading-bar.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@loadingio/loading-bar@0.1.1/dist/loading-bar.min.js"></script>
+    <style>
+        @keyframes gradient-x {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        @keyframes stripes {
+            from { background-position: 0 0; }
+            to { background-position: 40px 0; }
+        }
+        .animate-gradient-x {
+            background-size: 200% 200%;
+            animation: gradient-x 3s ease infinite;
+        }
+        .animate-stripes {
+            animation: stripes 1s linear infinite;
+        }
+    </style>
 </head>
 <body class="bg-gray-800 p-4 relative">
     <!-- Loading spinner - shows before Vue initializes -->
@@ -1975,16 +1993,20 @@
 
         <!-- Table -->
         <!-- Progress Spinner -->
-        <div v-if="loading" class="text-center py-4">
-            <div 
-                id="loading-bar-container"
-                class="ldBar label-center mx-auto"
-                data-type="fill"
-                data-img="loading.svg"
-                data-fill-dir="btt"
-                data-fill="#FF6448"
-                style="width: 100px; height: 100px;"
-            ></div>
+        <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-90">
+            <div class="w-64">
+                <div class="relative h-6 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
+                    <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-purple-600 via-pink-500 to-red-500 animate-gradient-x"></div>
+                    <div class="absolute top-0 left-0 h-full w-full opacity-30 bg-[length:20px_20px] bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] animate-stripes"></div>
+                    <div class="absolute top-0 right-0 h-full bg-gray-800 transition-all duration-300 ease-out" :style="{ width: (100 - loadProgress) + '%' }"></div>
+                    <div class="absolute top-0 left-0 h-full w-full flex items-center justify-center">
+                        <span class="text-xs font-bold text-white shadow-black drop-shadow-md">{{ loadProgress }}%</span>
+                    </div>
+                </div>
+                <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider animate-pulse">
+                    جاري تحميل البيانات...
+                </div>
+            </div>
         </div>          
         <div v-else>
             <table class="min-w-full border-collapse border border-gray-300">
@@ -3657,7 +3679,7 @@
                     selectedMovie: null, // Track the selected movie for resolution/size view
                     selectedManga: null, // Track the selected manga for file size view
                     movies: [], // Movies will be populated separately
-                    loading: false,
+                    loading: true,
                     loadProgress: 0,
                     inputSearchQuery: '',
                     searchDebounceTimer: null,
@@ -7180,9 +7202,9 @@
                 },
 
                 // Method to load data from JSON
-                loadData() {
+                loadData(force = false) {
                     return new Promise((resolve, reject) => {
-                        if (this.loading) {
+                        if (this.loading && !force) {
                             console.warn('loadData blocked: Already loading');
                             resolve();
                             return;
@@ -10887,7 +10909,7 @@
                     if (!this._db) {
                         this.initInstantDB();
                     }
-                    this.loadData();
+                    this.loadData(true);
                 }
             },
 
