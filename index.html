@@ -1990,6 +1990,38 @@
                             
                         </div>
 
+                        <div class="mt-4 w-full">
+                            <div class="flex flex-col gap-2 text-white font-bold">
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
+                                    <span>حلقة</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
+                                    <span>صفحة</span>
+                                </label>
+
+                                <div class="flex items-center gap-3">
+                                    <span class="text-white font-bold">{{ jumpLabelText }}</span>
+                                    <input
+                                        v-model.trim="jumpInput"
+                                        @keydown.enter.prevent="executeJumpValue"
+                                        :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
+                                        :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
+                                        :dir="jumpTargetMode === 'page' ? 'ltr' : undefined"
+                                        class="flex-1 p-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                        placeholder="اكتب رقم"
+                                    />
+                                    <button
+                                        @click="executeJumpValue"
+                                        class="bg-teal-600 text-white font-bold px-4 py-2 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
+                                    >
+                                        أذهب
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
         </div>
 
         <!-- Table -->
@@ -3782,7 +3814,9 @@
                         "أستغفر الله العظيم وأتوب إليه"
                     ],
                     remainingAdhkar: [],
-                    intervalZikrId: null
+                    intervalZikrId: null,
+                    jumpTargetMode: 'episode',
+                    jumpInput: ''
                 };
             },
             computed: {
@@ -4755,6 +4789,9 @@
                 },
                 displayCurrentPage() {
                     return this.totalPages === 0 ? 0 : this.currentPage;
+                },
+                jumpLabelText() {
+                    return this.jumpTargetMode === 'page' ? 'إلى صفحة' : 'إلى حلقة';
                 },
                 paginatedEpisodes() {
                     const start = (this.currentPage - 1) * this.pageSize;
@@ -6855,6 +6892,116 @@
                     this.trackLastPage();
                 },
 
+                getMaxForPrefix(prefix) {
+                    const p = String(prefix || '').trim();
+                    if (!p) return 0;
+                    const escaped = this.escapeRegExpLiteral(p);
+                    const rx = new RegExp(`^${escaped}\\s*(\\d+(?:\\.\\d+)?)$`, 'i');
+                    let max = 0;
+                    for (const ep of this.episodes || []) {
+                        const s = this.normalizeDigits(String(ep?.EpisodeNumber || '')).trim();
+                        const m = rx.exec(s);
+                        if (m) {
+                            const n = parseFloat(m[1]);
+                            if (!isNaN(n) && n > max) max = n;
+                        }
+                    }
+                    return max;
+                },
+                getMaxNumericEpisode() {
+                    let max = -Infinity;
+                    let maxStr = '';
+                    for (const ep of this.episodes || []) {
+                        const s = this.normalizeDigits(String(ep?.EpisodeNumber || '')).trim();
+                        if (/^\d+(\.\d+)?$/.test(s)) {
+                            const n = parseFloat(s);
+                            if (!isNaN(n) && n > max) {
+                                max = n;
+                                maxStr = s;
+                            }
+                        }
+                    }
+                    return maxStr || '1';
+                },
+                normalizeMagicKaitoBraces(input) {
+                    let raw = this.normalizeDigits(String(input || '')).toLowerCase();
+                    if (raw.includes('ماجيك كايتو')) {
+                        const hasJ1 = /\{\s*ج\s*1\s*\}/.test(raw);
+                        const hasJ2 = /\{\s*ج\s*2\s*\}/.test(raw);
+                        if (hasJ1) {
+                            raw = raw.replace(/\{\s*ج\s*1\s*\}/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو1');
+                        } else if (hasJ2) {
+                            raw = raw.replace(/\{\s*ج\s*2\s*\}/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو2');
+                        }
+                    }
+                    return raw;
+                },
+                buildEpisodeJumpTarget(rawInput) {
+                    let s = this.normalizeMagicKaitoBraces(rawInput).trim();
+                    if (!s) return '';
+                    if (/^\d+(\.\d+)?$/.test(s)) {
+                        const maxStr = this.getMaxNumericEpisode();
+                        const maxNum = parseFloat(maxStr);
+                        let num = parseFloat(s);
+                        if (isNaN(num)) num = 1;
+                        if (!isNaN(maxNum)) {
+                            if (num > maxNum) s = maxStr;
+                            else if (num < 1) s = '1';
+                            else s = String(s);
+                        }
+                        return s;
+                    }
+                    const prefixes = [
+                        'الفيلم',
+                        'فيلم تعاوني',
+                        'قصة قصيرة',
+                        'أوفا',
+                        'خاصة بالفيلم',
+                        'إصدار خاص',
+                        'ماجيك كايتو1',
+                        'ماجيك كايتو2',
+                        'يوميات زيرو',
+                        'المجرم هانزاوا'
+                    ];
+                    let matchedPrefix = '';
+                    for (const p of prefixes) {
+                        const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(p)}\\b`, 'i');
+                        if (rx.test(s)) {
+                            matchedPrefix = p;
+                            break;
+                        }
+                    }
+                    if (matchedPrefix) {
+                        const numMatch = s.match(/(\d+(?:\\.\\d+)?)/);
+                        let n = numMatch ? parseFloat(numMatch[1]) : 1;
+                        if (isNaN(n)) n = 1;
+                        const max = this.getMaxForPrefix(matchedPrefix);
+                        if (max > 0) {
+                            if (n > max) n = max;
+                            if (n < 1) n = 1;
+                        }
+                        return `${matchedPrefix} ${String(n)}`;
+                    }
+                    return s;
+                },
+                executeJumpValue() {
+                    const raw = String(this.jumpInput || '').trim();
+                    if (!raw) return;
+                    if (this.jumpTargetMode === 'page') {
+                        let val = this.normalizeDigits(raw).trim();
+                        let num = parseInt(val, 10);
+                        if (isNaN(num)) num = 1;
+                        if (num < 1) num = 1;
+                        if (num > this.totalPages) num = this.totalPages;
+                        this.handlePageSelect({ target: { value: num } });
+                        return;
+                    }
+                    const target = this.buildEpisodeJumpTarget(raw);
+                    if (!target) return;
+                    this.pendingJumpTarget = target;
+                    this.pendingJumpOpenModal = false;
+                    this.executePendingJump();
+                },
                 // Update page size and recalculate total pages
                 handlePageSizeChange() {
                     const startIndex = (this.currentPage - 1) * this.oldPageSize;
@@ -6884,8 +7031,17 @@
                 },
 
                 normalizeText(text) {
-                    const raw = this.normalizeDigits(text).toLowerCase();
+                    let raw = this.normalizeDigits(text).toLowerCase();
                     if (!raw) return '';
+                    if (raw.includes('ماجيك كايتو')) {
+                        const hasJ1 = /\{\s*ج\s*1\s*\}/.test(raw);
+                        const hasJ2 = /\{\s*ج\s*2\s*\}/.test(raw);
+                        if (hasJ1) {
+                            raw = raw.replace(/\{\s*ج\s*1\s*\}/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو1');
+                        } else if (hasJ2) {
+                            raw = raw.replace(/\{\s*ج\s*2\s*\}/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو2');
+                        }
+                    }
 
                     if (!this._replacementMatcher) {
                         const keys = Object.keys(this.replacementDict || {})
