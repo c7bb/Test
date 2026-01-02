@@ -10566,14 +10566,19 @@
                                         break;
                                         
                                     case 'ownership-status':
-                                        this.isTabOwner = !!isOwner;
-                                        this.tabLockModal = !this.isTabOwner;
-                                        if (this.isTabOwner) {
-                                            if (this.userJoined && !this._db) {
-                                                this.initInstantDB();
-                                            }
-                                            if (this.userJoined && this.episodes.length === 0) {
-                                                this.loadData(true);
+                                        {
+                                            const wasOwner = this.isTabOwner;
+                                            const nowOwner = !!isOwner;
+                                            const becameOwner = nowOwner && !wasOwner;
+                                            this.isTabOwner = nowOwner;
+                                            this.tabLockModal = !this.isTabOwner;
+                                            if (becameOwner) {
+                                                if (this.userJoined && !this._db) {
+                                                    this.initInstantDB();
+                                                }
+                                                if (this.userJoined && this.episodes.length === 0) {
+                                                    this.loadData(true);
+                                                }
                                             }
                                         }
                                         break;
@@ -10644,14 +10649,18 @@
                                         
                                     case 'ownership-status':
                                         if (tabId === this.tabId) {
-                                            this.isTabOwner = true;
+                                            const wasOwner = this.isTabOwner;
+                                            const nowOwner = true;
+                                            const becameOwner = nowOwner && !wasOwner;
+                                            this.isTabOwner = nowOwner;
                                             this.tabLockModal = false;
-                                            // Initialize InstantDB and load data when ownership is granted
-                                            if (this.userJoined && !this._db) {
-                                                this.initInstantDB();
-                                            }
-                                            if (this.userJoined && this.episodes.length === 0) {
-                                                this.loadData(true);
+                                            if (becameOwner) {
+                                                if (this.userJoined && !this._db) {
+                                                    this.initInstantDB();
+                                                }
+                                                if (this.userJoined && this.episodes.length === 0) {
+                                                    this.loadData(true);
+                                                }
                                             }
                                         } else {
                                             this.isTabOwner = false;
