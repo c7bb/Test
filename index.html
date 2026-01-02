@@ -3476,7 +3476,6 @@
                     // Tab Locking System
                     tabLockModal: false,
                     isTabOwner: false,
-                    loadDataDeferred: false,
                     tabWorkerPort: null,
                     tabBroadcastChannel: null,
                     tabLockLock: null,
@@ -7211,7 +7210,6 @@
                         }
                         if (!this.isTabOwner) {
                             console.warn('loadData blocked: Tab is not the owner');
-                            this.loadDataDeferred = true;
                             reject('Tab is not the owner');
                             return;
                         }
@@ -7292,48 +7290,48 @@
                                         // Data fetched successfully
                                         clearInterval(this.progressInterval); // Stop progress animation
                                         this.loadProgress = 100; // Set progress to 100%
-                                setTimeout(() => {
-                                    // Only update data and set loading = false if this tab is the owner
-                                    if (this.isTabOwner) {
-                                        this.episodes = data.Episodes || [];
-                                        this.mangas = data.Mangas || [];
-                                        this.rebuildEpisodesByKey();
-                                        this.loading = false;
-                                        localStorage.removeItem('waitTime');
-                                        
-                                        // Update episode time ago after data loads
-                                        this.updateEpisodeTimeAgo();
+                                        setTimeout(() => {
+                                            // Only update data and set loading = false if this tab is the owner
+                                            if (this.isTabOwner) {
+                                                this.episodes = data.Episodes || [];
+                                                this.mangas = data.Mangas || [];
+                                                this.rebuildEpisodesByKey();
+                                                this.loading = false;
+                                                localStorage.removeItem('waitTime');
+                                                
+                                                // Update episode time ago after data loads
+                                                this.updateEpisodeTimeAgo();
+                                            }
+                                            
+                                            resolve();
+                                        }, 300); // Delay to show 100% progress
                                     }
-                                    
-                                    resolve();
-                                }, 300); // Delay to show 100% progress
-                            }
-                        })
-                        .catch(error => {
+                                })
+                                .catch(error => {
+                                    clearInterval(this.progressInterval); // Stop progress animation
+                                    this.loadProgress = 0; // Reset progress
+                                    // Only set loading = false if this tab is the owner
+                                    if (this.isTabOwner) {
+                                        this.loading = false;
+                                    }
+
+                                    if (!this.error && this.isTabOwner) {
+                                        this.error = 'حدث خطأ أثناء محاولة تحميل البيانات. قد تكون هناك مشكلة مؤقتة في الاتصال أو الخادم. يُرجى التحقق من اتصالك بالإنترنت أو استخدام VPN والمحاولة مرة أخرى.';
+                                    }
+                                    reject(error);
+                                });
+                        } else {
                             clearInterval(this.progressInterval); // Stop progress animation
                             this.loadProgress = 0; // Reset progress
                             // Only set loading = false if this tab is the owner
                             if (this.isTabOwner) {
                                 this.loading = false;
                             }
-
-                            if (!this.error && this.isTabOwner) {
-                                this.error = 'حدث خطأ أثناء محاولة تحميل البيانات. قد تكون هناك مشكلة مؤقتة في الاتصال أو الخادم. يُرجى التحقق من اتصالك بالإنترنت أو استخدام VPN والمحاولة مرة أخرى.';
-                            }
-                            reject(error);
-                        });
-                    } else {
-                        clearInterval(this.progressInterval); // Stop progress animation
-                        this.loadProgress = 0; // Reset progress
-                        // Only set loading = false if this tab is the owner
-                        if (this.isTabOwner) {
-                            this.loading = false;
-                        }
-                        console.log("User not joined, not loading data.");
-                        reject('User not joined to the channel');
-                    }        
-                });
-            },
+                            console.log("User not joined, not loading data.");
+                            reject('User not joined to the channel');
+                        }        
+                    });
+                },
                 startTimer() {
                     if (this.waitTime > 0) {
                         const timerInterval = setInterval(() => {
@@ -10552,10 +10550,6 @@
                                         this.isTabOwner = true;
                                         this.tabLockModal = false;
                                         console.log('Tab ownership granted');
-                                        if (this.userJoined && this.loadDataDeferred) {
-                                            this.loadData(true);
-                                            this.loadDataDeferred = false;
-                                        }
                                         // Initialize InstantDB and load data when ownership is granted
                                         if (this.userJoined && !this._db) {
                                             this.initInstantDB();
@@ -10574,10 +10568,12 @@
                                     case 'ownership-status':
                                         this.isTabOwner = !!isOwner;
                                         this.tabLockModal = !this.isTabOwner;
-                                        if (this.userJoined && this.isTabOwner) {
-                                            if (this.loadDataDeferred || (this.episodes.length === 0 && !this.loading)) {
-                                                this.loadData(true);
-                                                this.loadDataDeferred = false;
+                                        if (this.isTabOwner) {
+                                            if (this.userJoined && !this._db) {
+                                                this.initInstantDB();
+                                            }
+                                            if (this.userJoined && this.episodes.length === 0) {
+                                                this.loadData();
                                             }
                                         }
                                         break;
@@ -10633,10 +10629,6 @@
                                         if (tabId === this.tabId) {
                                             this.isTabOwner = true;
                                             this.tabLockModal = false;
-                                            if (this.userJoined && this.loadDataDeferred) {
-                                                this.loadData(true);
-                                                this.loadDataDeferred = false;
-                                            }
                                             // Initialize InstantDB and load data when ownership is granted
                                             if (this.userJoined && !this._db) {
                                                 this.initInstantDB();
@@ -10654,10 +10646,6 @@
                                         if (tabId === this.tabId) {
                                             this.isTabOwner = true;
                                             this.tabLockModal = false;
-                                            if (this.userJoined && this.loadDataDeferred) {
-                                                this.loadData(true);
-                                                this.loadDataDeferred = false;
-                                            }
                                             // Initialize InstantDB and load data when ownership is granted
                                             if (this.userJoined && !this._db) {
                                                 this.initInstantDB();
@@ -10728,10 +10716,6 @@
 
                                 if (becameOwner) {
                                     console.log('Tab ownership granted');
-                                    if (this.userJoined && this.loadDataDeferred) {
-                                        this.loadData(true);
-                                        this.loadDataDeferred = false;
-                                    }
                                     if (this.userJoined && !this._db) {
                                         this.initInstantDB();
                                     }
@@ -10826,10 +10810,6 @@
 
                         if (becameOwner) {
                             console.log('Tab ownership granted');
-                            if (this.userJoined && this.loadDataDeferred) {
-                                this.loadData(true);
-                                this.loadDataDeferred = false;
-                            }
                             if (this.userJoined && !this._db) {
                                 this.initInstantDB();
                             }
