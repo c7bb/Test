@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -1991,15 +1992,6 @@
 
                         <div class="mt-4 w-full">
                             <div class="flex flex-col gap-2 text-white font-bold">
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
-                                    <span>حلقة</span>
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
-                                    <span>صفحة</span>
-                                </label>
-
                                 <div class="flex items-center gap-3">
                                     <input
                                         v-model.trim="jumpInput"
@@ -2008,7 +2000,12 @@
                                         @keydown.enter.prevent="executeJumpValue"
                                         :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
                                         :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
-                                        class="flex-1 px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                        :class="[
+                                            'flex-1 px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
+                                            jumpTargetMode === 'page'
+                                                ? (jumpInputActive ? 'text-right' : 'text-center')
+                                                : ''
+                                        ]"
                                         placeholder="اكتب رقم"
                                     />
                                     <button
@@ -2018,6 +2015,14 @@
                                         أذهب
                                     </button>
                                 </div>
+                                <label class="inline-flex items-center gap-2 mt-2">
+                                    <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
+                                    <span>حلقة</span>
+                                </label>
+                                <label class="inline-flex items-center gap-2">
+                                    <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
+                                    <span>صفحة</span>
+                                </label>
                             </div>
                         </div>
 
@@ -5187,6 +5192,13 @@
                 onJumpInputBlur() {
                     this.jumpInputActive = false;
                     if (this.jumpTargetMode === 'page') {
+                        const trimmed = this.normalizeDigits(String(this.jumpInput || '').trim());
+                        let num = parseInt(trimmed, 10);
+                        if (!isNaN(num)) {
+                            if (num < 1) num = 1;
+                            if (num > this.totalPages) num = this.totalPages;
+                            this.handlePageSelect({ target: { value: num } });
+                        }
                         this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
                     }
                 },
