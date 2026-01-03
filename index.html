@@ -2016,7 +2016,7 @@
                                                 ? (jumpInputActive ? 'text-right' : 'text-center')
                                                 : ''
                                         ]"
-                                        :placeholder="jumpPlaceholder"
+                                        placeholder="اكتب رقم"
                                     />
                                     <button
                                         @click="executeJumpValue"
@@ -4797,14 +4797,6 @@
                 displayCurrentPage() {
                     return this.totalPages === 0 ? 0 : this.currentPage;
                 },
-                jumpPlaceholder() {
-                    if (this.jumpTargetMode === 'page') {
-                        return this.jumpInputActive
-                            ? 'اكتب رقم'
-                            : `${this.displayCurrentPage}/${this.totalPages}`;
-                    }
-                    return 'اكتب رقم';
-                },
                 jumpLabelText() {
                     return this.jumpTargetMode === 'page' ? 'إلى صفحة' : 'إلى حلقة';
                 },
@@ -4990,7 +4982,7 @@
                     if (newVal === 'page') {
                         const cur = String(this.jumpInput || '').trim();
                         if (!cur) {
-                            this.jumpInput = String(this.displayCurrentPage);
+                            this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
                         }
                     } else {
                         this.jumpInput = '';
@@ -4999,14 +4991,14 @@
                 currentPage() {
                     if (this.jumpTargetMode === 'page') {
                         if (!this.jumpInputActive) {
-                            this.jumpInput = String(this.displayCurrentPage);
+                            this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
                         }
                     }
                 },
                 totalPages() {
                     if (this.jumpTargetMode === 'page') {
                         if (!this.jumpInputActive) {
-                            this.jumpInput = String(this.displayCurrentPage);
+                            this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
                         }
                     }
                 },
@@ -5203,7 +5195,7 @@
                         if (!isNaN(num)) {
                             if (num < 1) num = 1;
                             if (num > this.totalPages) num = this.totalPages;
-                            this.jumpInput = String(num);
+                            this.jumpInput = `${num}/${this.totalPages}`;
                         }
                     }
                 },
