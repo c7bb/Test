@@ -2050,7 +2050,7 @@
                                         </button>
                                     </div>
                                     <button
-                                        @click="executeJumpValue"
+                                        @click.stop="executeJumpValue"
                                         class="bg-teal-600 text-white font-bold px-2 py-3 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
                                     >
                                         اذهب
@@ -7110,10 +7110,6 @@
                     }
                     if (this.jumpTargetMode === 'page') {
                         let val = this.normalizeDigits(raw).trim();
-                        if (!val) {
-                            this.toggleSearch();
-                            return;
-                        }
                         let num = parseInt(val, 10);
                         if (isNaN(num)) num = 1;
                         if (num < 1) num = 1;
