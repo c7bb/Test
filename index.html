@@ -7104,21 +7104,20 @@
                     const raw = String(this.jumpInput || '').trim();
                     if (this.jumpTargetMode === 'episode') {
                         if (!raw) {
-                            this.openSearchSafely();
+                            this.toggleSearch();
                             return;
                         }
-                    } else if (this.jumpTargetMode === 'page') {
-                        const val = this.normalizeDigits(raw).trim();
-                        const curPageStr = String(this.displayCurrentPage);
-                        const curPageFull = `${this.displayCurrentPage}/${this.totalPages}`;
-                        if (val === curPageStr || val === curPageFull) {
-                            this.openSearchSafely();
-                            return;
-                        }
+                    }
+                    if (this.jumpTargetMode === 'page') {
+                        let val = this.normalizeDigits(raw).trim();
                         let num = parseInt(val, 10);
                         if (isNaN(num)) num = 1;
                         if (num < 1) num = 1;
                         if (num > this.totalPages) num = this.totalPages;
+                        if (num === this.currentPage) {
+                            this.toggleSearch();
+                            return;
+                        }
                         this.handlePageSelect({ target: { value: num } });
                         return;
                     }
@@ -10668,20 +10667,6 @@
                     if (popup && !popup.contains(e.target) && !searchIndicator && !searchButton) {
                         this.searchOpen = false;
                         document.removeEventListener("click", this.closeSearchOutside);
-                    }
-                },
-                openSearchSafely() {
-                    if (this.guardIfCapturing()) return;
-                    if (!this.searchOpen) {
-                        this.searchOpen = true;
-                        if (this.menuOpen) this.menuOpen = false;
-                        this.$nextTick(() => {
-                            document.addEventListener("click", this.closeSearchOutside);
-                            try {
-                                const ta = document.querySelector('textarea[placeholder="ابحث..."]');
-                                if (ta) ta.focus();
-                            } catch (e) {}
-                        });
                     }
                 },
 
