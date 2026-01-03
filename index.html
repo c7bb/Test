@@ -1481,21 +1481,41 @@
             </div>
 
             <!-- Error Message with Retry Button -->
-    <div v-if="error" class="text-center text-xl mb-4 text-red-500 font-bold py-4">
-        <p class="mb-4">{{ error }}</p>
-        <button 
-        @click="reloadPage" 
-        :disabled="waitTime > 0" 
-        class="bg-blue-500 text-white font-bold py-2 px-4 rounded transition-all duration-100 active:scale-90"
-        :class="{'opacity-50 cursor-not-allowed': waitTime > 0, 'hover:bg-blue-700': waitTime === 0}">
-        حاول مرة أخرى
-    </button>    
-    </div>
+        <div v-if="error" class="text-center text-xl mb-4 text-red-500 font-bold py-4">
+            <p class="mb-4">{{ error }}</p>
+            <button 
+            @click="reloadPage" 
+            :disabled="waitTime > 0" 
+            class="bg-blue-500 text-white font-bold py-2 px-4 rounded transition-all duration-100 active:scale-90"
+            :class="{'opacity-50 cursor-not-allowed': waitTime > 0, 'hover:bg-blue-700': waitTime === 0}">
+            حاول مرة أخرى
+        </button>    
+        </div>
 
-    <h1 
-        class="text-5xl font-bold mb-4 text-center">
-        <span>الدليل الشامل لمشاهدة المحقق كونان</span>
-    </h1>
+        <h1 
+            class="text-5xl font-bold mb-4 text-center">
+            <span>الدليل الشامل لمشاهدة المحقق كونان</span>
+        </h1>
+        <div v-if="loading" class="flex items-center justify-center w-full">
+            <div class="flex flex-col items-center" style="position: relative; top: 0;">
+                <transition name="fade">
+                    <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
+                </transition>
+                <div class="w-64">
+                    <div class="relative h-6 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
+                        <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-blue-700 via-teal-500 to-emerald-500 animate-gradient-x"></div>
+                        <div class="absolute top-0 left-0 h-full w-full opacity-30 bg-[length:20px_20px] bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] animate-stripes"></div>
+                        <div class="absolute top-0 right-0 h-full bg-gray-800 transition-all duration-300 ease-out" :style="{ width: (100 - loadProgress) + '%' }"></div>
+                        <div class="absolute top-0 left-0 h-full w-full flex items-center justify-center">
+                            <span class="text-xs font-bold text-white shadow-black drop-shadow-md">{{ loadProgress }}%</span>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider animate-pulse">
+                        جاري تحميل البيانات...
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- <br>
 
         <div class="flex flex-col items-center justify-center">
@@ -2031,28 +2051,7 @@
         </div>
 
         <!-- Table -->
-        <!-- Progress Spinner -->
-        <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900-opacity-1">
-            <div class="flex flex-col items-center" style="position: absolute; top: 250px;">
-                <transition name="fade">
-                    <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
-                </transition>
-                <div class="w-64">
-                    <div class="relative h-6 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
-                        <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-blue-700 via-teal-500 to-emerald-500 animate-gradient-x"></div>
-                        <div class="absolute top-0 left-0 h-full w-full opacity-30 bg-[length:20px_20px] bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] animate-stripes"></div>
-                        <div class="absolute top-0 right-0 h-full bg-gray-800 transition-all duration-300 ease-out" :style="{ width: (100 - loadProgress) + '%' }"></div>
-                        <div class="absolute top-0 left-0 h-full w-full flex items-center justify-center">
-                            <span class="text-xs font-bold text-white shadow-black drop-shadow-md">{{ loadProgress }}%</span>
-                        </div>
-                    </div>
-                    <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider animate-pulse">
-                        جاري تحميل البيانات...
-                    </div>
-                </div>
-            </div>
-        </div>          
-        <div v-else>
+        <div v-if="!loading">
             <table class="min-w-full border-collapse border border-gray-300">
                 <thead>
                     <!-- Top full-width row -->
