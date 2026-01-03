@@ -1991,8 +1991,8 @@
                         </div>
 
                         <div class="mt-4 w-full">
-                            <div class="flex flex-col gap-2 text-white font-bold">
-                                <div class="flex items-center gap-3">
+                            <div class="flex flex-col gap-2 text-white font-bold items-center">
+                                <div class="flex items-center justify-center gap-3">
                                     <div class="flex flex-col gap-1">
                                         <label class="inline-flex items-center gap-2">
                                             <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
@@ -2011,7 +2011,7 @@
                                         :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
                                         :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
                                         :class="[
-                                            'flex-1 px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
+                                            'flex-none w-full max-w-xs px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
                                             jumpTargetMode === 'page'
                                                 ? (jumpInputActive ? 'text-right' : 'text-center')
                                                 : ''
