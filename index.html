@@ -2008,20 +2008,22 @@
                                         ]"
                                         placeholder="اكتب رقم"
                                     />
-                                    <label class="inline-flex items-center gap-2">
-                                        <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
-                                        <span>حلقة</span>
-                                    </label>
-                                    <label class="inline-flex items-center gap-2">
-                                        <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
-                                        <span>صفحة</span>
-                                    </label>
                                     <button
                                         @click="executeJumpValue"
                                         class="bg-teal-600 text-white font-bold px-4 py-2 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
                                     >
                                         أذهب
                                     </button>
+                                    <div class="flex flex-col gap-1 ml-2">
+                                        <label class="inline-flex items-center gap-2">
+                                            <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
+                                            <span>حلقة</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2">
+                                            <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
+                                            <span>صفحة</span>
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -4978,25 +4980,12 @@
             watch: {
                 jumpTargetMode(newVal) {
                     if (newVal === 'page') {
-                        this.jumpInput = this.jumpInputActive
-                            ? String(this.displayCurrentPage)
-                            : `${this.displayCurrentPage}/${this.totalPages}`;
+                        const cur = String(this.jumpInput || '').trim();
+                        if (!cur) {
+                            this.jumpInput = String(this.displayCurrentPage);
+                        }
                     } else {
                         this.jumpInput = '';
-                    }
-                },
-                currentPage() {
-                    if (this.jumpTargetMode === 'page') {
-                        this.jumpInput = this.jumpInputActive
-                            ? String(this.displayCurrentPage)
-                            : `${this.displayCurrentPage}/${this.totalPages}`;
-                    }
-                },
-                totalPages() {
-                    if (this.jumpTargetMode === 'page') {
-                        this.jumpInput = this.jumpInputActive
-                            ? String(this.displayCurrentPage)
-                            : `${this.displayCurrentPage}/${this.totalPages}`;
                     }
                 },
                 jumpInput(newVal) {
@@ -5009,9 +4998,7 @@
                             if (num < 1) num = 1;
                             if (num > this.totalPages) num = this.totalPages;
                             this.handlePageSelect({ target: { value: num } });
-                            this.jumpInput = this.jumpInputActive
-                                ? String(this.displayCurrentPage)
-                                : `${this.displayCurrentPage}/${this.totalPages}`;
+                            this.jumpInput = String(this.displayCurrentPage);
                             return;
                         }
                         if (this.jumpInputActive) {
@@ -5022,9 +5009,6 @@
                             if (num > this.totalPages) num = this.totalPages;
                             const next = String(num);
                             if (next !== trimmed) this.jumpInput = next;
-                        } else {
-                            const next = `${this.displayCurrentPage}/${this.totalPages}`;
-                            if (trimmed !== next) this.jumpInput = next;
                         }
                         return;
                     }
@@ -5197,9 +5181,7 @@
                         if (!isNaN(num)) {
                             if (num < 1) num = 1;
                             if (num > this.totalPages) num = this.totalPages;
-                            this.jumpInput = `${num}/${this.totalPages}`;
-                        } else {
-                            this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
+                            this.jumpInput = String(num);
                         }
                     }
                 },
