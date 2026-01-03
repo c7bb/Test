@@ -2026,21 +2026,29 @@
                                             <span>صفحة</span>
                                         </label>
                                     </div>
-                                    <input
-                                        v-model.trim="jumpInput"
-                                        @focus="onJumpInputFocus"
-                                        @blur="onJumpInputBlur"
-                                        @keydown.enter.prevent="executeJumpValue"
-                                        :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
-                                        :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
-                                        :class="[
-                                            'flex-1 w-full max-w-xs px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
-                                            jumpTargetMode === 'page'
-                                                ? (jumpInputActive ? 'text-right' : 'text-center')
-                                                : ''
-                                        ]"
-                                        placeholder="اكتب رقم"
-                                    />
+                                    <div class="relative flex-1 w-full max-w-xs">
+                                        <input
+                                            v-model.trim="jumpInput"
+                                            @focus="onJumpInputFocus"
+                                            @blur="onJumpInputBlur"
+                                            @keydown.enter.prevent="executeJumpValue"
+                                            :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
+                                            :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
+                                            :class="[
+                                                'w-full px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
+                                                jumpTargetMode === 'page'
+                                                    ? (jumpInputActive ? 'text-right' : 'text-center')
+                                                    : ''
+                                            ]"
+                                            placeholder="اكتب رقم الحلقة"
+                                        />
+                                        <button
+                                            @click="clearJumpInput"
+                                            class="absolute left-3 top-2 text-xl text-red-600 font-black transition-all duration-100 active:scale-90"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
                                     <button
                                         @click="executeJumpValue"
                                         class="bg-teal-600 text-white font-bold px-4 py-2 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
@@ -5194,6 +5202,14 @@
                             if (num > this.totalPages) num = this.totalPages;
                             this.jumpInput = `${num}/${this.totalPages}`;
                         }
+                    }
+                },
+                clearJumpInput() {
+                    if (this.jumpTargetMode === 'page') {
+                        this.jumpInputActive = false;
+                        this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
+                    } else {
+                        this.jumpInput = '';
                     }
                 },
                 clearActiveFilterHighlight() {
