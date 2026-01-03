@@ -37,7 +37,6 @@
             }
         })();
     </script>  -->
-    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -2002,14 +2001,14 @@
                                 </label>
 
                                 <div class="flex items-center gap-3">
-                                    <span class="text-white font-bold">{{ jumpLabelText }}</span>
                                     <input
                                         v-model.trim="jumpInput"
+                                        @focus="onJumpInputFocus"
+                                        @blur="onJumpInputBlur"
                                         @keydown.enter.prevent="executeJumpValue"
                                         :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
                                         :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
-                                        :dir="jumpTargetMode === 'page' ? 'ltr' : undefined"
-                                        class="flex-1 p-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
+                                        class="flex-1 px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400"
                                         placeholder="اكتب رقم"
                                     />
                                     <button
@@ -3816,7 +3815,8 @@
                     remainingAdhkar: [],
                     intervalZikrId: null,
                     jumpTargetMode: 'episode',
-                    jumpInput: ''
+                    jumpInput: '',
+                    jumpInputActive: false
                 };
             },
             computed: {
@@ -4971,6 +4971,88 @@
                 },
             },
             watch: {
+                jumpTargetMode(newVal) {
+                    if (newVal === 'page') {
+                        this.jumpInput = this.jumpInputActive
+                            ? String(this.displayCurrentPage)
+                            : `${this.displayCurrentPage}/${this.totalPages}`;
+                    } else {
+                        this.jumpInput = '';
+                    }
+                },
+                currentPage() {
+                    if (this.jumpTargetMode === 'page') {
+                        this.jumpInput = this.jumpInputActive
+                            ? String(this.displayCurrentPage)
+                            : `${this.displayCurrentPage}/${this.totalPages}`;
+                    }
+                },
+                totalPages() {
+                    if (this.jumpTargetMode === 'page') {
+                        this.jumpInput = this.jumpInputActive
+                            ? String(this.displayCurrentPage)
+                            : `${this.displayCurrentPage}/${this.totalPages}`;
+                    }
+                },
+                jumpInput(newVal) {
+                    const trimmed = String(newVal || '').trim();
+                    if (this.jumpTargetMode === 'page') {
+                        if (trimmed.endsWith('+') || trimmed.endsWith('=')) {
+                            let val = this.normalizeDigits(trimmed.slice(0, -1).trim());
+                            let num = parseInt(val, 10);
+                            if (isNaN(num)) num = this.displayCurrentPage || 1;
+                            if (num < 1) num = 1;
+                            if (num > this.totalPages) num = this.totalPages;
+                            this.handlePageSelect({ target: { value: num } });
+                            this.jumpInput = this.jumpInputActive
+                                ? String(this.displayCurrentPage)
+                                : `${this.displayCurrentPage}/${this.totalPages}`;
+                            return;
+                        }
+                        if (this.jumpInputActive) {
+                            const val = this.normalizeDigits(trimmed);
+                            let num = parseInt(val, 10);
+                            if (isNaN(num)) return;
+                            if (num < 1) num = 1;
+                            if (num > this.totalPages) num = this.totalPages;
+                            const next = String(num);
+                            if (next !== trimmed) this.jumpInput = next;
+                        } else {
+                            const next = `${this.displayCurrentPage}/${this.totalPages}`;
+                            if (trimmed !== next) this.jumpInput = next;
+                        }
+                        return;
+                    }
+                    if (trimmed.endsWith('+') || trimmed.endsWith('=')) {
+                        const targetValue = this.normalizeDigits(trimmed.slice(0, -1).trim());
+                        if (!targetValue) {
+                            this.pendingJumpTarget = null;
+                            this.pendingJumpRegex = null;
+                            this.pendingJumpOpenModal = false;
+                            this.jumpInput = '';
+                            return;
+                        }
+                        let jumpRegex = null;
+                        if (trimmed.endsWith('=')) {
+                            try {
+                                const pattern = this.normalizeText(targetValue);
+                                if (pattern) jumpRegex = new RegExp(`^${pattern}$`, 'i');
+                            } catch (e) {
+                                jumpRegex = null;
+                            }
+                        }
+                        this.pendingJumpTarget = targetValue;
+                        this.pendingJumpRegex = jumpRegex;
+                        this.pendingJumpOpenModal = trimmed.endsWith('=');
+                        this.jumpInput = '';
+                        this.executePendingJump();
+                        return;
+                    }
+                    const cleaned = this.buildEpisodeJumpTarget(trimmed);
+                    if (cleaned && cleaned !== trimmed) {
+                        this.jumpInput = cleaned;
+                    }
+                },
                 episodeSendInProgress(newValue) {
                     if (!newValue) this.handleAutoCloseIfRequested('modal');
                 },
@@ -5096,6 +5178,18 @@
                 },
             },
             methods: {
+                onJumpInputFocus() {
+                    this.jumpInputActive = true;
+                    if (this.jumpTargetMode === 'page') {
+                        this.jumpInput = String(this.displayCurrentPage);
+                    }
+                },
+                onJumpInputBlur() {
+                    this.jumpInputActive = false;
+                    if (this.jumpTargetMode === 'page') {
+                        this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
+                    }
+                },
                 clearActiveFilterHighlight() {
                     const el = this.activeFilterHighlightedEl;
                     if (!el) return;
