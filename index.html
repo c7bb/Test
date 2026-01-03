@@ -960,8 +960,8 @@
                                                 </div>
                                             </template>
                                             <!-- Condition for grouped list (metadata) -->
-                                            <fieldset v-else class="rounded relative border p-3 mb-4">
-                                                <legend class="px-2 text-sm">
+                                            <fieldset v-else class="rounded relative border p-2 mb-4">
+                                                <legend class="px-1 text-sm">
                                                     <span v-if="group.EpisodeCategory">
                                                         {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
                                                     </span>
@@ -2533,7 +2533,7 @@
                                 </fieldset>
 
                                 <fieldset v-if="selectedEpisode && Array.isArray(selectedEpisode.EpisodeVideosIDs) && selectedEpisode.EpisodeVideosIDs.length > 0" class="border p-2 rounded mb-4">
-                                    <legend class="font-bold text-lg px-2">مشاهدة (عبر البوت)</legend>
+                                    <legend class="font-bold text-lg">مشاهدة (عبر البوت)</legend>
                                     <div class="flex flex-col gap-4">
                                         <!-- Videos without metadata (rendered directly under main legend) -->
                                         <template v-for="group in groupedVideos">
@@ -2571,9 +2571,9 @@
                                                 </div>
                                             </template>
                                             <div v-else :key="group.key" class="relative">
-                                                <fieldset class="rounded relative border p-3">
+                                                <fieldset class="rounded relative border p-2">
                                                     <!-- Group Legend -->
-                                                    <legend class="px-2 text-sm">
+                                                    <legend class="px-1 text-sm">
                                                         <span v-if="group.EpisodeCategory">
                                                             {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
                                                         </span>
