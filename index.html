@@ -2035,23 +2035,23 @@
                                             :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
                                             :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
                                             :class="[
-                                                'w-full px-1 py-2 text-lg bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
+                                                'w-full px-1 py-3 text-base bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
                                                 jumpTargetMode === 'page'
                                                     ? (jumpInputActive ? 'text-right' : 'text-center')
                                                     : ''
                                             ]"
-                                            placeholder="اكتب رقم الحلقة"
+                                            :placeholder="jumpTargetMode === 'page' ? 'رقم الصفحة...' : 'رقم الحلقة...'"
                                         />
                                         <button
                                             @click="clearJumpInput"
-                                            class="absolute left-3 top-2 text-xl text-red-600 font-black transition-all duration-100 active:scale-90"
+                                            class="absolute left-3 top-3 text-xl text-red-600 font-black transition-all duration-100 active:scale-90"
                                         >
                                             ✕
                                         </button>
                                     </div>
                                     <button
                                         @click="executeJumpValue"
-                                        class="bg-teal-600 text-white font-bold px-4 py-2 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
+                                        class="bg-teal-600 text-white font-bold px-2 py-3 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
                                     >
                                         اذهب
                                     </button>
@@ -7102,9 +7102,19 @@
                 },
                 executeJumpValue() {
                     const raw = String(this.jumpInput || '').trim();
-                    if (!raw) return;
-                    if (this.jumpTargetMode === 'page') {
-                        let val = this.normalizeDigits(raw).trim();
+                    if (this.jumpTargetMode === 'episode') {
+                        if (!raw) {
+                            this.toggleSearch();
+                            return;
+                        }
+                    } else if (this.jumpTargetMode === 'page') {
+                        const val = this.normalizeDigits(raw).trim();
+                        const curPageStr = String(this.displayCurrentPage);
+                        const curPageFull = `${this.displayCurrentPage}/${this.totalPages}`;
+                        if (val === curPageStr || val === curPageFull) {
+                            this.toggleSearch();
+                            return;
+                        }
                         let num = parseInt(val, 10);
                         if (isNaN(num)) num = 1;
                         if (num < 1) num = 1;
@@ -9090,7 +9100,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
