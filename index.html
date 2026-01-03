@@ -966,7 +966,7 @@
                                                         {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
                                                     </span>
                                                     <span v-if="group.EpisodeTranslator">
-                                                        <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
+                                                        <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}<span v-if="isProfessionalTranslator(group.EpisodeTranslator)" v-tippy="'ترجمة احترافية'">⭐</span>
                                                     </span>
                                                     <span v-if="group.EpisodeRemastered">
                                                         <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
@@ -2578,7 +2578,7 @@
                                                             {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
                                                         </span>
                                                         <span v-if="group.EpisodeTranslator">
-                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}
+                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}<span v-if="isProfessionalTranslator(group.EpisodeTranslator)" v-tippy="'ترجمة احترافية'">⭐</span>
                                                         </span>
                                                         <span v-if="group.EpisodeRemastered">
                                                             <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
@@ -3389,6 +3389,27 @@
             episodeTypeHourlySpecialCount: (episode) => String(episode?.EpisodeSpecial || '').includes('1'),
             episodeTypeTwoHourSpecialCount: (episode) => String(episode?.EpisodeSpecial || '').includes('2'),
         };
+
+        const normalizeTranslatorName = (s) => String(s || '').toLowerCase().replace(/[\s\-_]+/g, '').trim();
+        const PROFESSIONAL_TRANSLATOR_TOKENS = new Set([
+            'CodeSubs',
+            'ABOODYSUBS',
+            'Aoibu',
+            'DCAN',
+            'ReineR',
+            'عبد المللك',
+            'Shinjitsu Fansubs',
+            'DCMS',
+            'Marchi-Fansub',
+            'MA-SHI',
+            'Variom',
+            'MAT-Fansubs',
+            'KaidoKidTH',
+            'Yusaku-Kudo',
+            'Mystery-Fansubs',
+            'ALPhantom',
+            'Celestial-Dragons'
+        ].map(normalizeTranslatorName));
     
         const app = createApp({
             data() {
@@ -5222,6 +5243,14 @@
                 },
                 escapeMarkdown(text) {
                     return String(text).replace(/[_*[\]()~`>#+\-=|{}.!]/g, '\\$&');
+                },
+                isProfessionalTranslator(text) {
+                    const n = normalizeTranslatorName(text);
+                    if (!n) return false;
+                    for (const token of PROFESSIONAL_TRANSLATOR_TOKENS) {
+                        if (n.includes(token)) return true;
+                    }
+                    return false;
                 },
                 onFilterCheckboxChange(key, event) {
                     const checked = Boolean(event && event.target && event.target.checked);
