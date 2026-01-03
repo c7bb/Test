@@ -1993,7 +1993,7 @@
                         <div class="mt-4 w-full">
                             <div class="flex flex-col gap-2 text-white font-bold">
                                 <div class="flex items-center gap-3">
-                                    <div class="flex flex-col gap-1 ml-2">
+                                    <div class="flex flex-col gap-1">
                                         <label class="inline-flex items-center gap-2">
                                             <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
                                             <span>حلقة</span>
@@ -2016,7 +2016,7 @@
                                                 ? (jumpInputActive ? 'text-right' : 'text-center')
                                                 : ''
                                         ]"
-                                        placeholder="اكتب رقم"
+                                        :placeholder="jumpPlaceholder"
                                     />
                                     <button
                                         @click="executeJumpValue"
@@ -4797,6 +4797,14 @@
                 displayCurrentPage() {
                     return this.totalPages === 0 ? 0 : this.currentPage;
                 },
+                jumpPlaceholder() {
+                    if (this.jumpTargetMode === 'page') {
+                        return this.jumpInputActive
+                            ? 'اكتب رقم'
+                            : `${this.displayCurrentPage}/${this.totalPages}`;
+                    }
+                    return 'اكتب رقم';
+                },
                 jumpLabelText() {
                     return this.jumpTargetMode === 'page' ? 'إلى صفحة' : 'إلى حلقة';
                 },
@@ -4986,6 +4994,20 @@
                         }
                     } else {
                         this.jumpInput = '';
+                    }
+                },
+                currentPage() {
+                    if (this.jumpTargetMode === 'page') {
+                        if (!this.jumpInputActive) {
+                            this.jumpInput = String(this.displayCurrentPage);
+                        }
+                    }
+                },
+                totalPages() {
+                    if (this.jumpTargetMode === 'page') {
+                        if (!this.jumpInputActive) {
+                            this.jumpInput = String(this.displayCurrentPage);
+                        }
                     }
                 },
                 jumpInput(newVal) {
