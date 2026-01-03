@@ -7110,6 +7110,10 @@
                     }
                     if (this.jumpTargetMode === 'page') {
                         let val = this.normalizeDigits(raw).trim();
+                        if (!val) {
+                            this.toggleSearch();
+                            return;
+                        }
                         let num = parseInt(val, 10);
                         if (isNaN(num)) num = 1;
                         if (num < 1) num = 1;
