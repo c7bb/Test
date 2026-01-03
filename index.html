@@ -2008,6 +2008,14 @@
                                         ]"
                                         placeholder="اكتب رقم"
                                     />
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
+                                        <span>حلقة</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2">
+                                        <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
+                                        <span>صفحة</span>
+                                    </label>
                                     <button
                                         @click="executeJumpValue"
                                         class="bg-teal-600 text-white font-bold px-4 py-2 rounded hover:bg-teal-500 transition-all duration-100 active:scale-90"
@@ -2015,14 +2023,6 @@
                                         أذهب
                                     </button>
                                 </div>
-                                <label class="inline-flex items-center gap-2 mt-2">
-                                    <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
-                                    <span>حلقة</span>
-                                </label>
-                                <label class="inline-flex items-center gap-2">
-                                    <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
-                                    <span>صفحة</span>
-                                </label>
                             </div>
                         </div>
 
@@ -5197,9 +5197,10 @@
                         if (!isNaN(num)) {
                             if (num < 1) num = 1;
                             if (num > this.totalPages) num = this.totalPages;
-                            this.handlePageSelect({ target: { value: num } });
+                            this.jumpInput = `${num}/${this.totalPages}`;
+                        } else {
+                            this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
                         }
-                        this.jumpInput = `${this.displayCurrentPage}/${this.totalPages}`;
                     }
                 },
                 clearActiveFilterHighlight() {
