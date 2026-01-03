@@ -736,7 +736,7 @@
         </div>
             <!-- Updated Menu Button -->
             <div class="fixed top-4 right-4 z-50 menu-container">
-                <button @click.stop="toggleMenu" :disabled="loading" class="bg-gray-700 text-white p-2 rounded flex flex-col items-center transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed">
+                <button @click.stop="toggleMenu" :disabled="loading" class="bg-yellow-600 text-white p-2 rounded flex flex-col items-center transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed">
                     <span class="block w-6 h-1 bg-white mb-1"></span>
                     <span class="block w-6 h-1 bg-white mb-1"></span>
                     <span class="block w-6 h-1 bg-white"></span>
@@ -757,7 +757,7 @@
             <div class="fixed top-4 left-4 z-50">
                 <button
                     @click.stop="toggleSearch" :disabled="loading"
-                    class="bg-gray-700 text-white p-2 rounded-full shadow-md transition-all duration-100 active:scale-90 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="bg-yellow-600 text-white p-2 rounded-full shadow-md transition-all duration-100 active:scale-90 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
@@ -1501,8 +1501,8 @@
                 <transition name="fade">
                     <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
                 </transition>
-                <div class="w-64">
-                    <div class="relative h-6 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
+                <div class="w-[18rem]">
+                    <div class="relative h-10 rounded-full overflow-hidden bg-gray-700 shadow-inner ring-2 ring-gray-600">
                         <div class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-blue-700 via-teal-500 to-emerald-500 animate-gradient-x"></div>
                         <div class="absolute top-0 left-0 h-full w-full opacity-30 bg-[length:20px_20px] bg-[linear-gradient(45deg,rgba(255,255,255,.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.15)_50%,rgba(255,255,255,.15)_75%,transparent_75%,transparent)] animate-stripes"></div>
                         <div class="absolute top-0 right-0 h-full bg-gray-800 transition-all duration-300 ease-out" :style="{ width: (100 - loadProgress) + '%' }"></div>
