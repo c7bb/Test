@@ -1993,6 +1993,16 @@
                         <div class="mt-4 w-full">
                             <div class="flex flex-col gap-2 text-white font-bold">
                                 <div class="flex items-center gap-3">
+                                    <div class="flex flex-col gap-1 ml-2">
+                                        <label class="inline-flex items-center gap-2">
+                                            <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
+                                            <span>حلقة</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2">
+                                            <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
+                                            <span>صفحة</span>
+                                        </label>
+                                    </div>
                                     <input
                                         v-model.trim="jumpInput"
                                         @focus="onJumpInputFocus"
@@ -2014,16 +2024,6 @@
                                     >
                                         أذهب
                                     </button>
-                                    <div class="flex flex-col gap-1 ml-2">
-                                        <label class="inline-flex items-center gap-2">
-                                            <input type="radio" v-model="jumpTargetMode" value="episode" class="cursor-pointer" />
-                                            <span>حلقة</span>
-                                        </label>
-                                        <label class="inline-flex items-center gap-2">
-                                            <input type="radio" v-model="jumpTargetMode" value="page" class="cursor-pointer" />
-                                            <span>صفحة</span>
-                                        </label>
-                                    </div>
                                 </div>
                             </div>
                         </div>
