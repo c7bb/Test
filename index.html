@@ -176,9 +176,21 @@
             .modal-nav-btn {
                 right: -40px;
             }
+            .modal-nav-panel {
+                position: absolute;
+                top: 60%;
+                transform: translateY(-50%);
+                right: -40px;
+                z-index: 10;
+                user-select: none;
+                cursor: grab;
+            }
             
             @media (min-width: 360px) {
                 .modal-nav-btn {
+                    right: -42px;
+                }
+                .modal-nav-panel {
                     right: -42px;
                 }
             }
@@ -187,10 +199,16 @@
                 .modal-nav-btn {
                     right: -44px;
                 }
+                .modal-nav-panel {
+                    right: -44px;
+                }
             }
             
             @media (min-width: 440px) {
                 .modal-nav-btn {
+                    right: -46px;
+                }
+                .modal-nav-panel {
                     right: -46px;
                 }
             }
@@ -199,10 +217,16 @@
                 .modal-nav-btn {
                     right: -48px;
                 }
+                .modal-nav-panel {
+                    right: -48px;
+                }
             }
             
             @media (min-width: 520px) {
                 .modal-nav-btn {
+                    right: -50px;
+                }
+                .modal-nav-panel {
                     right: -50px;
                 }
             }
@@ -211,10 +235,16 @@
                 .modal-nav-btn {
                     right: -52px;
                 }
+                .modal-nav-panel {
+                    right: -52px;
+                }
             }
             
             @media (min-width: 600px) {
                 .modal-nav-btn {
+                    right: -54px;
+                }
+                .modal-nav-panel {
                     right: -54px;
                 }
             }
@@ -223,10 +253,16 @@
                 .modal-nav-btn {
                     right: -56px;
                 }
+                .modal-nav-panel {
+                    right: -56px;
+                }
             }
             
             @media (min-width: 680px) {
                 .modal-nav-btn {
+                    right: -58px;
+                }
+                .modal-nav-panel {
                     right: -58px;
                 }
             }
@@ -235,10 +271,16 @@
                 .modal-nav-btn {
                     right: -60px;
                 }
+                .modal-nav-panel {
+                    right: -60px;
+                }
             }
             
             @media (min-width: 760px) {
                 .modal-nav-btn {
+                    right: -62px;
+                }
+                .modal-nav-panel {
                     right: -62px;
                 }
             }
@@ -247,10 +289,16 @@
                 .modal-nav-btn {
                     right: -62px;
                 }
+                .modal-nav-panel {
+                    right: -62px;
+                }
             }
             
             @media (min-width: 1024px) {
                 .modal-nav-btn {
+                    right: -62px;
+                }
+                .modal-nav-panel {
                     right: -62px;
                 }
             }
@@ -699,8 +747,15 @@
             class="fixed z-[105] inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center"
         >
             <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[95vh] overflow-hidden flex flex-col">
-                <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
-                    <h2 :class="['text-lg', isFailedToFetch ? 'text-yellow-300' : 'text-red-500', 'font-bold', 'text-center']">{{ displayErrorMessage }}</h2>
+                <div class="sticky top-0 z-10">
+                    <div :class="['mx-4 mt-4 rounded-xl shadow-lg ring-1 backdrop-blur bg-gradient-to-r', isFailedToFetch ? 'from-yellow-500/20 to-orange-500/20 ring-yellow-400/40' : 'from-red-600/20 to-pink-600/20 ring-red-400/40']">
+                        <div class="px-4 py-3 flex items-center gap-3">
+                            <div class="flex-1 text-center">
+                                <span :class="['block', isFailedToFetch ? 'text-yellow-300' : 'text-red-500', 'font-bold', 'text-base md:text-lg']">{{ displayErrorPrimary }}</span>
+                                <span :class="['block', 'text-gray-200', 'text-sm', 'mt-1']">{{ displayErrorSecondary }}</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div v-if="!isFailedToFetch" class="overflow-y-auto p-4 flex-1">
@@ -757,7 +812,7 @@
             <div class="fixed top-4 left-4 z-50">
                 <button
                     @click.stop="toggleSearch" :disabled="loading"
-                    class="bg-yellow-600 text-white p-2 rounded-full shadow-md transition-all duration-100 active:scale-90 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="bg-yellow-600 text-white p-2 rounded-full shadow-md transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
@@ -848,7 +903,7 @@
 
             <!-- Updated Direct Window Modal -->
             <div v-if="showDirectWindow" class="fixed z-50 inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
-                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[95vh] overflow-hidden flex flex-col">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%] max-h-[100vh] overflow-hidden flex flex-col">
                     <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
                         <div class="flex justify-between items-center">
                             <h2 class="text-xl font-bold">النافذة المباشرة</h2>
@@ -966,7 +1021,7 @@
                                                         {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
                                                     </span>
                                                     <span v-if="group.EpisodeTranslator">
-                                                        <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}<span v-if="isProfessionalTranslator(group.EpisodeTranslator)" v-tippy="'ترجمة احترافية'">⭐</span>
+                                                        <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}<span v-if="isProfessionalTranslator(group.EpisodeTranslator)" v-tippy="'ترجمة احترافية'"> ⭐</span>
                                                     </span>
                                                     <span v-if="group.EpisodeRemastered">
                                                         <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
@@ -1024,7 +1079,7 @@
 
             <!-- النافذة السريعة Modal -->
             <div v-if="showFastingWindow" class="fixed z-50 inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
-                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-2/3 lg:w-1/2 max-h-[95vh] overflow-hidden flex flex-col">
+                <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%] max-h-[100vh] overflow-hidden flex flex-col">
                     <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
                         <div class="flex justify-between items-center">
                             <h2 class="text-xl font-bold">النافذة السريعة <span class="text-xs text-yellow-300 font-normal">(تجريبي)</span></h2>
@@ -1619,7 +1674,7 @@
             
             <!-- Empty popup window -->
             <div v-if="showEmptyPopup" ref="emptyPopupRoot" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
-                <div class="relative bg-sky-900 rounded shadow-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[95vh] overflow-hidden flex flex-col"> <!-- the defualt is 80vh in max-h-[95vh]-->
+                <div class="relative bg-sky-900 rounded shadow-lg w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%] max-h-[100vh] overflow-hidden flex flex-col"> <!-- the defualt is 80vh in max-h-[95vh]-->
                     <!-- Sticky Header Section -->
                     <div class="sticky top-0 z-50 bg-sky-900 p-4">
                         <h2 class="text-xl font-bold text-green-400 relative">
@@ -2043,6 +2098,7 @@
                                             :placeholder="jumpTargetMode === 'page' ? 'رقم الصفحة...' : 'رقم الحلقة...'"
                                         />
                                         <button
+                                            v-if="jumpTargetMode !== 'page'"
                                             @click="clearJumpInput"
                                             class="absolute left-3 top-3 text-xl text-red-600 font-black transition-all duration-100 active:scale-90"
                                         >
@@ -2173,28 +2229,32 @@
             
                     <div v-if="showModal" class="fixed z-50 inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
                         
-                        <div class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[95vh] flex flex-col"> <!-- the defualt is 80vh in max-h-[95vh]-->
+                        <div ref="episodeModalContent" class="relative bg-cyan-900 text-slate-200 font-bold rounded-lg w-4/5 md:w-1/2 lg:w-1/3 max-h-[95vh] flex flex-col"> <!-- the defualt is 80vh in max-h-[95vh]-->
                             
 
-                            <!-- Side Navigation Buttons -->
-                            <button
+                            <div
                                 v-if="!preserveSelectedEpisodeOnModalClose"
-                                :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                class="modal-nav-btn absolute top-[55%] transform -translate-y-1/2 rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 z-10"
+                                ref="modalNavPanel"
+                                class="modal-nav-panel flex flex-col items-center gap-4"
+                                :style="modalNavPanelStyle"
+                                @mousedown="startModalNavPanelDrag"
+                                @touchstart="startModalNavPanelDrag"
                             >
-                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
-                            </button>
-                            
-
-                            <button
-                                v-if="!preserveSelectedEpisodeOnModalClose"
-                                :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                class="modal-nav-btn absolute top-[70%] transform -translate-y-1/2 rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90 z-10"
-                            >
-                                <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
-                            </button>
+                                <button
+                                    :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                    @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                    class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                >
+                                    <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
+                                </button>
+                                <button
+                                    :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                    @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                    class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                >
+                                    <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
+                                </button>
+                            </div>
 
                             <!-- Sticky Header Section -->
                             <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
@@ -2578,7 +2638,7 @@
                                                             {{ group.EpisodeCategory === 'S' ? 'مترجم' : (group.EpisodeCategory === 'D' ? 'مدبلج' : group.EpisodeCategory) }}
                                                         </span>
                                                         <span v-if="group.EpisodeTranslator">
-                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}<span v-if="isProfessionalTranslator(group.EpisodeTranslator)" v-tippy="'ترجمة احترافية'">⭐</span>
+                                                            <span v-if="group.EpisodeCategory"> - </span>{{ group.EpisodeTranslator }}<span v-if="isProfessionalTranslator(group.EpisodeTranslator)" v-tippy="'ترجمة احترافية'"> ⭐</span>
                                                         </span>
                                                         <span v-if="group.EpisodeRemastered">
                                                             <span v-if="group.EpisodeCategory || group.EpisodeTranslator"> - </span>
@@ -3793,6 +3853,11 @@
                     trailerIframeSrc: '',
                     preserveSelectedEpisodeOnModalClose: false,
                     showMangaButtons: false,
+                    modalNavPanelDragging: false,
+                    modalNavPanelPos: { left: null, top: null },
+                    modalNavPanelOffset: { x: 0, y: 0 },
+                    _modalNavPanelMoveHandler: null,
+                    _modalNavPanelUpHandler: null,
                     ...FILTER_STATE_DEFAULTS,                    
                     // Countdown properties
                     countdownInterval: null,
@@ -3858,6 +3923,13 @@
                 };
             },
             computed: {
+                modalNavPanelStyle() {
+                    const p = this.modalNavPanelPos || {};
+                    if (p.left != null && p.top != null) {
+                        return { top: `${p.top}px`, left: `${p.left}px`, right: 'auto', transform: 'none' };
+                    }
+                    return {};
+                },
                 activeFilters() {
                     const list = [];
                     if (this.selectedFilter && this.selectedFilter !== 'all') {
@@ -4052,10 +4124,24 @@
                     }
                 },
                 isFailedToFetch() {
-                    return (this.errorMessage || '').trim() === 'Failed to fetch';
+                    const msg = (this.errorMessage || '').trim().toLowerCase();
+                    if (!msg) return false;
+                    return (
+                        msg.includes('failed to fetch') ||
+                        msg.includes('load failed') ||
+                        msg.includes('networkerror when attempting to fetch resource') ||
+                        msg.includes('network error')
+                    );
                 },
-                displayErrorMessage() {
-                    return this.isFailedToFetch ? 'حدث خطأ، حاول مرة أخرى' : this.errorMessage;
+                displayErrorPrimary() {
+                    return this.isFailedToFetch
+                        ? 'حدث خطأ، حاول مرة أخرى.'
+                        : this.errorMessage;
+                },
+                displayErrorSecondary() {
+                    return this.isFailedToFetch
+                        ? 'في حال استمرار المشكلة، جرّب استخدام VPN.'
+                        : '';
                 },
                 showErrorOverlay() {
                     return Boolean(
@@ -7751,6 +7837,7 @@
                     this.selectedEpisode = episode;
                     this.showModal = true;
                     document.body.style.overflow = 'hidden'; // Block background scrolling
+                    this.modalNavPanelPos = { left: null, top: null };
 
                     const currentIndex = this.episodes.findIndex(
                         (ep) => ep.EpisodeNumber === episode.EpisodeNumber
@@ -7794,6 +7881,8 @@
                     this.forceCloseTrailerModal();
                     this.showModal = false;
                     document.body.style.overflow = '';
+                    this.modalNavPanelDragging = false;
+                    this.modalNavPanelPos = { left: null, top: null };
                     
                     if (this.selectedEpisode) {
                         if (this.selectedEpisode.EpisodeVideosIDs) {
@@ -7851,6 +7940,59 @@
                     this.preserveSelectedEpisodeOnModalClose = false;
                 },
 
+                startModalNavPanelDrag(event) {
+                    const e = event && event.touches && event.touches[0] ? event.touches[0] : event;
+                    const panel = this.$refs?.modalNavPanel;
+                    const container = this.$refs?.episodeModalContent;
+                    if (!panel || !container || !e) return;
+                    const panelRect = panel.getBoundingClientRect();
+                    this.modalNavPanelDragging = true;
+                    this.modalNavPanelOffset = { x: e.clientX - panelRect.left, y: e.clientY - panelRect.top };
+                    const moveHandler = (ev) => this.onModalNavPanelDrag(ev);
+                    const upHandler = (ev) => this.stopModalNavPanelDrag(ev);
+                    this._modalNavPanelMoveHandler = moveHandler;
+                    this._modalNavPanelUpHandler = upHandler;
+                    window.addEventListener('mousemove', moveHandler);
+                    window.addEventListener('mouseup', upHandler);
+                    window.addEventListener('touchmove', moveHandler, { passive: false });
+                    window.addEventListener('touchend', upHandler);
+                },
+                onModalNavPanelDrag(event) {
+                    if (!this.modalNavPanelDragging) return;
+                    const e = event && event.touches && event.touches[0] ? event.touches[0] : event;
+                    const panel = this.$refs?.modalNavPanel;
+                    const container = this.$refs?.episodeModalContent;
+                    if (!panel || !container || !e) return;
+                    const containerRect = container.getBoundingClientRect();
+                    const panelRect = panel.getBoundingClientRect();
+                    let x = e.clientX - this.modalNavPanelOffset.x;
+                    let y = e.clientY - this.modalNavPanelOffset.y;
+                    const minX = containerRect.left;
+                    const minY = containerRect.top;
+                    const maxX = containerRect.right - panelRect.width;
+                    const maxY = containerRect.bottom - panelRect.height;
+                    if (x < minX) x = minX;
+                    if (x > maxX) x = maxX;
+                    if (y < minY) y = minY;
+                    if (y > maxY) y = maxY;
+                    this.modalNavPanelPos = { left: Math.round(x - containerRect.left), top: Math.round(y - containerRect.top) };
+                    if (event && typeof event.preventDefault === 'function') {
+                        try { event.preventDefault(); } catch (e2) {}
+                    }
+                },
+                stopModalNavPanelDrag() {
+                    this.modalNavPanelDragging = false;
+                    if (this._modalNavPanelMoveHandler) {
+                        window.removeEventListener('mousemove', this._modalNavPanelMoveHandler);
+                        window.removeEventListener('touchmove', this._modalNavPanelMoveHandler);
+                    }
+                    if (this._modalNavPanelUpHandler) {
+                        window.removeEventListener('mouseup', this._modalNavPanelUpHandler);
+                        window.removeEventListener('touchend', this._modalNavPanelUpHandler);
+                    }
+                    this._modalNavPanelMoveHandler = null;
+                    this._modalNavPanelUpHandler = null;
+                },
                 openTrailerModal() {
                     if (!this.episodeTrailers.length) return;
                     this.showTrailerModal = true;
