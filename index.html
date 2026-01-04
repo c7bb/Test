@@ -2627,7 +2627,7 @@
                                     </button>
 
                                     <button 
-                                        @click="comntoContext = 'modal'; comntoVisible = true" 
+                                        @click="comntoVisible = true" 
                                         class="group relative flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-cyan-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
                                     >
                                         <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
@@ -2815,10 +2815,10 @@
             </div>
         </div>
         <!-- mainCommentPage -->
-        <div class="w-full flex justify-center py-4" v-if="!loading && userJoined">
+        <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
              <button
-                 @click="comntoContext = 'main'; comntoVisible = true"
-                 class="group relative flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
+                 @click="comntoVisible = true"
+                 class="group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
              >
                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                  <span class="font-bold text-sm relative z-10 drop-shadow-md">التعليقات</span>
@@ -2826,22 +2826,22 @@
         </div>
 
         <!-- Global Comnto Widget (Singleton) -->
-        <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out flex flex-col h-[60vh] rounded-t-xl overflow-hidden border-t border-gray-200 dark:border-gray-700" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
-             <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
-                 <h3 class="font-bold text-gray-700 dark:text-gray-200">Comments</h3>
-                 <button @click="comntoVisible = false" class="text-gray-500 hover:text-red-500">
-                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                     </svg>
-                 </button>
-             </div>
-             <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 p-2">
-                  <div
-                      class="mx-auto h-full"
-                      :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%]'"
-                  >
-                       <div id="comments" :data-topic="comntoTopic"></div>
-                  </div>
+        <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
+             <div
+                 class="mx-auto h-[60vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
+                 :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%]'"
+             >
+                 <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
+                     <h3 class="font-bold text-gray-700 dark:text-gray-200">Comments</h3>
+                     <button @click="comntoVisible = false" class="text-gray-500 hover:text-red-500">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                         </svg>
+                     </button>
+                 </div>
+                 <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 p-2">
+                      <div id="comments" class="w-full" :data-topic="comntoTopic"></div>
+                 </div>
              </div>
         </div>
     </div>
@@ -3464,7 +3464,6 @@
                 return {
                     comntoTopic: 'mainPageCD',
                     comntoVisible: false,
-                    comntoContext: 'main',
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
