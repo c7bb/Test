@@ -2613,6 +2613,7 @@
                                     </div>
                                 </fieldset>
                             </div>
+                            <comments-widget v-if="selectedEpisode" :page-id="selectedEpisode.EpisodeNumber"></comments-widget>
                             <div
                                 v-if="!preserveSelectedEpisodeOnModalClose"
                                 class="sticky bottom-1 bg-cyan-900 px-16 py-1 z-30"
@@ -2805,6 +2806,8 @@
                 </label>
             </div>
         </div>
+        <!-- mainCommentPage -->
+        <comments-widget page-id="mainPageCD"></comments-widget>
     </div>
 
     <script>
@@ -11468,6 +11471,41 @@
                     if (el._tippy) el._tippy.destroy();
                 }
             });
+
+        app.component('comments-widget', {
+            props: ['pageId'],
+            template: '<div ref="container" class="w-full my-4"></div>',
+            watch: {
+                pageId: {
+                    immediate: true,
+                    handler(newVal) {
+                        this.$nextTick(() => {
+                            this.loadWidget(newVal);
+                        });
+                    }
+                }
+            },
+            methods: {
+                loadWidget(id) {
+                    const container = this.$refs.container;
+                    if (!container) return;
+                    container.innerHTML = '';
+                    if (!id) return;
+                    
+                    const script = document.createElement('script');
+                    script.async = true;
+                    script.src = 'https://comments.app/js/widget.js?3';
+                    script.setAttribute('data-comments-app-website', 'ftxyBv4F');
+                    script.setAttribute('data-limit', '100');
+                    script.setAttribute('data-page-id', id);
+                    script.setAttribute('data-color', '72E350');
+                    script.setAttribute('data-dislikes', '1');
+                    script.setAttribute('data-colorful', '1');
+                    script.setAttribute('data-dark', '1');
+                    container.appendChild(script);
+                }
+            }
+        });
 
 		const vm = app.mount('#app');
         window.vm = vm;
