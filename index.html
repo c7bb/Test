@@ -2824,8 +2824,8 @@
                  </button>
              </div>
              <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 p-2">
-                 <div id="comments" data-comnto data-site="dcref" :data-topic="comntoTopic"></div>
-             </div>
+                  <div id="comments" :data-topic="comntoTopic"></div>
+              </div>
         </div>
     </div>
 
@@ -11301,6 +11301,15 @@
                 const script = document.createElement('script');
                 script.src = 'https://comnto.com/embed.js';
                 script.defer = true;
+                script.onload = () => {
+                    if (window.comnto) {
+                        window.comnto({
+                            el: '#comments',
+                            site: 'dcref',
+                            topic: this.comntoTopic
+                        });
+                    }
+                };
                 document.head.appendChild(script);
 
                 // Existing mounted logic
