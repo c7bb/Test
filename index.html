@@ -11297,6 +11297,23 @@
             },
 
             mounted() {
+                // 1. Clean URL and set Canonical to prevent Comnto 400 errors
+                // Remove Telegram's huge hash to fix "preload id must be UUID" and "page_url too big"
+                if (window.location.hash.includes('tgWebAppData') || window.location.hash.includes('tgWebApp')) {
+                    // Use replaceState to clean the URL without reloading
+                    const cleanUrl = window.location.origin + window.location.pathname + window.location.search;
+                    window.history.replaceState(null, null, cleanUrl);
+                }
+
+                // Ensure Canonical Link exists and points to clean URL
+                let canonical = document.querySelector("link[rel='canonical']");
+                if (!canonical) {
+                    canonical = document.createElement('link');
+                    canonical.rel = 'canonical';
+                    document.head.appendChild(canonical);
+                }
+                canonical.href = window.location.origin + window.location.pathname;
+
                 // Load Comnto Script
                 const script = document.createElement('script');
                 script.src = 'https://comnto.com/embed.js';
