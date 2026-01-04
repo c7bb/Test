@@ -2612,13 +2612,13 @@
                                         </template>
                                     </div>
                                 </fieldset>
-                                <fieldset class="w-full -mx-4 -mb-4">
+                                <fieldset class="-mx-4 -mb-4">
                                     <comments-widget v-if="selectedEpisode" :page-id="selectedEpisode.EpisodeNumber"></comments-widget>
                                 </fieldset>
                             </div>
                             <div
                                 v-if="!preserveSelectedEpisodeOnModalClose"
-                                class="sticky bottom-1 bg-cyan-900 px-16 py-1 z-30"
+                                class="sticky bottom-1 bg-cyan-900 px-16 z-30"
                             >
                                 <div class="w-full flex items-center justify-between">
                                     <button
@@ -11546,4 +11546,5 @@
     </style>
 </body>
 </html>
+
 
