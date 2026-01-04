@@ -2612,9 +2612,9 @@
                                         </template>
                                     </div>
                                 </fieldset>
-                                <fieldset class="-mx-4 -mb-4">
-                                    <comments-widget v-if="selectedEpisode" :page-id="selectedEpisode.EpisodeNumber"></comments-widget>
-                                </fieldset>
+                            <div class="w-full text-center py-2">
+                                <button @click="comntoVisible = true" class="text-blue-500 hover:text-blue-700 underline">Show Comments</button>
+                            </div>
                             </div>
                             <div
                                 v-if="!preserveSelectedEpisodeOnModalClose"
@@ -2809,8 +2809,23 @@
             </div>
         </div>
         <!-- mainCommentPage -->
-        <div class="-mx-4 -mb-4">
-             <comments-widget v-if="!loading && userJoined" page-id="mainPageCD"></comments-widget>
+        <div class="w-full text-center py-4">
+             <button @click="comntoVisible = true" class="bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600">Open Discussion</button>
+        </div>
+
+        <!-- Global Comnto Widget (Singleton) -->
+        <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] bg-white dark:bg-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-transform duration-300 ease-in-out flex flex-col h-[60vh] rounded-t-xl overflow-hidden border-t border-gray-200 dark:border-gray-700" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
+             <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
+                 <h3 class="font-bold text-gray-700 dark:text-gray-200">Comments</h3>
+                 <button @click="comntoVisible = false" class="text-gray-500 hover:text-red-500">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                     </svg>
+                 </button>
+             </div>
+             <div class="flex-1 overflow-y-auto bg-white dark:bg-gray-800 p-2">
+                 <div id="comments" data-comnto data-site="dcref" :data-topic="comntoTopic"></div>
+             </div>
         </div>
     </div>
 
@@ -3430,6 +3445,8 @@
         const app = createApp({
             data() {
                 return {
+                    comntoTopic: 'mainPageCD',
+                    comntoVisible: false,
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -5036,6 +5053,15 @@
                 },
             },
             watch: {
+                selectedEpisode(newVal) {
+                    if (newVal) {
+                        this.comntoTopic = 'episode-' + newVal.EpisodeNumber;
+                        // this.comntoVisible = true; // Let user open it manually
+                    } else {
+                        this.comntoTopic = 'mainPageCD';
+                        this.comntoVisible = false; // Auto-close when leaving episode
+                    }
+                },
                 jumpTargetMode(newVal) {
                     if (newVal === 'page') {
                         this.jumpInputActive = false;
@@ -11271,6 +11297,13 @@
             },
 
             mounted() {
+                // Load Comnto Script
+                const script = document.createElement('script');
+                script.src = 'https://comnto.com/embed.js';
+                script.defer = true;
+                document.head.appendChild(script);
+
+                // Existing mounted logic
                 // Initialize InstantDB only if this tab is the owner
                 if (this.isTabOwner && !this._db) {
                     this.initInstantDB();
@@ -11476,40 +11509,7 @@
                 }
             });
 
-        app.component('comments-widget', {
-            props: ['pageId'],
-            template: '<div ref="container" class="w-full my-4"></div>',
-            watch: {
-                pageId: {
-                    immediate: true,
-                    handler(newVal) {
-                        this.$nextTick(() => {
-                            this.loadWidget(newVal);
-                        });
-                    }
-                }
-            },
-            methods: {
-                loadWidget(id) {
-                    const container = this.$refs.container;
-                    if (!container) return;
-                    container.innerHTML = '';
-                    if (!id) return;
-                    
-                    const script = document.createElement('script');
-                    script.async = true;
-                    script.src = 'https://comments.app/js/widget.js?3';
-                    script.setAttribute('data-comments-app-website', 'ftxyBv4F');
-                    script.setAttribute('data-limit', '100');
-                    script.setAttribute('data-page-id', id);
-                    script.setAttribute('data-color', '72E350');
-                    script.setAttribute('data-dislikes', '1');
-                    script.setAttribute('data-colorful', '1');
-                    script.setAttribute('data-dark', '1');
-                    container.appendChild(script);
-                }
-            }
-        });
+
 
 		const vm = app.mount('#app');
         window.vm = vm;
@@ -11546,5 +11546,3 @@
     </style>
 </body>
 </html>
-
-
