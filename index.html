@@ -2612,13 +2612,10 @@
                                         </template>
                                     </div>
                                 </fieldset>
-                                <fieldset class="w-full">
+                                <fieldset class="w-full -mx-4 -mb-4">
                                     <comments-widget v-if="selectedEpisode" :page-id="selectedEpisode.EpisodeNumber"></comments-widget>
                                 </fieldset>
                             </div>
-                            <fieldset class="w-full">
-                                <comments-widget v-if="selectedEpisode" :page-id="selectedEpisode.EpisodeNumber"></comments-widget>
-                            </fieldset>
                             <div
                                 v-if="!preserveSelectedEpisodeOnModalClose"
                                 class="sticky bottom-1 bg-cyan-900 px-16 py-1 z-30"
@@ -9161,7 +9158,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -11502,7 +11499,7 @@
                     const script = document.createElement('script');
                     script.async = true;
                     script.src = 'https://comments.app/js/widget.js?3';
-                    script.setAttribute('data-comments-app-website', 'ftxyBv4F');
+                    script.setAttribute('data-comments-app-website', 'Kg5zxC2a');
                     script.setAttribute('data-limit', '100');
                     script.setAttribute('data-page-id', id);
                     script.setAttribute('data-color', '72E350');
