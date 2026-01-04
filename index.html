@@ -2615,22 +2615,22 @@
                                 
                                 <div
                                     v-if="!preserveSelectedEpisodeOnModalClose"
-                                    class="sticky bottom-0 bg-cyan-900 px-4 py-2 z-30"
+                                    class="sticky -bottom-4 bg-cyan-900 px-8 py-1 z-30"
                                 >
                                     <div class="w-full flex items-center justify-between">
-                                        <button
-                                            :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                            @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                        >
-                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
-                                        </button>
                                         <button
                                             :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
                                             @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
                                             class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                                         >
                                             <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
+                                        </button>
+                                        <button
+                                            :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
                                         </button>
                                     </div>
                                 </div>
