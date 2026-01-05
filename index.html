@@ -37,6 +37,7 @@
             }
         })();
     </script>  -->
+    
     <script type="module">
         import { init, id, lookup } from 'https://cdn.jsdelivr.net/npm/@instantdb/core@0.22.90/+esm';
         window.InstantDB = { init, id, lookup };
@@ -7559,7 +7560,8 @@
                     if (s) {
                         const aliasMap = {
                             'الفلم': 'الفيلم',
-                            'فلم': 'الفيلم'
+                            'فلم': 'الفيلم',
+                            'الفليم': 'الفيلم'
                         };
                         for (const alias in aliasMap) {
                             const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(alias)}\\b`, 'i');
@@ -7603,8 +7605,24 @@
                         }
                     }
                     if (matchedPrefix) {
-                        const numMatch = s.match(/(\d+(?:\\.\\d+)?)/);
-                        let n = numMatch ? parseFloat(numMatch[1]) : 1;
+                        const numMatch = s.match(/(\d+(?:\.\\d+)?)/);
+                        let n = numMatch ? parseFloat(numMatch[1]) : NaN;
+                        if (isNaN(n)) {
+                            const text = this.normalizeDigits(s).toLowerCase();
+                            for (let i = 50; i >= 1; i--) {
+                                try {
+                                    const pattern = this.buildReplacementPatternForKey(String(i));
+                                    if (pattern) {
+                                        const rx = new RegExp(`(^|[\\s،,])${pattern}(?=$|[\\s،,])`, 'i');
+                                        if (rx.test(text)) {
+                                            n = i;
+                                            break;
+                                        }
+                                    }
+                                } catch (e) {}
+                            }
+                            if (isNaN(n)) n = 1;
+                        }
                         if (isNaN(n)) n = 1;
                         const max = this.getMaxForPrefix(matchedPrefix);
                         if (max > 0) {
@@ -12013,4 +12031,3 @@
     </style>
 </body>
 </html>
-
