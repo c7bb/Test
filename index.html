@@ -553,6 +553,12 @@
         }
     </style>
     <style>
+        .no-scroll {
+            overflow: hidden !important;
+            touch-action: none;
+        }
+    </style>
+    <style>
         /* Apple Notch Style */
         .search-notch {
             position: absolute;
@@ -626,6 +632,7 @@
         }
     </style>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,100..1000&display=swap');
         :root {
             --glass-bg: rgba(255, 255, 255, 0.06);
             --glass-text: rgba(255, 255, 255, 0.92);
@@ -729,6 +736,7 @@
             padding: 8px 12px 10px;
             margin: 0 auto;
             border-radius: 99em;
+            font-family: 'DM Sans', sans-serif;
             background-color: color-mix(in srgb, #bbbbbc 12%, transparent);
             backdrop-filter: blur(8px) saturate(150%);
             -webkit-backdrop-filter: blur(8px) saturate(150%);
@@ -1790,30 +1798,26 @@
                 </select>
             
                 <fieldset class="border border-gray-300 rounded p-2 w-1/2">
-                    <legend class="px-1 font-bold text-white-600 text-sm">
-                        {{ episodeTypeLegend }}
+                    <legend class="px-1 font-bold text-white-600 text-sm">{{ episodeTypeLegend }}
                         <button 
                             class="bg-orange-500 text-white font-bold py-2 px-1 rounded hover:bg-orange-800 transition text-sm transition-all duration-100 active:scale-90" 
                             @click="openEmptyPopup">
                             المزيد
                         </button>
                     </legend>
-                    <div class="flex justify-center">
-                        <div class="lg-switcher">
-                            <legend class="switcher__legend">Episode Type</legend>
-                            <label class="switcher__option">
-                                <input class="switcher__input" type="radio" v-model="episodeTypeFilter" value="All" c-option="1" checked>
-                                <span class="switcher__icon">الكل</span>
-                            </label>
-                            <label class="switcher__option">
-                                <input class="switcher__input" type="radio" v-model="episodeTypeFilter" value="Manga" c-option="2">
-                                <span class="switcher__icon">مانغا</span>
-                            </label>
-                            <label class="switcher__option">
-                                <input class="switcher__input" type="radio" v-model="episodeTypeFilter" value="Filler" c-option="3">
-                                <span class="switcher__icon">فِلر</span>
-                            </label>
-                        </div>
+                    <div class="flex items-center text-blue font-bold gap-4 justify-center">
+                        <label class="py-2 transition-all duration-100 active:scale-90 rounded">
+                            <input type="radio" v-model="episodeTypeFilter" value="All" checked class="scale-150">
+                            الكل
+                        </label>
+                        <label class="py-2 transition-all duration-100 active:scale-90 rounded" :class="{'bg-teal-900 text-white': episodeTypeFilter === 'Manga'}">
+                            <input type="radio" v-model="episodeTypeFilter" value="Manga" class="scale-150">
+                            مانغا
+                        </label>
+                        <label class="py-2 transition-all duration-100 active:scale-90 rounded" :class="{'bg-red-950 text-white': episodeTypeFilter === 'Filler'}">
+                            <input type="radio" v-model="episodeTypeFilter" value="Filler" class="scale-150">
+                            فِلر
+                        </label>
                     </div>
                 </fieldset>
             </div>
@@ -3012,9 +3016,7 @@
         <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
              <button
                  @click="openComments('main')"
-                 :class="isApplePlatform
-                   ? 'group relative flex items-center gap-2 px-10 py-3 liquid-glass rounded-full shadow-lg transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden'
-                   : 'group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden'"
+                 class="group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
              >
                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                  <span class="font-bold text-sm relative z-10 drop-shadow-md">التعليقات</span>
@@ -3022,6 +3024,14 @@
         </div>
 
         <!-- Global Comnto Widget (Singleton) -->
+        <div
+            v-if="comntoVisible"
+            class="fixed inset-0 z-[99] bg-transparent"
+            @wheel.prevent
+            @touchmove.prevent
+            @scroll.prevent
+            @click.stop
+        ></div>
         <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
              <div
                  class="mx-auto h-[65vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
@@ -5563,6 +5573,17 @@
 
                 pageSize(newSize) {
                     this.handlePageSizeChange();
+                },
+                comntoVisible(newVal) {
+                    try {
+                        const b = document.body;
+                        if (!b) return;
+                        if (newVal) {
+                            b.classList.add('no-scroll');
+                        } else {
+                            b.classList.remove('no-scroll');
+                        }
+                    } catch (e) {}
                 },
             },
             methods: {
