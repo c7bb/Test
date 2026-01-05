@@ -625,6 +625,92 @@
             animation: stripes 1s linear infinite;
         }
     </style>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.06);
+            --glass-text: rgba(255, 255, 255, 0.92);
+        }
+        .liquid-glass {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--glass-bg);
+            color: var(--glass-text);
+            backdrop-filter: blur(10px) saturate(140%);
+            -webkit-backdrop-filter: blur(10px) saturate(140%);
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 255, 255, 0.35),
+                inset -2px -2px 2px rgba(255, 255, 255, 0.25),
+                0 4px 12px rgba(0, 0, 0, 0.35),
+                0 12px 24px rgba(0, 0, 0, 0.25);
+            transition: transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2), box-shadow 300ms ease;
+            border-radius: 20px;
+            border: 0;
+        }
+        .liquid-glass:hover {
+            transform: scale(1.04);
+            box-shadow:
+                inset 1px 1px 0 rgba(255, 255, 255, 0.4),
+                inset -2px -2px 2px rgba(255, 255, 255, 0.3),
+                0 6px 16px rgba(0, 0, 0, 0.4),
+                0 16px 28px rgba(0, 0, 0, 0.3);
+        }
+        .liquid-glass:active {
+            transform: scale(0.96);
+        }
+        .liquid-glass:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .liquid-glass::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+            pointer-events: none;
+        }
+        .liquid-glass::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            height: 55%;
+            border-radius: inherit;
+            background:
+                radial-gradient(80% 120% at 10% 5%, rgba(255, 255, 255, 0.25), transparent 60%),
+                radial-gradient(60% 80% at 90% 0%, rgba(255, 255, 255, 0.15), transparent 60%);
+            pointer-events: none;
+        }
+        .liquid-glass-round {
+            width: 44px;
+            height: 44px;
+            padding: 0;
+            border-radius: 9999px;
+        }
+        .liquid-glass-hamburger {
+            width: 56px;
+            height: 44px;
+            padding: 8px 10px;
+            border-radius: 9999px;
+        }
+        .liquid-glass .bar {
+            display: block;
+            width: 24px;
+            height: 2px;
+            margin: 3px 0;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow:
+                0 1px 0 rgba(255, 255, 255, 0.25),
+                0 -1px 0 rgba(0, 0, 0, 0.2);
+        }
+        .liquid-glass svg {
+            color: var(--glass-text);
+        }
+    </style>
 </head>
 <body class="bg-gray-800 py-4 relative">
     <!-- Loading spinner - shows before Vue initializes -->
@@ -743,10 +829,10 @@
         </div>
             <!-- Updated Menu Button -->
             <div class="fixed top-4 right-4 z-50 menu-container">
-                <button @click.stop="toggleMenu" :disabled="loading" class="bg-yellow-600 text-white p-2 rounded flex flex-col items-center transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span class="block w-6 h-1 bg-white mb-1"></span>
-                    <span class="block w-6 h-1 bg-white mb-1"></span>
-                    <span class="block w-6 h-1 bg-white"></span>
+                <button @click.stop="toggleMenu" :disabled="loading" class="liquid-glass liquid-glass-hamburger flex flex-col items-center transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span class="bar"></span>
+                    <span class="bar"></span>
+                    <span class="bar"></span>
                 </button>
 
                 <div v-if="menuOpen" class="absolute right-0 mt-2 bg-sky-900 shadow-lg rounded py-2 w-32">
@@ -764,7 +850,7 @@
             <div class="fixed top-4 left-4 z-50">
                 <button
                     @click.stop="toggleSearch" :disabled="loading"
-                    class="bg-yellow-600 text-white p-2 rounded-full shadow-md transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="liquid-glass liquid-glass-round transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
