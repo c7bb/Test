@@ -7564,7 +7564,7 @@
                             'الفليم': 'الفيلم'
                         };
                         for (const alias in aliasMap) {
-                            const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(alias)}\\b`, 'i');
+                            const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(alias)}(?=$|[\\s،,.])`, 'i');
                             if (rx.test(s)) {
                                 s = s.replace(rx, aliasMap[alias]);
                                 break;
@@ -7598,7 +7598,7 @@
                     ];
                     let matchedPrefix = '';
                     for (const p of prefixes) {
-                        const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(p)}\\b`, 'i');
+                        const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(p)}(?=$|[\\s،,.])`, 'i');
                         if (rx.test(s)) {
                             matchedPrefix = p;
                             break;
