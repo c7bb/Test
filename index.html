@@ -3466,6 +3466,7 @@
                     comntoVisible: false,
                     comntoContext: 'main',
                     comntoWidget: null,
+                    debugModeComntoTopic: true,
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -5072,17 +5073,46 @@
                 },
             },
                 watch: {
+                currentPage() {
+                    this.comntoVisible = false;
+                },
+                pageSize() {
+                    this.comntoVisible = false;
+                },
+                selectedFilter() {
+                    this.comntoVisible = false;
+                },
                 comntoTopic(newVal) {
                     try {
+                        if (this.debugModeComntoTopic) {
+                            console.log('comntoTopic change:', newVal);
+                        }
+                        const el = document.querySelector('#comments');
+                        if (el) {
+                            el.setAttribute('data-topic', String(newVal || ''));
+                        }
                         if (this.comntoWidget && typeof this.comntoWidget.setTopic === 'function') {
                             this.comntoWidget.setTopic(String(newVal || ''));
+                            if (this.debugModeComntoTopic) {
+                                console.log('setTopic applied');
+                            }
                         } else if (this.comntoWidget && typeof this.comntoWidget.update === 'function') {
                             this.comntoWidget.update({ topic: String(newVal || '') });
+                            if (this.debugModeComntoTopic) {
+                                console.log('update({topic}) applied');
+                            }
+                        } else {
+                            if (this.debugModeComntoTopic) {
+                                console.warn('No setTopic/update available on comntoWidget');
+                            }
                         }
                     } catch {}
                 },
                 selectedEpisode(newVal) {
                     if (newVal) {
+                        if (this.debugModeComntoTopic) {
+                            console.log('selectedEpisode change:', newVal && newVal.EpisodeNumber);
+                        }
                         this.comntoTopic = 'episode-' + newVal.EpisodeNumber;
                         // this.comntoVisible = true; // Let user open it manually
                     } else {
@@ -7055,6 +7085,7 @@
                 },
 
                 nextPage() {
+                    this.comntoVisible = false;
                     this.clearJumpHighlight();
                     if (this.currentPage < this.totalPages) {
                         this.currentPage++;
@@ -7062,6 +7093,7 @@
                     }
                 },
                 prevPage() {
+                    this.comntoVisible = false;
                     this.clearJumpHighlight();
                     if (this.currentPage > 1) {
                         this.currentPage--;
@@ -7069,6 +7101,7 @@
                     }
                 },
                 goToPage(page) {
+                    this.comntoVisible = false;
                     this.clearJumpHighlight();
                     if (page >= 1 && page <= this.totalPages) {
                         this.currentPage = page;
@@ -7079,11 +7112,13 @@
                     this.lastPage = this.currentPage;
                 },
                 goToFirstPage() {
+                    this.comntoVisible = false;
                     this.clearJumpHighlight();
                     this.currentPage = 1;
                     this.trackLastPage();
                 },
                 goToLastPage() {
+                    this.comntoVisible = false;
                     this.clearJumpHighlight();
                     this.currentPage = this.totalPages;
                     this.trackLastPage();
@@ -7098,6 +7133,7 @@
                     );
                 },
                 handlePageSelect(event) {
+                    this.comntoVisible = false;
                     this.clearJumpHighlight();
                     let pageInput = event.target.value;
 
@@ -7214,6 +7250,7 @@
                     return s;
                 },
                 executeJumpValue() {
+                    this.comntoVisible = false;
                     const raw = String(this.jumpInput || '').trim();
                     if (this.jumpTargetMode === 'episode') {
                         if (!raw) {
@@ -11365,6 +11402,12 @@
                             theme: 'auto',
                             locale: 'ar'
                         });
+                        if (this.debugModeComntoTopic) {
+                            console.log('Comnto widget initialised', !!this.comntoWidget, typeof this.comntoWidget);
+                            const hasSetTopic = this.comntoWidget && typeof this.comntoWidget.setTopic === 'function';
+                            const hasUpdate = this.comntoWidget && typeof this.comntoWidget.update === 'function';
+                            console.log('setTopic available:', hasSetTopic, 'update available:', hasUpdate, 'initial topic:', this.comntoTopic);
+                        }
                     }
                 };
                 document.head.appendChild(script);
