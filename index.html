@@ -5439,10 +5439,6 @@
                         this.executePendingJump();
                         return;
                     }
-                    const cleaned = this.buildEpisodeJumpTarget(trimmed);
-                    if (cleaned && cleaned !== trimmed) {
-                        this.jumpInput = cleaned;
-                    }
                 },
                 episodeSendInProgress(newValue) {
                     if (!newValue) this.handleAutoCloseIfRequested('modal');
