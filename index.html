@@ -664,7 +664,6 @@
             cursor: not-allowed;
         }
         .liquid-glass::before {
-            content: "";
             position: absolute;
             inset: 0;
             border-radius: inherit;
@@ -672,7 +671,6 @@
             pointer-events: none;
         }
         .liquid-glass::after {
-            content: "";
             position: absolute;
             left: 0;
             top: 0;
@@ -829,10 +827,10 @@
         </div>
             <!-- Updated Menu Button -->
             <div class="fixed top-4 right-4 z-50 menu-container">
-                <button @click.stop="toggleMenu" :disabled="loading" class="liquid-glass liquid-glass-hamburger flex flex-col items-center transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
-                    <span class="bar"></span>
-                    <span class="bar"></span>
-                    <span class="bar"></span>
+                <button @click.stop="toggleMenu" :disabled="loading" :class="isApplePlatform ? 'liquid-glass liquid-glass-hamburger flex flex-col items-center transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed' : 'bg-yellow-600 text-white p-2 rounded flex flex-col items-center transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed'">
+                    <span :class="isApplePlatform ? 'bar' : 'block w-6 h-1 bg-white mb-1'"></span>
+                    <span :class="isApplePlatform ? 'bar' : 'block w-6 h-1 bg-white mb-1'"></span>
+                    <span :class="isApplePlatform ? 'bar' : 'block w-6 h-1 bg-white'"></span>
                 </button>
 
                 <div v-if="menuOpen" class="absolute right-0 mt-2 bg-sky-900 shadow-lg rounded py-2 w-32">
@@ -850,7 +848,7 @@
             <div class="fixed top-4 left-4 z-50">
                 <button
                     @click.stop="toggleSearch" :disabled="loading"
-                    class="liquid-glass liquid-glass-round transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    :class="isApplePlatform ? 'liquid-glass liquid-glass-round transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed' : 'bg-yellow-600 text-white p-2 rounded-full shadow-md transition-all duration-100 active:scale-90 disabled:opacity-50 disabled:cursor-not-allowed'"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none"
                     viewBox="0 0 24 24" stroke="currentColor">
@@ -2904,7 +2902,9 @@
         <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
              <button
                  @click="openComments('main')"
-                 class="group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
+                 :class="isApplePlatform
+                   ? 'group relative flex items-center gap-2 px-10 py-3 liquid-glass rounded-full shadow-lg transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden'
+                   : 'group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden'"
              >
                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
                  <span class="font-bold text-sm relative z-10 drop-shadow-md">التعليقات</span>
@@ -4001,6 +4001,14 @@
                 };
             },
             computed: {
+                isApplePlatform() {
+                    try {
+                        const p = String(webApp?.platform || '').toLowerCase();
+                        return p === 'ios' || p === 'macos';
+                    } catch (_) {
+                        return false;
+                    }
+                },
                 commentsHeaderText() {
                     try {
                         if (this.comntoContext === 'main' || this.comntoTopic === 'mainPageCD') return 'تعليقات الصفحة الرئيسية';
