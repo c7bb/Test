@@ -2829,7 +2829,7 @@
         <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
              <div
                  class="mx-auto h-[60vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
-                 :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%]'"
+                 :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[60%]'"
              >
                  <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
                      <h3 class="font-bold text-gray-700 dark:text-gray-200">Comments</h3>
@@ -7822,6 +7822,7 @@
                 },
                 openModal(episode) { 
                     this.selectedEpisode = episode;
+                    this.comntoVisible = false;
                     this.showModal = true;
                     document.body.style.overflow = 'hidden'; // Block background scrolling
 
