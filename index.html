@@ -717,6 +717,103 @@
                 0 6px 18px rgba(0, 0, 0, 0.25),
                 0 14px 28px rgba(0, 0, 0, 0.18);
         }
+        .lg-switcher {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 244px;
+            max-width: 244px;
+            height: 70px;
+            box-sizing: border-box;
+            padding: 8px 12px 10px;
+            margin: 0 auto;
+            border-radius: 99em;
+            background-color: color-mix(in srgb, #bbbbbc 12%, transparent);
+            backdrop-filter: blur(8px) saturate(150%);
+            -webkit-backdrop-filter: blur(8px) saturate(150%);
+            box-shadow:
+                inset 0 0 0 1px color-mix(in srgb, #fff 10%, transparent),
+                inset 1.8px 3px 0px -2px color-mix(in srgb, #fff 90%, transparent),
+                inset -2px -2px 0px -2px color-mix(in srgb, #fff 80%, transparent),
+                inset -3px -8px 1px -6px color-mix(in srgb, #fff 60%, transparent),
+                inset -0.3px -1px 4px 0px color-mix(in srgb, #000 12%, transparent),
+                inset -1.5px 2.5px 0px -2px color-mix(in srgb, #000 20%, transparent),
+                inset 0px 3px 4px -2px color-mix(in srgb, #000 20%, transparent),
+                inset 2px -6.5px 1px -4px color-mix(in srgb, #000 10%, transparent),
+                0px 1px 5px 0px color-mix(in srgb, #000 10%, transparent),
+                0px 6px 16px 0px color-mix(in srgb, #000 8%, transparent);
+            transition: background-color 400ms cubic-bezier(1, 0, 0.4, 1), box-shadow 400ms cubic-bezier(1, 0, 0.4, 1);
+        }
+        .lg-switcher::after {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: 4px;
+            display: block;
+            width: 84px;
+            height: calc(100% - 10px);
+            border-radius: 99em;
+            background-color: color-mix(in srgb, #bbbbbc 36%, transparent);
+            z-index: -1;
+            box-shadow:
+                inset 0 0 0 1px color-mix(in srgb, #fff 10%, transparent),
+                inset 2px 1px 0px -1px color-mix(in srgb, #fff 90%, transparent),
+                inset -1.5px -1px 0px -1px color-mix(in srgb, #fff 80%, transparent),
+                inset -2px -6px 1px -5px color-mix(in srgb, #fff 60%, transparent),
+                inset -1px 2px 3px -1px color-mix(in srgb, #000 20%, transparent),
+                inset 0px -4px 1px -2px color-mix(in srgb, #000 10%, transparent),
+                0px 3px 6px 0px color-mix(in srgb, #000 8%, transparent);
+            transition: translate 400ms cubic-bezier(1, 0, 0.4, 1), background-color 400ms cubic-bezier(1, 0, 0.4, 1), box-shadow 400ms cubic-bezier(1, 0, 0.4, 1);
+        }
+        .lg-switcher:has(input[c-option="1"]:checked)::after { translate: 0 0; }
+        .lg-switcher:has(input[c-option="2"]:checked)::after { translate: 80px 0; }
+        .lg-switcher:has(input[c-option="3"]:checked)::after { translate: 160px 0; }
+        .switcher__legend {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            border: 0;
+            padding: 0;
+            white-space: nowrap;
+            clip-path: inset(100%);
+            clip: rect(0 0 0 0);
+            overflow: hidden;
+        }
+        .switcher__input {
+            clip: rect(0 0 0 0);
+            clip-path: inset(100%);
+            height: 1px;
+            width: 1px;
+            overflow: hidden;
+            position: absolute;
+            white-space: nowrap;
+        }
+        .switcher__icon {
+            display: block;
+            width: 100%;
+            transition: scale 200ms cubic-bezier(0.5, 0, 0, 1);
+        }
+        .switcher__option {
+            --c: #224;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 16px;
+            width: 68px;
+            height: 100%;
+            box-sizing: border-box;
+            border-radius: 99em;
+            color: var(--c);
+            opacity: 1;
+            transition: all 160ms;
+            font-weight: 700;
+        }
+        .switcher__option:hover { --c: #0052f5; cursor: pointer; }
+        .switcher__option:hover .switcher__icon { scale: 1.2; }
+        .lg-switcher .switcher__option:has(input:checked) { --c: #224; cursor: auto; }
+        .lg-switcher .switcher__option:has(input:checked) .switcher__icon { scale: 1; }
     </style>
 </head>
 <body class="bg-gray-800 py-4 relative">
@@ -1693,26 +1790,30 @@
                 </select>
             
                 <fieldset class="border border-gray-300 rounded p-2 w-1/2">
-                    <legend class="px-1 font-bold text-white-600 text-sm">{{ episodeTypeLegend }}
+                    <legend class="px-1 font-bold text-white-600 text-sm">
+                        {{ episodeTypeLegend }}
                         <button 
                             class="bg-orange-500 text-white font-bold py-2 px-1 rounded hover:bg-orange-800 transition text-sm transition-all duration-100 active:scale-90" 
                             @click="openEmptyPopup">
                             المزيد
                         </button>
                     </legend>
-                    <div class="flex items-center text-blue font-bold gap-4 justify-center">
-                        <label class="py-2 transition-all duration-100 active:scale-90 rounded">
-                            <input type="radio" v-model="episodeTypeFilter" value="All" checked class="scale-150">
-                            الكل
-                        </label>
-                        <label class="py-2 transition-all duration-100 active:scale-90 rounded" :class="{'bg-teal-900 text-white': episodeTypeFilter === 'Manga'}">
-                            <input type="radio" v-model="episodeTypeFilter" value="Manga" class="scale-150">
-                            مانغا
-                        </label>
-                        <label class="py-2 transition-all duration-100 active:scale-90 rounded" :class="{'bg-red-950 text-white': episodeTypeFilter === 'Filler'}">
-                            <input type="radio" v-model="episodeTypeFilter" value="Filler" class="scale-150">
-                            فِلر
-                        </label>
+                    <div class="flex justify-center">
+                        <div class="lg-switcher">
+                            <legend class="switcher__legend">Episode Type</legend>
+                            <label class="switcher__option">
+                                <input class="switcher__input" type="radio" v-model="episodeTypeFilter" value="All" c-option="1" checked>
+                                <span class="switcher__icon">الكل</span>
+                            </label>
+                            <label class="switcher__option">
+                                <input class="switcher__input" type="radio" v-model="episodeTypeFilter" value="Manga" c-option="2">
+                                <span class="switcher__icon">مانغا</span>
+                            </label>
+                            <label class="switcher__option">
+                                <input class="switcher__input" type="radio" v-model="episodeTypeFilter" value="Filler" c-option="3">
+                                <span class="switcher__icon">فِلر</span>
+                            </label>
+                        </div>
                     </div>
                 </fieldset>
             </div>
@@ -2908,17 +3009,17 @@
             </div>
         </div>
         <!-- mainCommentPage -->
-         <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
-              <button
-                  @click="openComments('main')"
+        <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
+             <button
+                 @click="openComments('main')"
                  :class="isApplePlatform
-                   ? 'group relative flex items-center gap-2 px-10 py-3 liquid-glass liquid-glass-white rounded-full shadow-lg transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden'
+                   ? 'group relative flex items-center gap-2 px-10 py-3 liquid-glass rounded-full shadow-lg transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden'
                    : 'group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden'"
-              >
+             >
                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                 <span :class="['font-bold text-sm relative z-10 drop-shadow-md', isApplePlatform ? 'text-black' : 'text-white']">التعليقات</span>
-              </button>
-         </div>
+                 <span class="font-bold text-sm relative z-10 drop-shadow-md">التعليقات</span>
+             </button>
+        </div>
 
         <!-- Global Comnto Widget (Singleton) -->
         <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
