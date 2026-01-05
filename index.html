@@ -3034,7 +3034,7 @@
         ></div>
         <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
              <div
-                 class="mx-auto h-[65vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
+                 class="mx-auto h-[80vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
                  :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[60%]'"
              >
                  <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
@@ -5334,32 +5334,25 @@
                 },
                 comntoTopic(newVal) {
                     try {
-                        if (this.debugModeComntoTopic) {
-                            console.log('comntoTopic change:', newVal);
-                        }
+                        const nextTopic = String(newVal || '');
+                        if (this.debugModeComntoTopic) console.log('comntoTopic change:', nextTopic);
+                        if (this.lastComntoTopicApplied === nextTopic) return;
                         const el = document.querySelector('#comments');
-                        if (el) {
-                            el.setAttribute('data-topic', String(newVal || ''));
-                        }
-                        if (this.comntoWidget && typeof this.comntoWidget.setTopic === 'function') {
-                            this.comntoWidget.setTopic(String(newVal || ''));
-                            if (this.debugModeComntoTopic) {
-                                console.log('setTopic applied');
-                            }
-                            this.lastComntoTopicApplied = String(newVal || '');
+                        if (el) el.setAttribute('data-topic', nextTopic);
+                        if (this.comntoWidget && typeof this.comntoWidget.reload === 'function') {
+                            this.comntoWidget.reload({ topic: nextTopic });
+                            this.lastComntoTopicApplied = nextTopic;
+                            if (this.debugModeComntoTopic) console.log('reload({topic}) applied');
+                        } else if (this.comntoWidget && typeof this.comntoWidget.setTopic === 'function') {
+                            this.comntoWidget.setTopic(nextTopic);
+                            this.lastComntoTopicApplied = nextTopic;
+                            if (this.debugModeComntoTopic) console.log('setTopic applied');
                         } else if (this.comntoWidget && typeof this.comntoWidget.update === 'function') {
-                            this.comntoWidget.update({ topic: String(newVal || '') });
-                            if (this.debugModeComntoTopic) {
-                                console.log('update({topic}) applied');
-                            }
-                            this.lastComntoTopicApplied = String(newVal || '');
-                            setTimeout(() => {
-                                try { this.reinitComntoWidget(newVal); } catch (e) {}
-                            }, 50);
-                        } else {
-                            if (this.debugModeComntoTopic) {
-                                console.warn('No setTopic/update available on comntoWidget');
-                            }
+                            this.comntoWidget.update({ topic: nextTopic });
+                            this.lastComntoTopicApplied = nextTopic;
+                            if (this.debugModeComntoTopic) console.log('update({topic}) applied');
+                        } else if (this.debugModeComntoTopic) {
+                            console.warn('No reload/setTopic/update available on comntoWidget');
                         }
                     } catch {}
                 },
@@ -5640,11 +5633,10 @@
                 openComments(context) {
                     try {
                         this.comntoContext = context || 'main';
-                        if (this.comntoContext === 'modal' && this.selectedEpisode) {
-                            this.comntoTopic = 'episode-' + this.selectedEpisode.EpisodeNumber;
-                        } else {
-                            this.comntoTopic = 'mainPageCD';
-                        }
+                        const desiredTopic = (this.comntoContext === 'modal' && this.selectedEpisode)
+                            ? ('episode-' + this.selectedEpisode.EpisodeNumber)
+                            : 'mainPageCD';
+                        if (this.comntoTopic !== desiredTopic) this.comntoTopic = desiredTopic;
                         this.ensureComntoLoaded(() => {
                             this.comntoVisible = true;
                         });
