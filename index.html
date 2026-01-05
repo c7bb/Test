@@ -7948,17 +7948,29 @@
                             }
 
                             if (searchNumber || fallbackNumber) {
+                                const episodeNumberRaw = this.normalizeDigits(String(episode?.EpisodeNumber || '')).toLowerCase();
+                                try {
+                                    const pattern = this.normalizeText(normalizedTarget);
+                                    if (pattern) {
+                                        const rx = new RegExp(`^${pattern}$`, 'i');
+                                        if (rx.test(episodeNumberRaw)) return true;
+                                    }
+                                } catch (e) {}
                                 const normalizedEpisodeNumber = this.normalizeEpisodeIdentifier(episode.EpisodeNumber);
-                                if (normalizedEpisodeNumber === normalizedTarget) {
-                                    return true;
-                                }
+                                if (normalizedEpisodeNumber === normalizedTarget) return true;
                             }
 
                             if (searchTitle) {
+                                const titleRaw = this.normalizeDigits(String(episode?.EpisodeTitle || '')).toLowerCase();
+                                try {
+                                    const pattern = this.normalizeText(normalizedTarget);
+                                    if (pattern) {
+                                        const rx = new RegExp(pattern, 'i');
+                                        if (rx.test(titleRaw)) return true;
+                                    }
+                                } catch (e) {}
                                 const normalizedEpisodeTitle = this.normalizeEpisodeIdentifier(episode.EpisodeTitle);
-                                if (normalizedEpisodeTitle.includes(normalizedTarget)) {
-                                    return true;
-                                }
+                                if (normalizedEpisodeTitle.includes(normalizedTarget)) return true;
                             }
 
                             return false;
