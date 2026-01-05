@@ -3469,6 +3469,7 @@
                     lastComntoTopicApplied: null,
                     comntoScriptLoaded: false,
                     comntoScriptLoading: false,
+                    debugModeCommentsHeader: true,
                     debugModeComntoTopic: true,
                     fontSize: 16,
                     menuOpen: false,
@@ -3914,6 +3915,31 @@
                 };
             },
             computed: {
+                commentsHeaderText() {
+                    try {
+                        if (this.comntoContext === 'main' || this.comntoTopic === 'mainPageCD') return 'تعليقات الصفحة الرئيسية';
+                        const ep = this.selectedEpisode;
+                        if (!ep || !ep.EpisodeNumber) return 'التعليقات';
+                        const s = String(ep.EpisodeNumber || '');
+                        const { cleanNum, cleanLabel } = this.parseEpisodeLabel(s);
+                        const numOnly = String(cleanNum || '').replace(/\(ج[12]\)\s*$/,'').trim();
+                        if (cleanLabel === 'رقم الحلقة:') return `تعليقات الحلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الفيلم:') return `تعليقات الفيلم ${cleanNum}`;
+                        if (cleanLabel === 'رقم الفيلم التعاوني:') return `تعليقات الفيلم التعاوني ${cleanNum}`;
+                        if (cleanLabel === 'رقم القصة القصيرة:') return `تعليقات القصة القصيرة - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الأوفا:') return `تعليقات الأوفا - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الحلقة الخاصة:') return `تعليقات الحلقة الخاصة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الإصدار الخاص:') return `تعليقات الإصدار الخاص - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم حلقة ماجيك كايتو:') {
+                            if (s.includes('ماجيك كايتو1')) return `تعليقات ماجيك كايتو (ج1) - حلقة ${numOnly}`;
+                            if (s.includes('ماجيك كايتو2')) return `تعليقات ماجيك كايتو (ج2) - حلقة ${numOnly}`;
+                            return `تعليقات ماجيك كايتو - حلقة ${cleanNum}`;
+                        }
+                        if (cleanLabel === 'رقم حلقة يوميات زيرو:') return `تعليقات يوميات الزيرو - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم حلقة المجرم هانزاوا:') return `تعليقات المجرم هانزاوا - حلقة ${cleanNum}`;
+                        return `تعليقات الحلقة ${cleanNum}`;
+                    } catch (e) { return 'التعليقات'; }
+                },
                 activeFilters() {
                     const list = [];
                     if (this.selectedFilter && this.selectedFilter !== 'all') {
@@ -5085,6 +5111,13 @@
                 selectedFilter() {
                     this.comntoVisible = false;
                 },
+                commentsHeaderText(newVal) {
+                    try {
+                        if (this.debugModeCommentsHeader) {
+                            console.log('commentsHeaderText:', newVal, 'context:', this.comntoContext, 'topic:', this.comntoTopic, 'episode:', this.selectedEpisode?.EpisodeNumber);
+                        }
+                    } catch (e) {}
+                },
                 comntoTopic(newVal) {
                     try {
                         if (this.debugModeComntoTopic) {
@@ -5329,30 +5362,6 @@
                 },
             },
             methods: {
-                commentsHeaderText() {
-                    try {
-                        const ep = this.selectedEpisode;
-                        if (!ep || !ep.EpisodeNumber) return 'التعليقات';
-                        const s = String(ep.EpisodeNumber || '');
-                        const { cleanNum, cleanLabel } = this.parseEpisodeLabel(s);
-                        const numOnly = String(cleanNum || '').replace(/\(ج[12]\)\s*$/,'').trim();
-                        if (cleanLabel === 'رقم الحلقة:') return `تعليقات الحلقة ${cleanNum}`;
-                        if (cleanLabel === 'رقم الفيلم:') return `تعليقات الفيلم ${cleanNum}`;
-                        if (cleanLabel === 'رقم الفيلم التعاوني:') return `تعليقات الفيلم التعاوني ${cleanNum}`;
-                        if (cleanLabel === 'رقم القصة القصيرة:') return `تعليقات القصة القصيرة - حلقة ${cleanNum}`;
-                        if (cleanLabel === 'رقم الأوفا:') return `تعليقات الأوفا - حلقة ${cleanNum}`;
-                        if (cleanLabel === 'رقم الحلقة الخاصة:') return `تعليقات الحلقة الخاصة ${cleanNum}`;
-                        if (cleanLabel === 'رقم الإصدار الخاص:') return `تعليقات الإصدار الخاص - حلقة ${cleanNum}`;
-                        if (cleanLabel === 'رقم حلقة ماجيك كايتو:') {
-                            if (s.includes('ماجيك كايتو1')) return `تعليقات ماجيك كايتو (ج1) - حلقة ${numOnly}`;
-                            if (s.includes('ماجيك كايتو2')) return `تعليقات ماجيك كايتو (ج2) - حلقة ${numOnly}`;
-                            return `تعليقات ماجيك كايتو - حلقة ${cleanNum}`;
-                        }
-                        if (cleanLabel === 'رقم حلقة يوميات زيرو:') return `تعليقات يوميات الزيرو - حلقة ${cleanNum}`;
-                        if (cleanLabel === 'رقم حلقة المجرم هانزاوا:') return `تعليقات المجرم هانزاوا - حلقة ${cleanNum}`;
-                        return `تعليقات الحلقة ${cleanNum}`;
-                    } catch (e) { return 'التعليقات'; }
-                },
                 ensureComntoLoaded(onReady) {
                     if (this.comntoWidget) {
                         try { onReady && onReady(); } catch (e) {}
