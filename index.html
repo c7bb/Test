@@ -2832,7 +2832,7 @@
                  :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[60%]'"
              >
                  <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
-                     <h3 class="font-bold text-gray-700 dark:text-gray-200">Comments</h3>
+                     <h3 class="font-bold text-gray-700 dark:text-gray-200">التعليقات</h3>
                      <button @click="comntoVisible = false" class="text-gray-500 hover:text-red-500">
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -3466,6 +3466,7 @@
                     comntoVisible: false,
                     comntoContext: 'main',
                     comntoWidget: null,
+                    lastComntoTopicApplied: null,
                     debugModeComntoTopic: true,
                     fontSize: 16,
                     menuOpen: false,
@@ -5096,11 +5097,16 @@
                             if (this.debugModeComntoTopic) {
                                 console.log('setTopic applied');
                             }
+                            this.lastComntoTopicApplied = String(newVal || '');
                         } else if (this.comntoWidget && typeof this.comntoWidget.update === 'function') {
                             this.comntoWidget.update({ topic: String(newVal || '') });
                             if (this.debugModeComntoTopic) {
                                 console.log('update({topic}) applied');
                             }
+                            this.lastComntoTopicApplied = String(newVal || '');
+                            setTimeout(() => {
+                                try { this.reinitComntoWidget(newVal); } catch (e) {}
+                            }, 50);
                         } else {
                             if (this.debugModeComntoTopic) {
                                 console.warn('No setTopic/update available on comntoWidget');
@@ -5321,6 +5327,37 @@
                 },
             },
             methods: {
+                reinitComntoWidget(newTopic) {
+                    try {
+                        const topic = String(newTopic || this.comntoTopic || 'mainPageCD');
+                        const container = document.getElementById('comments');
+                        if (!container) return;
+                        try {
+                            const iframe = container.querySelector('iframe');
+                            if (iframe) iframe.remove();
+                            container.innerHTML = '';
+                        } catch (e) {}
+                        if (window.comnto) {
+                            this.comntoWidget = window.comnto({
+                                el: '#comments',
+                                site: 'dcref',
+                                theme: 'auto',
+                                locale: 'ar',
+                                topic,
+                                localization: {
+                                    ar: {
+                                        heading: { title: 'التعليقات' }
+                                    }
+                                }
+                            });
+                            try { this.comntoWidget.setDirection && this.comntoWidget.setDirection('rtl'); } catch (e) {}
+                            this.lastComntoTopicApplied = topic;
+                            if (this.debugModeComntoTopic) console.log('Comnto widget reinitialised with topic:', topic);
+                        }
+                    } catch (err) {
+                        if (this.debugModeComntoTopic) console.error('Failed to reinit Comnto widget', err);
+                    }
+                },
                 onJumpInputFocus() {
                     this.jumpInputActive = true;
                     if (this.jumpTargetMode === 'page') {
@@ -11400,8 +11437,16 @@
                             el: '#comments',
                             site: 'dcref',
                             theme: 'auto',
-                            locale: 'ar'
+                            locale: 'ar',
+                            topic: String(this.comntoTopic || 'mainPageCD'),
+                            localization: {
+                                ar: {
+                                    heading: { title: 'التعليقات' }
+                                }
+                            }
                         });
+                        try { this.comntoWidget.setDirection && this.comntoWidget.setDirection('rtl'); } catch (e) {}
+                        this.lastComntoTopicApplied = String(this.comntoTopic || 'mainPageCD');
                         if (this.debugModeComntoTopic) {
                             console.log('Comnto widget initialised', !!this.comntoWidget, typeof this.comntoWidget);
                             const hasSetTopic = this.comntoWidget && typeof this.comntoWidget.setTopic === 'function';
