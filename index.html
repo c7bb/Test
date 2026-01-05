@@ -2626,13 +2626,13 @@
                                         <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
                                     </button>
 
-                                    <button 
-                                        @click="comntoContext = 'modal'; comntoTopic = selectedEpisode ? ('episode-' + selectedEpisode.EpisodeNumber) : comntoTopic; comntoVisible = true" 
-                                        class="group relative flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-cyan-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
-                                    >
-                                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                                        <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
-                                    </button>
+                    <button 
+                        @click="openComments('modal')" 
+                        class="group relative flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-cyan-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
+                    >
+                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                        <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
+                    </button>
 
                                     <button
                                         :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
@@ -2817,7 +2817,7 @@
         <!-- mainCommentPage -->
         <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
              <button
-                 @click="comntoContext = 'main'; comntoTopic = 'mainPageCD'; comntoVisible = true"
+                 @click="openComments('main')"
                  class="group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
              >
                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
@@ -2828,11 +2828,11 @@
         <!-- Global Comnto Widget (Singleton) -->
         <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
              <div
-                 class="mx-auto h-[60vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
+                 class="mx-auto h-[65vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
                  :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[60%]'"
              >
                  <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
-                     <h3 class="font-bold text-gray-700 dark:text-gray-200">التعليقات</h3>
+                     <h3 class="font-bold text-gray-700 dark:text-gray-200">{{ commentsHeaderText }}</h3>
                      <button @click="comntoVisible = false" class="text-gray-500 hover:text-red-500">
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -3467,6 +3467,8 @@
                     comntoContext: 'main',
                     comntoWidget: null,
                     lastComntoTopicApplied: null,
+                    comntoScriptLoaded: false,
+                    comntoScriptLoading: false,
                     debugModeComntoTopic: true,
                     fontSize: 16,
                     menuOpen: false,
@@ -5327,6 +5329,95 @@
                 },
             },
             methods: {
+                commentsHeaderText() {
+                    try {
+                        const ep = this.selectedEpisode;
+                        if (!ep || !ep.EpisodeNumber) return 'التعليقات';
+                        const s = String(ep.EpisodeNumber || '');
+                        const { cleanNum, cleanLabel } = this.parseEpisodeLabel(s);
+                        const numOnly = String(cleanNum || '').replace(/\(ج[12]\)\s*$/,'').trim();
+                        if (cleanLabel === 'رقم الحلقة:') return `تعليقات الحلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الفيلم:') return `تعليقات الفيلم ${cleanNum}`;
+                        if (cleanLabel === 'رقم الفيلم التعاوني:') return `تعليقات الفيلم التعاوني ${cleanNum}`;
+                        if (cleanLabel === 'رقم القصة القصيرة:') return `تعليقات القصة القصيرة - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الأوفا:') return `تعليقات الأوفا - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الحلقة الخاصة:') return `تعليقات الحلقة الخاصة ${cleanNum}`;
+                        if (cleanLabel === 'رقم الإصدار الخاص:') return `تعليقات الإصدار الخاص - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم حلقة ماجيك كايتو:') {
+                            if (s.includes('ماجيك كايتو1')) return `تعليقات ماجيك كايتو (ج1) - حلقة ${numOnly}`;
+                            if (s.includes('ماجيك كايتو2')) return `تعليقات ماجيك كايتو (ج2) - حلقة ${numOnly}`;
+                            return `تعليقات ماجيك كايتو - حلقة ${cleanNum}`;
+                        }
+                        if (cleanLabel === 'رقم حلقة يوميات زيرو:') return `تعليقات يوميات الزيرو - حلقة ${cleanNum}`;
+                        if (cleanLabel === 'رقم حلقة المجرم هانزاوا:') return `تعليقات المجرم هانزاوا - حلقة ${cleanNum}`;
+                        return `تعليقات الحلقة ${cleanNum}`;
+                    } catch (e) { return 'التعليقات'; }
+                },
+                ensureComntoLoaded(onReady) {
+                    if (this.comntoWidget) {
+                        try { onReady && onReady(); } catch (e) {}
+                        return;
+                    }
+                    if (!this.comntoScriptLoaded && !this.comntoScriptLoading) {
+                        this.comntoScriptLoading = true;
+                        const script = document.createElement('script');
+                        script.src = 'https://comnto.com/embed.js';
+                        script.defer = true;
+                        script.onload = () => {
+                            this.comntoScriptLoaded = true;
+                            this.comntoScriptLoading = false;
+                            this.initComntoWidget();
+                            try { onReady && onReady(); } catch (e) {}
+                        };
+                        document.head.appendChild(script);
+                        return;
+                    }
+                    if (this.comntoScriptLoaded && window.comnto && !this.comntoWidget) {
+                        this.initComntoWidget();
+                        try { onReady && onReady(); } catch (e) {}
+                    }
+                },
+                initComntoWidget() {
+                    try {
+                        if (!window.comnto) return;
+                        this.comntoWidget = window.comnto({
+                            el: '#comments',
+                            site: 'dcref',
+                            theme: 'auto',
+                            locale: 'ar',
+                            topic: String(this.comntoTopic || 'mainPageCD'),
+                            localization: {
+                                ar: {
+                                    heading: { title: 'التعليقات' }
+                                }
+                            }
+                        });
+                        try { this.comntoWidget.setDirection && this.comntoWidget.setDirection('rtl'); } catch (e) {}
+                        this.lastComntoTopicApplied = String(this.comntoTopic || 'mainPageCD');
+                        if (this.debugModeComntoTopic) {
+                            const hasSetTopic = this.comntoWidget && typeof this.comntoWidget.setTopic === 'function';
+                            const hasUpdate = this.comntoWidget && typeof this.comntoWidget.update === 'function';
+                            console.log('Comnto widget init; setTopic:', hasSetTopic, 'update:', hasUpdate, 'topic:', this.comntoTopic);
+                        }
+                    } catch (e) {
+                        if (this.debugModeComntoTopic) console.error('initComntoWidget error', e);
+                    }
+                },
+                openComments(context) {
+                    try {
+                        this.comntoContext = context || 'main';
+                        if (this.comntoContext === 'modal' && this.selectedEpisode) {
+                            this.comntoTopic = 'episode-' + this.selectedEpisode.EpisodeNumber;
+                        } else {
+                            this.comntoTopic = 'mainPageCD';
+                        }
+                        this.ensureComntoLoaded(() => {
+                            this.comntoVisible = true;
+                        });
+                    } catch (e) {
+                        this.comntoVisible = true;
+                    }
+                },
                 reinitComntoWidget(newTopic) {
                     try {
                         const topic = String(newTopic || this.comntoTopic || 'mainPageCD');
@@ -11427,35 +11518,7 @@
                 }
                 canonical.href = window.location.origin + window.location.pathname;
 
-                // Load Comnto Script
-                const script = document.createElement('script');
-                script.src = 'https://comnto.com/embed.js';
-                script.defer = true;
-                script.onload = () => {
-                    if (window.comnto) {
-                        this.comntoWidget = window.comnto({
-                            el: '#comments',
-                            site: 'dcref',
-                            theme: 'auto',
-                            locale: 'ar',
-                            topic: String(this.comntoTopic || 'mainPageCD'),
-                            localization: {
-                                ar: {
-                                    heading: { title: 'التعليقات' }
-                                }
-                            }
-                        });
-                        try { this.comntoWidget.setDirection && this.comntoWidget.setDirection('rtl'); } catch (e) {}
-                        this.lastComntoTopicApplied = String(this.comntoTopic || 'mainPageCD');
-                        if (this.debugModeComntoTopic) {
-                            console.log('Comnto widget initialised', !!this.comntoWidget, typeof this.comntoWidget);
-                            const hasSetTopic = this.comntoWidget && typeof this.comntoWidget.setTopic === 'function';
-                            const hasUpdate = this.comntoWidget && typeof this.comntoWidget.update === 'function';
-                            console.log('setTopic available:', hasSetTopic, 'update available:', hasUpdate, 'initial topic:', this.comntoTopic);
-                        }
-                    }
-                };
-                document.head.appendChild(script);
+                // Comnto script will be loaded on-demand when user opens the comments
 
                 // Existing mounted logic
                 // Initialize InstantDB only if this tab is the owner
