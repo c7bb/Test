@@ -7557,6 +7557,19 @@
                 },
                 buildEpisodeJumpTarget(rawInput) {
                     let s = this.normalizeMagicKaitoBraces(rawInput).trim();
+                    if (s) {
+                        const aliasMap = {
+                            'الفلم': 'الفيلم',
+                            'فلم': 'الفيلم'
+                        };
+                        for (const alias in aliasMap) {
+                            const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(alias)}\\b`, 'i');
+                            if (rx.test(s)) {
+                                s = s.replace(rx, aliasMap[alias]);
+                                break;
+                            }
+                        }
+                    }
                     if (!s) return '';
                     if (/^\d+(\.\d+)?$/.test(s)) {
                         const maxStr = this.getMaxNumericEpisode();
