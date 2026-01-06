@@ -2800,8 +2800,8 @@
                                 v-if="!preserveSelectedEpisodeOnModalClose"
                                 class="sticky bottom-1 bg-cyan-900 py-1 z-30"
                             >
-                                <div class="w-full flex items-center justify-center gap-4 sm:gap-8">
-                                    <div class="flex items-center gap-3 sm:gap-6">
+                                <div class="w-full flex items-center justify-center gap-2 sm:gap-8">
+                                    <div class="flex items-center gap-4 sm:gap-8">
                                         <!-- Next Episode Button -->
                                         <button 
                                             v-if="selectedEpisode.EpisodeParts" 
@@ -2828,7 +2828,7 @@
                                         <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
                                     </button>
 
-                                    <div class="flex items-center gap-3 sm:gap-6">
+                                    <div class="flex items-center gap-4 sm:gap-8">
                                         <button
                                             :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
                                             @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
@@ -3045,9 +3045,9 @@
                  :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[60%]'"
              >
                  <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
-                     <h3 class="font-bold text-gray-700 dark:text-gray-200">{{ commentsHeaderText }}</h3>
+                     <h3 class="font-bold text-yellow-300 dark:text-yellow-300">{{ commentsHeaderText }}</h3>
                      <button @click="comntoVisible = false" class="text-gray-500 hover:text-red-500">
-                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="red">
                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                          </svg>
                      </button>
@@ -5641,6 +5641,7 @@
                             const hasUpdate = this.comntoWidget && typeof this.comntoWidget.update === 'function';
                             console.log('Comnto widget init; setTopic:', hasSetTopic, 'update:', hasUpdate, 'topic:', this.comntoTopic);
                         }
+                        this.setupComntoWatermarkRemover();
                     } catch (e) {
                         if (this.debugModeComntoTopic) console.error('initComntoWidget error', e);
                     }
@@ -5685,10 +5686,39 @@
                             try { this.comntoWidget.setDirection && this.comntoWidget.setDirection('rtl'); } catch (e) {}
                             this.lastComntoTopicApplied = topic;
                             if (this.debugModeComntoTopic) console.log('Comnto widget reinitialised with topic:', topic);
+                            this.setupComntoWatermarkRemover();
                         }
                     } catch (err) {
                         if (this.debugModeComntoTopic) console.error('Failed to reinit Comnto widget', err);
                     }
+                },
+                setupComntoWatermarkRemover() {
+                    try {
+                        const container = document.getElementById('comments');
+                        if (!container) return;
+                        const removeWatermark = () => {
+                            const links = container.querySelectorAll('a[href*="comnto.com"]');
+                            links.forEach(link => {
+                                if (link.textContent.includes('يعمل بواسطة') || link.textContent.includes('comnto') || link.href.includes('privacy')) {
+                                    const wrapper = link.closest('div.flex.flex-wrap.justify-between');
+                                    if (wrapper) wrapper.remove();
+                                }
+                            });
+                        };
+                        removeWatermark();
+                        if (this.comntoObserver) this.comntoObserver.disconnect();
+                        this.comntoObserver = new MutationObserver((mutations) => {
+                            let shouldCheck = false;
+                            for (const mutation of mutations) {
+                                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                                    shouldCheck = true;
+                                    break;
+                                }
+                            }
+                            if (shouldCheck) removeWatermark();
+                        });
+                        this.comntoObserver.observe(container, { childList: true, subtree: true });
+                    } catch (e) {}
                 },
                 onJumpInputFocus() {
                     this.jumpInputActive = true;
