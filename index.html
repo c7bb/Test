@@ -47,18 +47,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
         <title>دليل المحقق كونان</title>
         <style>
-            /* Hide comnto watermark by signature */
-            #comments div.flex.flex-wrap.justify-between.gap-4.text-center.text-sm:has(a[href*="comnto.com"]) {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-            /* Fallback if :has not supported or structure differs slightly but link exists */
-            #comments a[href*="comnto.com"] {
-                display: none !important;
-            }
-
             /* Hide elements with v-cloak until Vue is ready */
             [v-cloak] {
                 display: none !important;
@@ -2812,7 +2800,7 @@
                                 v-if="!preserveSelectedEpisodeOnModalClose"
                                 class="sticky bottom-1 bg-cyan-900 py-1 z-30"
                             >
-                                <div class="w-full flex items-center justify-center gap-2 sm:gap-8">
+                                <div class="w-full flex items-center justify-center gap-3 sm:gap-8">
                                     <div class="flex items-center gap-4 sm:gap-8">
                                         <!-- Next Episode Button -->
                                         <button 
@@ -5374,9 +5362,6 @@
                         } else if (this.debugModeComntoTopic) {
                             console.warn('No reload/setTopic/update available on comntoWidget');
                         }
-                        this.$nextTick(() => {
-                            this.setupComntoWatermarkRemover();
-                        });
                     } catch {}
                 },
                 selectedEpisode(newVal) {
@@ -5656,7 +5641,6 @@
                             const hasUpdate = this.comntoWidget && typeof this.comntoWidget.update === 'function';
                             console.log('Comnto widget init; setTopic:', hasSetTopic, 'update:', hasUpdate, 'topic:', this.comntoTopic);
                         }
-                        this.setupComntoWatermarkRemover();
                     } catch (e) {
                         if (this.debugModeComntoTopic) console.error('initComntoWidget error', e);
                     }
@@ -5701,38 +5685,10 @@
                             try { this.comntoWidget.setDirection && this.comntoWidget.setDirection('rtl'); } catch (e) {}
                             this.lastComntoTopicApplied = topic;
                             if (this.debugModeComntoTopic) console.log('Comnto widget reinitialised with topic:', topic);
-                            this.setupComntoWatermarkRemover();
                         }
                     } catch (err) {
                         if (this.debugModeComntoTopic) console.error('Failed to reinit Comnto widget', err);
                     }
-                },
-                setupComntoWatermarkRemover() {
-                    try {
-                        const removeComnto = () => {
-                            const links = document.querySelectorAll('a[href*="comnto.com"]');
-                            links.forEach(link => {
-                                const container = link.closest('div');
-                                if (container) {
-                                    container.remove();
-                                }
-                            });
-                        };
-                        
-                        // Initial check
-                        removeComnto();
-
-                        // Polling for 5 seconds to catch delayed renders
-                        const pollInterval = setInterval(removeComnto, 100);
-                        setTimeout(() => clearInterval(pollInterval), 5000);
-
-                        // MutationObserver for long-term changes
-                        if (this.comntoObserver) this.comntoObserver.disconnect();
-                        this.comntoObserver = new MutationObserver((mutations) => {
-                            removeComnto();
-                        });
-                        this.comntoObserver.observe(document.body, { childList: true, subtree: true });
-                    } catch (e) {}
                 },
                 onJumpInputFocus() {
                     this.jumpInputActive = true;
