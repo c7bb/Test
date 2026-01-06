@@ -47,6 +47,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
         <title>دليل المحقق كونان</title>
         <style>
+            /* Hide comnto watermark by signature */
+            #comments div.flex.flex-wrap.justify-between.gap-4.text-center.text-sm:has(a[href*="comnto.com"]) {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            /* Fallback if :has not supported or structure differs slightly but link exists */
+            #comments a[href*="comnto.com"] {
+                display: none !important;
+            }
+
             /* Hide elements with v-cloak until Vue is ready */
             [v-cloak] {
                 display: none !important;
@@ -5362,6 +5374,9 @@
                         } else if (this.debugModeComntoTopic) {
                             console.warn('No reload/setTopic/update available on comntoWidget');
                         }
+                        this.$nextTick(() => {
+                            this.setupComntoWatermarkRemover();
+                        });
                     } catch {}
                 },
                 selectedEpisode(newVal) {
@@ -5701,21 +5716,22 @@
                             links.forEach(link => {
                                 if (link.textContent.includes('يعمل بواسطة') || link.textContent.includes('comnto') || link.href.includes('privacy')) {
                                     const wrapper = link.closest('div.flex.flex-wrap.justify-between');
-                                    if (wrapper) wrapper.remove();
+                                    if (wrapper) wrapper.style.display = 'none'; // Safer than remove() for hydration
                                 }
                             });
                         };
+                        
+                        // Initial check
                         removeWatermark();
+
+                        // Polling for 5 seconds to catch delayed renders
+                        const pollInterval = setInterval(removeWatermark, 100);
+                        setTimeout(() => clearInterval(pollInterval), 100000);
+
+                        // MutationObserver for long-term changes
                         if (this.comntoObserver) this.comntoObserver.disconnect();
                         this.comntoObserver = new MutationObserver((mutations) => {
-                            let shouldCheck = false;
-                            for (const mutation of mutations) {
-                                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-                                    shouldCheck = true;
-                                    break;
-                                }
-                            }
-                            if (shouldCheck) removeWatermark();
+                            removeWatermark();
                         });
                         this.comntoObserver.observe(container, { childList: true, subtree: true });
                     } catch (e) {}
