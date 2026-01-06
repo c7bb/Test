@@ -5709,31 +5709,29 @@
                 },
                 setupComntoWatermarkRemover() {
                     try {
-                        const container = document.getElementById('comments');
-                        if (!container) return;
-                        const removeWatermark = () => {
-                            const links = container.querySelectorAll('a[href*="comnto.com"]');
+                        const removeComnto = () => {
+                            const links = document.querySelectorAll('a[href*="comnto.com"]');
                             links.forEach(link => {
-                                if (link.textContent.includes('يعمل بواسطة') || link.textContent.includes('comnto') || link.href.includes('privacy')) {
-                                    const wrapper = link.closest('div.flex.flex-wrap.justify-between');
-                                    if (wrapper) wrapper.style.display = 'none'; // Safer than remove() for hydration
+                                const container = link.closest('div');
+                                if (container) {
+                                    container.remove();
                                 }
                             });
                         };
                         
                         // Initial check
-                        removeWatermark();
+                        removeComnto();
 
                         // Polling for 5 seconds to catch delayed renders
-                        const pollInterval = setInterval(removeWatermark, 100);
-                        setTimeout(() => clearInterval(pollInterval), 100000);
+                        const pollInterval = setInterval(removeComnto, 100);
+                        setTimeout(() => clearInterval(pollInterval), 5000);
 
                         // MutationObserver for long-term changes
                         if (this.comntoObserver) this.comntoObserver.disconnect();
                         this.comntoObserver = new MutationObserver((mutations) => {
-                            removeWatermark();
+                            removeComnto();
                         });
-                        this.comntoObserver.observe(container, { childList: true, subtree: true });
+                        this.comntoObserver.observe(document.body, { childList: true, subtree: true });
                     } catch (e) {}
                 },
                 onJumpInputFocus() {
