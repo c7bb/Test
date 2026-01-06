@@ -5595,7 +5595,7 @@
                     const labelRect = label.getBoundingClientRect();
 
                     // If the bottom of the label is above the top of the container
-                    this.showStickyLabel = labelRect.bottom <= containerRect.top;
+                    this.showStickyLabel = labelRect.top <= containerRect.top;
                 },
                 ensureComntoLoaded(onReady) {
                     if (this.comntoWidget) {
