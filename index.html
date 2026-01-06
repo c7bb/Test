@@ -2798,10 +2798,10 @@
                             </div>
                             <div
                                 v-if="!preserveSelectedEpisodeOnModalClose"
-                                class="sticky bottom-1 bg-cyan-900 px-10 py-1 z-30"
+                                class="sticky bottom-1 bg-cyan-900 py-1 z-30"
                             >
-                                <div class="w-full flex items-center justify-between">
-                                    <div class="flex items-center gap-2">
+                                <div class="w-full flex items-center justify-center gap-2 sm:gap-4">
+                                    <div class="flex items-center gap-1 sm:gap-2">
                                         <button
                                             :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
                                             @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
@@ -2829,7 +2829,7 @@
                                         <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
                                     </button>
 
-                                    <div class="flex items-center gap-2">
+                                    <div class="flex items-center gap-1 sm:gap-2">
                                         <!-- Previous Episode Button -->
                                         <button 
                                             v-if="selectedEpisode.EpisodeParts" 
@@ -9667,7 +9667,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
