@@ -2383,42 +2383,27 @@
 
                             <!-- Sticky Header Section -->
                             <div class="sticky top-0 bg-cyan-900 pt-4 pl-4 pr-4 pb-2">
-                                <div class="flex justify-between items-center">
-                                    <!-- Right Side: Navigation Buttons -->
-                                    <div class="flex space-x-2">
-                                        <!-- Next Episode Button -->
-                                        <button 
-                                            v-if="selectedEpisode.EpisodeParts" 
-                                            :disabled="!nextEpisodeExists || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                            @click="fetchNextEpisode(); resetStatusForEpisodeManga();" 
-                                            class="ml-12 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                        >
-                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next.png" alt="التالي" class="h-8 w-8" />
-                                        </button>
-                                        
-                                        <!-- Previous Episode Button -->
-                                        <button 
-                                            v-if="selectedEpisode.EpisodeParts" 
-                                            :disabled="!previousEpisodeExists || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                            @click="fetchPreviousEpisode(); resetStatusForEpisodeManga();" 
-                                            class="disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                        >
-                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="السابق" class="h-8 w-8" />
-                                        </button>
+                                <div class="flex justify-between items-center h-10">
+                                    <!-- Middle: Sticky Title -->
+                                    <div class="flex-1 flex items-center justify-center transition-opacity duration-300" :class="showStickyLabel ? 'opacity-100' : 'opacity-0'">
+                                        <p v-if="selectedEpisode && showStickyLabel" class="text-lg font-bold truncate">
+                                            <span>{{ parseEpisodeLabel(selectedEpisode.EpisodeNumber).cleanLabel }}</span>
+                                            {{ parseEpisodeLabel(selectedEpisode.EpisodeNumber).cleanNum }}
+                                        </p>
                                     </div>
-                                    <!-- Middle: Empty Space or Title Placeholder -->
-                                    <div class="flex-1"></div>
                                     <!-- Left Side: Close Modal Button -->
                                     <button @click="closeModal" class="text-red-600 hover:text-yellow-300 font-bold transition-all duration-100 active:scale-90">
                                         <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/close.png" alt="Close" class="h-8 w-8" />
                                     </button>
-
-
                                 </div>
                             </div>                          
                             
                             <!-- Scrollable Content -->
-                            <div class="overflow-y-auto p-4 flex-1 always-visible-scrollbar" @click="relatedEpisodeMenuOpen = false">
+                            <div 
+                                class="overflow-y-auto p-4 flex-1 always-visible-scrollbar" 
+                                @click="relatedEpisodeMenuOpen = false"
+                                @scroll="handleModalScroll"
+                            >
 
 
                                 <div v-if="selectedEpisode" class="relative mb-4">
@@ -2455,7 +2440,7 @@
                                     </div>
                                 </div>
 
-                                <p v-if="selectedEpisode" class="mb-2 text-lg">
+                                <p v-if="selectedEpisode" ref="episodeTitleLabel" class="mb-2 text-lg">
                                     <span>{{ parseEpisodeLabel(selectedEpisode.EpisodeNumber).cleanLabel }}</span>
                                     {{ parseEpisodeLabel(selectedEpisode.EpisodeNumber).cleanNum }}
                                 </p>
@@ -2816,29 +2801,53 @@
                                 class="sticky bottom-1 bg-cyan-900 px-10 py-1 z-30"
                             >
                                 <div class="w-full flex items-center justify-between">
-                                    <button
-                                        :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                        @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                        class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                    <div class="flex items-center gap-2">
+                                        <button
+                                            :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
+                                        </button>
+                                        
+                                        <!-- Next Episode Button -->
+                                        <button 
+                                            v-if="selectedEpisode.EpisodeParts" 
+                                            :disabled="!nextEpisodeExists || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchNextEpisode(); resetStatusForEpisodeManga();" 
+                                            class="disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next.png" alt="التالي" class="h-8 w-8" />
+                                        </button>
+                                    </div>
+
+                                    <button 
+                                        @click="openComments('modal')" 
+                                        class="group relative flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-cyan-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
                                     >
-                                        <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
+                                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
+                                        <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
                                     </button>
 
-                    <button 
-                        @click="openComments('modal')" 
-                        class="group relative flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-cyan-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
-                    >
-                        <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                        <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
-                    </button>
+                                    <div class="flex items-center gap-2">
+                                        <!-- Previous Episode Button -->
+                                        <button 
+                                            v-if="selectedEpisode.EpisodeParts" 
+                                            :disabled="!previousEpisodeExists || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchPreviousEpisode(); resetStatusForEpisodeManga();" 
+                                            class="disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="السابق" class="h-8 w-8" />
+                                        </button>
 
-                                    <button
-                                        :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                        @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                        class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                    >
-                                        <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
-                                    </button>
+                                        <button
+                                            :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -3016,10 +3025,10 @@
         <div class="w-full flex justify-center pt-10" v-if="!loading && userJoined">
              <button
                  @click="openComments('main')"
-                 class="group relative flex items-center gap-2 px-10 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
+                 class="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-cyan-500/50 hover:scale-105 active:scale-95 transition-all duration-300 border border-cyan-400/30 overflow-hidden"
              >
                  <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out"></div>
-                 <span class="font-bold text-sm relative z-10 drop-shadow-md">التعليقات</span>
+                 <span class="font-bold text-sm relative z-10 drop-shadow-md">تعليقات الصفحة الرئيسية</span>
              </button>
         </div>
 
@@ -3034,7 +3043,7 @@
         ></div>
         <div v-show="comntoVisible" class="fixed bottom-0 left-0 right-0 z-[100] transition-transform duration-300 ease-in-out" :class="comntoVisible ? 'translate-y-0' : 'translate-y-full'">
              <div
-                 class="mx-auto h-[80vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
+                 class="mx-auto h-[90vh] rounded-t-xl overflow-hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col"
                  :class="comntoContext === 'main' ? 'w-full sm:w-[80%] md:w-[70%] lg:w-[60%] max-w-screen-lg' : 'w-[100%] sm:w-[80%] md:w-[70%] lg:w-[60%]'"
              >
                  <div class="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
@@ -3668,6 +3677,7 @@
         const app = createApp({
             data() {
                 return {
+                    showStickyLabel: false,
                     comntoTopic: 'mainPageCD',
                     comntoVisible: false,
                     comntoContext: 'main',
@@ -5576,6 +5586,17 @@
                 },
             },
             methods: {
+                handleModalScroll(event) {
+                    const container = event.target;
+                    const label = this.$refs.episodeTitleLabel;
+                    if (!container || !label) return;
+
+                    const containerRect = container.getBoundingClientRect();
+                    const labelRect = label.getBoundingClientRect();
+
+                    // If the bottom of the label is above the top of the container
+                    this.showStickyLabel = labelRect.bottom < containerRect.top;
+                },
                 ensureComntoLoaded(onReady) {
                     if (this.comntoWidget) {
                         try { onReady && onReady(); } catch (e) {}
@@ -7630,6 +7651,8 @@
                     return s;
                 },
                 executeJumpValue() {
+                    this.resetFilters();
+                    this.clearSearch();
                     this.comntoVisible = false;
                     const raw = String(this.jumpInput || '').trim();
                     if (this.jumpTargetMode === 'episode') {
