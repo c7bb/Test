@@ -2800,16 +2800,8 @@
                                 v-if="!preserveSelectedEpisodeOnModalClose"
                                 class="sticky bottom-1 bg-cyan-900 py-1 z-30"
                             >
-                                <div class="w-full flex items-center justify-center gap-2 sm:gap-4">
-                                    <div class="flex items-center gap-1 sm:gap-2">
-                                        <button
-                                            :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                            @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                        >
-                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
-                                        </button>
-                                        
+                                <div class="w-full flex items-center justify-center gap-4 sm:gap-8">
+                                    <div class="flex items-center gap-3 sm:gap-6">
                                         <!-- Next Episode Button -->
                                         <button 
                                             v-if="selectedEpisode.EpisodeParts" 
@@ -2818,6 +2810,13 @@
                                             class="disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                                         >
                                             <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next.png" alt="التالي" class="h-8 w-8" />
+                                        </button>
+                                        <button
+                                            :disabled="!hasNextFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchNextEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/next-tb.png" alt="التالي" class="h-8 w-8" />
                                         </button>
                                     </div>
 
@@ -2829,7 +2828,14 @@
                                         <span class="font-bold text-base relative z-10 drop-shadow-md">التعليقات</span>
                                     </button>
 
-                                    <div class="flex items-center gap-1 sm:gap-2">
+                                    <div class="flex items-center gap-3 sm:gap-6">
+                                        <button
+                                            :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
+                                            @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
+                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
+                                        >
+                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
+                                        </button>
                                         <!-- Previous Episode Button -->
                                         <button 
                                             v-if="selectedEpisode.EpisodeParts" 
@@ -2838,14 +2844,6 @@
                                             class="disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
                                         >
                                             <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous.png" alt="السابق" class="h-8 w-8" />
-                                        </button>
-
-                                        <button
-                                            :disabled="!hasPreviousFilteredEpisode || selectedEpisode.EpisodeVideosIDs?.some(video => video.status === 'success' || video.status === 'ratelimiting' || video.status === 'sending') || selectedEpisode.EpisodeMangasIDs?.some(manga => manga.status === 'success' || manga.status === 'ratelimiting' || manga.status === 'sending')" 
-                                            @click="fetchPreviousEpisodeByNumber(); resetStatusForEpisodeManga();" 
-                                            class="rounded-full p-2 md:p-3 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-100 active:scale-90"
-                                        >
-                                            <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/previous-tb.png" alt="السابق" class="h-8 w-8" />
                                         </button>
                                     </div>
                                 </div>
@@ -9667,7 +9665,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
