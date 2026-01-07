@@ -1891,7 +1891,7 @@
                                             :data-filter-key="opt.modelKey"
                                             @change="onFilterCheckboxChange(opt.modelKey, $event)"
                                         >
-                                        <span class="px-2 font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
+                                        <span class="px-2 text-base font-bold">{{ opt.label }} ({{ getByKey(opt.countKey) }})</span>
                                     </label>
                                 </div>
 
@@ -1909,7 +1909,7 @@
                                                         :data-filter-key="characterEpisodesKey(id)"
                                                         @change="onCharacterToggle(id, $event.target.checked)"
                                                     >
-                                                    <span class="px-2 font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
+                                                    <span class="px-2 text-base font-bold">{{ characterLabel(id) }} ({{ getByKey(characterCountKey(id)) }})</span>
                                                 </label>
 
                                                 <fieldset
