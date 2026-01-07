@@ -5678,11 +5678,8 @@
                                 return;
                             }
 
-                            // Reload if needed
-                            if (!topicChanged && this.comntoWidget && typeof this.comntoWidget.reload === 'function') {
-                                this.comntoWidget.reload({ topic: desiredTopic });
-                                if (this.debugModeComntoTopic) console.log('openComments forced reload:', desiredTopic);
-                            }
+                            // If topic changed, the watcher will handle the update.
+                            // If topic is same, we do nothing (just show existing iframe) to save pageviews.
                         });
                     } catch (e) {
                         this.comntoVisible = true;
