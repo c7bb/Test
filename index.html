@@ -6306,6 +6306,12 @@
                         }
                         return;
                     }
+                    if (this.comntoVisible) {
+                        if (this.debugModeInactivityCountdown) {
+                            console.log('inactivityCountdown: paused-by-comments', { countdown: this.inactivityCountdown });
+                        }
+                        return;
+                    }
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - this.lastActivityAt) / 1000);
                     const remaining = this.inactivityDurationSeconds - elapsedSeconds;
