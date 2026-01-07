@@ -3683,6 +3683,7 @@
                     lastComntoTopicApplied: null,
                     comntoScriptLoaded: false,
                     comntoScriptLoading: false,
+                    comntoLoadingCallbacks: [],
                     debugModeCommentsHeader: true,
                     debugModeComntoTopic: true,
                     debugModeInactivityCountdown: true,
@@ -5601,8 +5602,13 @@
                         try { onReady && onReady(); } catch (e) {}
                         return;
                     }
-                    if (!this.comntoScriptLoaded && !this.comntoScriptLoading) {
+                    if (this.comntoScriptLoading) {
+                        if (onReady) this.comntoLoadingCallbacks.push(onReady);
+                        return;
+                    }
+                    if (!this.comntoScriptLoaded) {
                         this.comntoScriptLoading = true;
+                        if (onReady) this.comntoLoadingCallbacks.push(onReady);
                         const script = document.createElement('script');
                         script.src = 'https://comnto.com/embed.js';
                         script.defer = true;
@@ -5610,7 +5616,10 @@
                             this.comntoScriptLoaded = true;
                             this.comntoScriptLoading = false;
                             this.initComntoWidget();
-                            try { onReady && onReady(); } catch (e) {}
+                            while (this.comntoLoadingCallbacks.length > 0) {
+                                const cb = this.comntoLoadingCallbacks.shift();
+                                try { cb && cb(); } catch (e) {}
+                            }
                         };
                         document.head.appendChild(script);
                         return;
@@ -5652,9 +5661,28 @@
                         const desiredTopic = (this.comntoContext === 'modal' && this.selectedEpisode)
                             ? ('episode-' + this.selectedEpisode.EpisodeNumber)
                             : 'mainPageCD';
-                        if (this.comntoTopic !== desiredTopic) this.comntoTopic = desiredTopic;
+                        
+                        const topicChanged = (this.comntoTopic !== desiredTopic);
+                        if (topicChanged) this.comntoTopic = desiredTopic;
+
+                        // Show immediately so user can close it if they want
+                        this.comntoVisible = true;
+
                         this.ensureComntoLoaded(() => {
-                            this.comntoVisible = true;
+                            // Check if user closed the modal while loading
+                            if (!this.comntoVisible) return;
+
+                            // Initialize if not exists
+                            if (!this.comntoWidget) {
+                                this.initComntoWidget();
+                                return;
+                            }
+
+                            // Reload if needed
+                            if (!topicChanged && this.comntoWidget && typeof this.comntoWidget.reload === 'function') {
+                                this.comntoWidget.reload({ topic: desiredTopic });
+                                if (this.debugModeComntoTopic) console.log('openComments forced reload:', desiredTopic);
+                            }
                         });
                     } catch (e) {
                         this.comntoVisible = true;
