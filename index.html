@@ -3684,9 +3684,9 @@
                     comntoScriptLoaded: false,
                     comntoScriptLoading: false,
                     comntoLoadingCallbacks: [],
-                    debugModeCommentsHeader: true,
+                    debugModeCommentsHeader: false,
                     debugModeComntoTopic: true,
-                    debugModeInactivityCountdown: true,
+                    debugModeInactivityCountdown: false,
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -9716,7 +9716,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
