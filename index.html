@@ -1826,8 +1826,8 @@
             <div v-if="showEmptyPopup" ref="emptyPopupRoot" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-70 flex items-center justify-center z-50">
                 <div class="relative bg-sky-900 rounded shadow-lg w-[100%] sm:w-[80%] md:w-[70%] lg:w-[50%] max-h-[100vh] overflow-hidden flex flex-col"> <!-- the defualt is 80vh in max-h-[95vh]-->
                     <!-- Sticky Header Section -->
-                    <div class="sticky top-0 z-50 bg-sky-900 p-4">
-                        <h2 class="text-xl font-bold text-green-400 relative">
+                    <div class="sticky top-0 z-50 bg-sky-900 p-3">
+                        <h2 class="text-2xl font-bold text-green-400 relative">
                             <!-- Close Button in the Top Left of the Title -->
                             <button 
                                 @click="closeEmptyPopup" 
@@ -1842,7 +1842,9 @@
                             <img src="https://raw.githubusercontent.com/c7bb/6Y9//main/c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/res/redo.png" alt="Reset" class="h-9 w-9"/>
                         </button>
                         </h2>
-                        <span class="text-yellow-300 pr-9 font-bold text-lg">({{ totalEpisodes }})</span>
+                        <span class="text-yellow-300 font-bold pr-1 text-base">
+                            نتائج التصفية: ({{ totalEpisodes }})
+                        </span>
                     </div>                    
                     
                     <!-- Scrollable Content -->
