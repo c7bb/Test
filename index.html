@@ -3685,6 +3685,7 @@
                     comntoScriptLoading: false,
                     debugModeCommentsHeader: true,
                     debugModeComntoTopic: true,
+                    debugModeInactivityCountdown: true,
                     fontSize: 16,
                     menuOpen: false,
                     userJoined: false,
@@ -6287,21 +6288,37 @@
                 },
 
                 updateInactivityCountdown() {
-                    if (this.inactivityModal) return;
-                    // Pause countdown when any manga queue is running
+                    if (this.inactivityModal) {
+                        if (this.debugModeInactivityCountdown) {
+                            console.log('inactivityCountdown: modal-open', { countdown: this.inactivityCountdown });
+                        }
+                        return;
+                    }
                     if (this.isAnyMangaQueueRunning) {
+                        if (this.debugModeInactivityCountdown) {
+                            console.log('inactivityCountdown: paused-by-mangaQueue', { countdown: this.inactivityCountdown });
+                        }
                         return;
                     }
                     if (this.isCapturingEpisodeTableImages) {
+                        if (this.debugModeInactivityCountdown) {
+                            console.log('inactivityCountdown: paused-by-capture', { countdown: this.inactivityCountdown });
+                        }
                         return;
                     }
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - this.lastActivityAt) / 1000);
                     const remaining = this.inactivityDurationSeconds - elapsedSeconds;
                     this.inactivityCountdown = remaining > 0 ? remaining : 0;
+                    if (this.debugModeInactivityCountdown) {
+                        console.log('inactivityCountdown: tick', { countdown: this.inactivityCountdown });
+                    }
                     if (remaining <= 0) {
                         this.inactivityModal = true;
                         this.setBodyScrollLock(true);
+                        if (this.debugModeInactivityCountdown) {
+                            console.log('inactivityCountdown: reached-zero -> modal-open');
+                        }
                     }
                 },
 
