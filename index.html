@@ -9794,12 +9794,12 @@
                 },
 
                 findUnescapedMarkdownV2Chars(text) {
-                    const re = /(?<!\\)[_*[\]()~`>#+\-=|{}.!]/g;
+                    const re = /(?:^|[^\\])([_*[\]()~`>#+\-=|{}.!])/g;
                     const out = [];
                     const s = String(text || '');
                     let m;
                     while ((m = re.exec(s)) !== null) {
-                        out.push({ index: m.index, char: m[0] });
+                        out.push({ index: m.index + (m[0].length - 1), char: m[1] });
                     }
                     return out;
                 },
@@ -9842,7 +9842,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
