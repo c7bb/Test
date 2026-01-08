@@ -7627,22 +7627,6 @@
                 },
                 buildEpisodeJumpTarget(rawInput) {
                     let s = this.normalizeMagicKaitoBraces(rawInput).trim();
-                    if (s) {
-                        const aliasMap = {
-                            'الفلم': 'الفيلم',
-                            'فلم': 'الفيلم',
-                            'الفليم': 'الفيلم',
-                            'فيلم': 'الفيلم',
-                            'فليم': 'الفيلم'
-                        };
-                        for (const alias in aliasMap) {
-                            const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(alias)}(?=$|[\\s،,.])`, 'i');
-                            if (rx.test(s)) {
-                                s = s.replace(rx, aliasMap[alias]);
-                                break;
-                            }
-                        }
-                    }
                     if (!s) return '';
                     if (/^\d+(\.\d+)?$/.test(s)) {
                         const maxStr = this.getMaxNumericEpisode();
@@ -7657,7 +7641,6 @@
                         return s;
                     }
                     const prefixes = [
-                        'الفيلم',
                         'فيلم تعاوني',
                         'قصة قصيرة',
                         'أوفا',
@@ -7666,7 +7649,8 @@
                         'ماجيك كايتو1',
                         'ماجيك كايتو2',
                         'يوميات زيرو',
-                        'المجرم هانزاوا'
+                        'المجرم هانزاوا',
+                        'الفيلم'
                     ];
                     let matchedPrefix = '';
                     for (const p of prefixes) {
