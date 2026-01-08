@@ -2235,21 +2235,21 @@
                                         </label>
                                     </div>
                                     <div class="relative flex-1 w-full max-w-xs">
-                                        <input
+                                        <textarea
                                             v-model.trim="jumpInput"
                                             @focus="onJumpInputFocus"
                                             @blur="onJumpInputBlur"
                                             @keydown.enter.prevent="executeJumpValue"
                                             :inputmode="jumpTargetMode === 'page' ? 'numeric' : 'text'"
-                                            :pattern="jumpTargetMode === 'page' ? '[0-9٠-٩۰-۹]*' : undefined"
+                                            rows="1"
                                             :class="[
-                                                'w-full px-1 py-3 text-base bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400',
+                                                'w-full px-1 py-3 text-base bg-gray-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-teal-400 resize-none overflow-y-auto whitespace-pre-wrap break-words',
                                                 jumpTargetMode === 'page'
                                                     ? (jumpInputActive ? 'text-right' : 'text-center')
                                                     : ''
                                             ]"
                                             :placeholder="jumpTargetMode === 'page' ? 'رقم الصفحة...' : 'رقم الحلقة...'"
-                                        />
+                                        ></textarea>
                                         <button
                                             v-if="jumpTargetMode !== 'page'"
                                             @click="clearJumpInput"
@@ -9842,7 +9842,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+                        
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
