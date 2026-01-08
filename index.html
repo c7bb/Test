@@ -5019,6 +5019,14 @@
                         ? this.parseNumberSearchParts(rawSearchQuery)
                         : null;
 
+                    const normalizedNoBraces = rawSearchQuery
+                        .replace(/\{\s*ج\s*[12]\s*\}/g, '')
+                        .replace(/\(\s*ج\s*[12]\s*\)/g, '')
+                        .trim();
+                    const containsMagicKaito = /(^|[\s،,])ماجيك\s+كايتو($|[\s،,])/i.test(normalizedNoBraces);
+                    const containsFilm = /(^|[\s،,])(الفيلم|فيلم|الفلم|فلم|الفليم|فليم)($|[\س،,])/i.test(normalizedNoBraces);
+                    const skipCategoryFilter = !!this.searchQuery && (containsMagicKaito || containsFilm);
+
                     let filteredByType = applyEpisodeTypeFilter(this.episodes, this.episodeTypeFilter);
                     filteredByType = applyToggleFilters(filteredByType, this, EPISODE_TOGGLE_FILTERS);
                     filteredByType = applyCharacterFilters(filteredByType, this, FILTER_UI);
@@ -5052,6 +5060,7 @@
                     // Apply other filters (e.g., category and search query)
                     return filteredByType
                     .filter(episode => {
+                        if (skipCategoryFilter) return true;
                         if (this.selectedFilter === 'anime') {
                             return /^[0-9]+(\.[0-9]+)?$/.test(episode.EpisodeNumber);
                         } else if (this.selectedFilter === 'movies') {
