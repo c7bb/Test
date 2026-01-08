@@ -5024,9 +5024,8 @@
                         .replace(/\(\s*ج\s*[12]\s*\)/g, '')
                         .trim();
                     const containsMagicKaito = /(^|[\s،,])ماجيك\s+كايتو($|[\s،,])/i.test(normalizedNoBraces);
-                    const containsFilm = /(^|[\s،,])(الفيلم|فيلم|الفلم|فلم|الفليم|فليم)($|[\س،,])/i.test(normalizedNoBraces);
+                    const containsFilm = /(^|[\s،,])(الفيلم|فيلم|الفلم|فلم|الفليم|فليم)($|[\s،,])/i.test(normalizedNoBraces);
                     const skipCategoryFilter = !!this.searchQuery && (containsMagicKaito || containsFilm);
-
                     let filteredByType = applyEpisodeTypeFilter(this.episodes, this.episodeTypeFilter);
                     filteredByType = applyToggleFilters(filteredByType, this, EPISODE_TOGGLE_FILTERS);
                     filteredByType = applyCharacterFilters(filteredByType, this, FILTER_UI);
@@ -5127,6 +5126,16 @@
                                     numberMatch = textFragments.some(fragment =>
                                         normalizedEpisodeNumberText.includes(this.normalizeEpisodeIdentifier(fragment))
                                     );
+                                }
+                                if (!numberMatch) {
+                                    const formattedEpisodeNumberText = this.normalizeDigits(String(this.formatEpisodeNumber(episode.EpisodeNumber) || '')).toLowerCase();
+                                    const normalizedFormattedEpisodeNumberText = this.normalizeEpisodeIdentifier(formattedEpisodeNumberText);
+                                    numberMatch = numberMatch || textFragmentRegexes.some(regex => (regex ? regex.test(formattedEpisodeNumberText) : false));
+                                    if (!numberMatch) {
+                                        numberMatch = textFragments.some(fragment =>
+                                            normalizedFormattedEpisodeNumberText.includes(this.normalizeEpisodeIdentifier(fragment))
+                                        );
+                                    }
                                 }
                             }
 
