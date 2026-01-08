@@ -7627,7 +7627,9 @@
                         const aliasMap = {
                             'الفلم': 'الفيلم',
                             'فلم': 'الفيلم',
-                            'الفليم': 'الفيلم'
+                            'الفليم': 'الفيلم',
+                            'فيلم': 'الفيلم',
+                            'فليم': 'الفيلم'
                         };
                         for (const alias in aliasMap) {
                             const rx = new RegExp(`^\\s*${this.escapeRegExpLiteral(alias)}(?=$|[\\s،,.])`, 'i');
@@ -9716,7 +9718,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
