@@ -3862,15 +3862,9 @@
                         "فيلم": ["الفيلم","فيلم","الفلم","فلم","الفليم","فليم"],
                         "فليم": ["الفيلم","فيلم","الفلم","فلم","الفليم","فليم"],
                         "الفيلم": ["الفيلم","فيلم","الفلم","فلم","الفليم","فليم"],
-                        "ماجيك كايتو": ["ماجيك كايتو","ماجيك كايتو1","ماجيك كايتو2"],
-                        "ماجيك كايتو1": ["ماجيك كايتو","ماجيك كايتو1","ماجيك كايتو2"],
-                        "ماجيك كايتو2": ["ماجيك كايتو","ماجيك كايتو1","ماجيك كايتو2"],
-                        "ج1": ["ج1","(ج1)","{ج1}"],
-                        "(ج1)": ["ج1","(ج1)","{ج1}"],
-                        "{ج1}": ["ج1","(ج1)","{ج1}"],
-                        "ج2": ["ج2","(ج2)","{ج2}"],
-                        "(ج2)": ["ج2","(ج2)","{ج2}"],
-                        "{ج2}": ["ج2","(ج2)","{ج2}"],
+                        "ماجيك كايتو": ["ماجيك كايتو"],
+                        "ماجيك كايتو1": ["ماجيك كايتو1"],
+                        "ماجيك كايتو2": ["ماجيك كايتو2"],
                         "سان": ["سيد","السيد"],
                         "سيد": ["سان","السيد"],
                         "السيد": ["سان","سيد"],
@@ -7628,8 +7622,10 @@
                         const hasJ2 = /\{\s*ج\s*2\s*\}/.test(raw) || /\(\s*ج\s*2\s*\)/.test(raw);
                         if (hasJ1) {
                             raw = raw.replace(/\{\s*ج\s*1\s*\}/g, '').replace(/\(\s*ج\s*1\s*\)/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو1');
+                            raw = raw.replace(/ماجيك\s+كايتو1\s+1\s+/gi, 'ماجيك كايتو1 ').replace(/ماجيك\s+كايتو1\s+1$/gi, 'ماجيك كايتو1');
                         } else if (hasJ2) {
                             raw = raw.replace(/\{\s*ج\s*2\s*\}/g, '').replace(/\(\s*ج\s*2\s*\)/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو2');
+                            raw = raw.replace(/ماجيك\s+كايتو2\s+2\s+/gi, 'ماجيك كايتو2 ').replace(/ماجيك\s+كايتو2\s+2$/gi, 'ماجيك كايتو2');
                         }
                     }
                     return raw;
@@ -7670,7 +7666,9 @@
                         }
                     }
                     if (matchedPrefix) {
-                        const numMatch = s.match(/(\d+(?:\.\\d+)?)/);
+                        const prefixEndIndex = s.search(new RegExp(`${this.escapeRegExpLiteral(matchedPrefix)}(?=$|[\\s،,.])`, 'i')) + matchedPrefix.length;
+                        const afterPrefix = s.slice(prefixEndIndex).trim();
+                        const numMatch = afterPrefix.match(/^(\d+(?:\.\d+)?)/);
                         let n = numMatch ? parseFloat(numMatch[1]) : NaN;
                         if (isNaN(n)) {
                             const text = this.normalizeDigits(s).toLowerCase();
@@ -7759,13 +7757,16 @@
                 normalizeText(text) {
                     let raw = this.normalizeDigits(text).toLowerCase();
                     if (!raw) return '';
+
                     if (raw.includes('ماجيك كايتو')) {
                         const hasJ1 = /\{\s*ج\s*1\s*\}/.test(raw) || /\(\s*ج\s*1\s*\)/.test(raw);
                         const hasJ2 = /\{\s*ج\s*2\s*\}/.test(raw) || /\(\s*ج\s*2\s*\)/.test(raw);
                         if (hasJ1) {
                             raw = raw.replace(/\{\s*ج\s*1\s*\}/g, '').replace(/\(\s*ج\s*1\s*\)/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو1');
+                            raw = raw.replace(/ماجيك\s+كايتو1\s+1\s+/gi, 'ماجيك كايتو1 ').replace(/ماجيك\s+كايتو1\s+1$/gi, 'ماجيك كايتو1');
                         } else if (hasJ2) {
                             raw = raw.replace(/\{\s*ج\s*2\s*\}/g, '').replace(/\(\s*ج\s*2\s*\)/g, '').replace(/ماجيك\s+كايتو/g, 'ماجيك كايتو2');
+                            raw = raw.replace(/ماجيك\s+كايتو2\s+2\s+/gi, 'ماجيك كايتو2 ').replace(/ماجيك\s+كايتو2\s+2$/gi, 'ماجيك كايتو2');
                         }
                     }
 
