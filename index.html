@@ -5187,7 +5187,7 @@
                 },
                 episodeCountText() {
                     const count = this.totalEpisodes;
-                    if (count === 0 || count === 1) return 'حلقة';
+                    if (count === 1) return 'حلقة';
                     if (count === 2) return 'حلقتين';
                     if (count >= 3 && count <= 10) return `${count} حلقات`;
                     return `${count} حلقة`;
@@ -8409,9 +8409,11 @@
                                     });
                             };
 
-                            if (!force) {
-                                this.checkDataVersion().then(async remoteVersion => {
-                                    let cacheLoaded = false;
+                            this.checkDataVersion().then(async remoteVersion => {
+                                let cacheLoaded = false;
+                                
+                                // Only check cache if NOT forced
+                                if (!force) {
                                     try {
                                         const localVersion = localStorage.getItem('data_version');
                                         const localDate = localStorage.getItem('data_date');
@@ -8447,17 +8449,16 @@
                                         console.warn('Cache load failed, falling back to fetch', e);
                                         // Fallthrough to performFetch
                                     }
+                                }
 
-                                    if (!cacheLoaded) {
-                                        performFetch(remoteVersion);
-                                    }
-                                }).catch(e => {
-                                    console.warn('Version check error, falling back to fetch', e);
-                                    performFetch(null);
-                                });
-                            } else {
+                                // If we are here: either force=true OR cache miss/fail
+                                if (!cacheLoaded) {
+                                    performFetch(remoteVersion);
+                                }
+                            }).catch(e => {
+                                console.warn('Version check error, falling back to fetch', e);
                                 performFetch(null);
-                            }
+                            });
                         } else {
                             clearInterval(this.progressInterval); // Stop progress animation
                             this.loadProgress = 0; // Reset progress
@@ -9959,7 +9960,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -12082,7 +12083,7 @@
                     if (!this._db) {
                         this.initInstantDB();
                     }
-                    this.loadData(true);
+                    this.loadData(false);
                 }
             },
 
