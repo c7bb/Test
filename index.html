@@ -1710,7 +1710,7 @@
                     </span>
                 </div>
             </div>
-            <div v-else class="flex flex-col items-center" style="position: relative; top: 0;">
+            <div v-else-if="loadingModeResolved" class="flex flex-col items-center" style="position: relative; top: 0;">
                 <transition name="fade">
                     <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
                 </transition>
@@ -4050,6 +4050,7 @@
                     mangas: [], // Declare mangas to avoid Vue render warn
                     loading: true,
                     loadingFromCache: false,
+                    loadingModeResolved: false,
                     loadProgress: 0,
                     inputSearchQuery: '',
                     searchDebounceTimer: null,
@@ -8315,6 +8316,11 @@
                         return false;
                     }
                 },
+                hasCachedDataset() {
+                    return this.loadFromIDB('dataset-cache')
+                        .then(data => !!this.validateDataset(data))
+                        .catch(() => false);
+                },
 
                 // Method to load data from JSON
                 loadData(force = false) {
@@ -10009,7 +10015,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -12113,11 +12119,16 @@
             },
             
             async created() {
-                // Pre-mark cache landing to avoid initial flicker
                 try {
                     const rawVer = localStorage.getItem('dcrdb-version-state');
-                    if (rawVer) this.loadingFromCache = true;
+                    if (rawVer) {
+                        try {
+                            const has = await this.hasCachedDataset();
+                            if (has) this.loadingFromCache = true;
+                        } catch (e2) {}
+                    }
                 } catch (e) {}
+                this.loadingModeResolved = true;
                 
                 // Initialize tab locking system FIRST
                 this.initTabLocking();
