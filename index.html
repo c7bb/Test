@@ -1702,7 +1702,14 @@
             <span>الدليل الشامل لمشاهدة المحقق كونان</span>
         </h1>
         <div v-if="loading" class="flex items-center justify-center w-full">
-            <div class="flex flex-col items-center" style="position: relative; top: 0;">
+            <div v-if="loadingFromCache" class="flex flex-col items-center" style="position: relative; top: 0;">
+                <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider">
+                    <span class="inline-flex items-center gap-2">
+                        <span class="animate-spin inline-block h-12 w-12 rounded-full border-2 border-white/30 border-t-white"></span>
+                    </span>
+                </div>
+            </div>
+            <div v-else class="flex flex-col items-center" style="position: relative; top: 0;">
                 <transition name="fade">
                     <span key="zikr" class="zikr-box">{{ currentZikr }}</span>
                 </transition>
@@ -4041,6 +4048,7 @@
                     movies: [], // Movies will be populated separately
                     mangas: [], // Declare mangas to avoid Vue render warn
                     loading: true,
+                    loadingFromCache: false,
                     loadProgress: 0,
                     inputSearchQuery: '',
                     searchDebounceTimer: null,
@@ -8336,6 +8344,7 @@
                             }
                             const versionOk = this.isVersionUpToDate(localVersion, remoteVersion);
                             if (versionOk) {
+                                this.loadingFromCache = true;
                                 try {
                                     const cached = await this.loadFromIDB('dataset-cache');
                                     if (this.validateDataset(cached)) {
@@ -8347,12 +8356,15 @@
                                             this.loading = false;
                                             this.loadProgress = 100;
                                             localStorage.removeItem('waitTime');
+                                            this.loadingFromCache = false;
                                         }
                                         resolve();
                                         return;
                                     }
                                 } catch (e) {
                                     console.warn('IDB load failed, falling back to network', e);
+                                } finally {
+                                    this.loadingFromCache = false;
                                 }
                             }
                             // Reset states before attempting to fetch
