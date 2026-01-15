@@ -836,7 +836,7 @@
         </div>
     </div>
     
-    <div id="app" v-cloak class="container mx-auto p-4 shadow-lg rounded"> <!-- Removed .bg-slate-700 -->
+    <div v-if="!loadingFromCache" id="app" v-cloak class="container mx-auto p-4 shadow-lg rounded"> <!-- Removed .bg-slate-700 -->
 
         <!-- Inactivity session modal -->
         <div 
