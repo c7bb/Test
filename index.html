@@ -5187,7 +5187,7 @@
                 },
                 episodeCountText() {
                     const count = this.totalEpisodes;
-                    if (count === 1) return 'حلقة';
+                    if (count === 0 || count === 1) return 'حلقة';
                     if (count === 2) return 'حلقتين';
                     if (count >= 3 && count <= 10) return `${count} حلقات`;
                     return `${count} حلقة`;
@@ -8228,7 +8228,54 @@
                     this.handlePageSelect({ target: { value: 1 } }); // Call handlePageSelect to update
                 },
 
+                // IDB Helper
+                getDB() {
+                    return new Promise((resolve, reject) => {
+                        const request = indexedDB.open('DCRefBotData', 1);
+                        request.onerror = (event) => reject('IDB Error');
+                        request.onupgradeneeded = (event) => {
+                            const db = event.target.result;
+                            if (!db.objectStoreNames.contains('store')) {
+                                db.createObjectStore('store');
+                            }
+                        };
+                        request.onsuccess = (event) => resolve(event.target.result);
+                    });
+                },
+                saveToIDB(key, data) {
+                    return this.getDB().then(db => {
+                        return new Promise((resolve, reject) => {
+                            const tx = db.transaction('store', 'readwrite');
+                            const store = tx.objectStore('store');
+                            store.put(data, key);
+                            tx.oncomplete = () => resolve();
+                            tx.onerror = () => reject('IDB Save Error');
+                        });
+                    });
+                },
+                loadFromIDB(key) {
+                    return this.getDB().then(db => {
+                        return new Promise((resolve, reject) => {
+                            const tx = db.transaction('store', 'readonly');
+                            const store = tx.objectStore('store');
+                            const request = store.get(key);
+                            request.onsuccess = () => resolve(request.result);
+                            request.onerror = () => reject('IDB Load Error');
+                        });
+                    });
+                },
+
                 // Method to load data from JSON
+                async checkDataVersion() {
+                    try {
+                        const response = await fetch('./version.json', { cache: 'no-store' });
+                        if (!response.ok) return null;
+                        return await response.json();
+                    } catch (e) {
+                        return null;
+                    }
+                },
+
                 loadData(force = false) {
                     return new Promise((resolve, reject) => {
                         if (this.loading && !force) {
@@ -8250,104 +8297,152 @@
                             this.error = null;
                             this.loading = true;
 
-                            // Check if a rate-limit countdown is stored
-                            const storedWaitTime = localStorage.getItem('waitTime');
-                            if (storedWaitTime) {
-                                this.waitTime = parseInt(storedWaitTime, 10);
-                                this.error = `لقد تجاوزت الحد المسموح به من الطلبات. يُرجى الانتظار ${this.waitTime} ثانية.`;
-                                this.startTimer(); // Continue the countdown
-                                clearInterval(this.progressInterval); // Stop progress animation
-                                this.loadProgress = 0; // Reset progress
-                                reject('Rate limit exceeded');
-                                return;
-                            }
+                            const performFetch = (remoteVersionToSave) => {
+                                // Check if a rate-limit countdown is stored
+                                const storedWaitTime = localStorage.getItem('waitTime');
+                                if (storedWaitTime) {
+                                    this.waitTime = parseInt(storedWaitTime, 10);
+                                    this.error = `لقد تجاوزت الحد المسموح به من الطلبات. يُرجى الانتظار ${this.waitTime} ثانية.`;
+                                    this.startTimer(); // Continue the countdown
+                                    clearInterval(this.progressInterval); // Stop progress animation
+                                    this.loadProgress = 0; // Reset progress
+                                    reject('Rate limit exceeded');
+                                    return;
+                                }
 
-                            // Append a cache-busting query parameter
-                            const urlWithCacheBust = `${this.jsonUrl}?t=${new Date().getTime()}`;
+                                // Append a cache-busting query parameter
+                                const urlWithCacheBust = `${this.jsonUrl}?t=${new Date().getTime()}`;
 
-                            fetch(urlWithCacheBust, { cache: 'no-store' })
-                                .then(async response => {
-                                    if (response.status === 429) {
-                                        const data = await response.json();
+                                fetch(urlWithCacheBust, { cache: 'no-store' })
+                                    .then(async response => {
+                                        if (response.status === 429) {
+                                            const data = await response.json();
+                                            if (this.isTabOwner) {
+                                                this.loading = false;
+                                            }
+                                            this.loadProgress = 0;
+                                            if (data.error === "User blocked") {
+                                                this.error = "لقد تجاوزت الحد المسموح به من الطلبات لهذا اليوم.";
+                                                reject('User blocked');
+                                                return;
+                                            }
+                                            const resetTime = data.resetTime || Date.now() + 60000;
+                                            this.waitTime = Math.max(0, Math.floor((resetTime - Date.now()) / 1000));
+                                            this.error = `لقد تجاوزت الحد المسموح به من الطلبات. يُرجى الانتظار ${this.waitTime} ثانية.`;
+                                            localStorage.setItem('waitTime', this.waitTime);
+                                            this.startTimer();
+                                            reject('Rate limit exceeded');
+                                            return;
+                                        }
+                                        if (!response.ok) {
+                                            throw new Error(`HTTP error! status: ${response.status}`);
+                                        }
+                                        const reader = response.body.getReader();
+                                        const contentLength = +response.headers.get('Content-Length');
+                                        let receivedLength = 0;
+                                        const chunks = [];
+                                        while(true) {
+                                            const {done, value} = await reader.read();
+                                            if (done) break;
+                                            chunks.push(value);
+                                            receivedLength += value.length;
+                                            if (contentLength) {
+                                                this.loadProgress = Math.min(100, Math.round((receivedLength / contentLength) * 100));
+                                            } else {
+                                                this.loadProgress = Math.min(99, this.loadProgress + 1);
+                                            }
+                                        }
+                                        const allChunks = new Uint8Array(receivedLength);
+                                        let position = 0;
+                                        for(let chunk of chunks) {
+                                            allChunks.set(chunk, position);
+                                            position += chunk.length;
+                                        }
+                                        const resultString = new TextDecoder("utf-8").decode(allChunks);
+                                        return JSON.parse(resultString);
+                                    })
+                                    .then(async data => {
+                                        if (data) {
+                                            // Save to cache if version is available
+                                            if (remoteVersionToSave) {
+                                                try {
+                                                    await this.saveToIDB('cached_data', data);
+                                                    localStorage.setItem('data_version', remoteVersionToSave.version);
+                                                    localStorage.setItem('data_date', remoteVersionToSave.date);
+                                                } catch (e) {
+                                                    console.warn('Failed to save data to cache', e);
+                                                }
+                                            }
+
+                                            // Data fetched successfully
+                                            clearInterval(this.progressInterval); // Stop progress animation
+                                            this.loadProgress = 100; // Set progress to 100%
+                                            setTimeout(() => {
+                                                // Only update data and set loading = false if this tab is the owner
+                                                if (this.isTabOwner) {
+                                                    this.episodes = data.Episodes || [];
+                                                    this.mangas = data.Mangas || [];
+                                                    this.rebuildEpisodesByKey();
+                                                    this.loading = false;
+                                                    localStorage.removeItem('waitTime');
+                                                    
+                                                    // Update episode time ago after data loads
+                                                    this.updateEpisodeTimeAgo();
+                                                }
+                                                
+                                                resolve();
+                                            }, 300); // Delay to show 100% progress
+                                        }
+                                    })
+                                    .catch(error => {
+                                        clearInterval(this.progressInterval); // Stop progress animation
+                                        this.loadProgress = 0; // Reset progress
+                                        // Only set loading = false if this tab is the owner
                                         if (this.isTabOwner) {
                                             this.loading = false;
                                         }
-                                        this.loadProgress = 0;
-                                        if (data.error === "User blocked") {
-                                            this.error = "لقد تجاوزت الحد المسموح به من الطلبات لهذا اليوم.";
-                                            reject('User blocked');
-                                            return;
-                                        }
-                                        const resetTime = data.resetTime || Date.now() + 60000;
-                                        this.waitTime = Math.max(0, Math.floor((resetTime - Date.now()) / 1000));
-                                        this.error = `لقد تجاوزت الحد المسموح به من الطلبات. يُرجى الانتظار ${this.waitTime} ثانية.`;
-                                        localStorage.setItem('waitTime', this.waitTime);
-                                        this.startTimer();
-                                        reject('Rate limit exceeded');
-                                        return;
-                                    }
-                                    if (!response.ok) {
-                                        throw new Error(`HTTP error! status: ${response.status}`);
-                                    }
-                                    const reader = response.body.getReader();
-                                    const contentLength = +response.headers.get('Content-Length');
-                                    let receivedLength = 0;
-                                    const chunks = [];
-                                    while(true) {
-                                        const {done, value} = await reader.read();
-                                        if (done) break;
-                                        chunks.push(value);
-                                        receivedLength += value.length;
-                                        if (contentLength) {
-                                            this.loadProgress = Math.min(100, Math.round((receivedLength / contentLength) * 100));
-                                        } else {
-                                            this.loadProgress = Math.min(99, this.loadProgress + 1);
-                                        }
-                                    }
-                                    const allChunks = new Uint8Array(receivedLength);
-                                    let position = 0;
-                                    for(let chunk of chunks) {
-                                        allChunks.set(chunk, position);
-                                        position += chunk.length;
-                                    }
-                                    const resultString = new TextDecoder("utf-8").decode(allChunks);
-                                    return JSON.parse(resultString);
-                                })
-                                .then(data => {
-                                    if (data) {
-                                        // Data fetched successfully
-                                        clearInterval(this.progressInterval); // Stop progress animation
-                                        this.loadProgress = 100; // Set progress to 100%
-                                        setTimeout(() => {
-                                            // Only update data and set loading = false if this tab is the owner
-                                            if (this.isTabOwner) {
-                                                this.episodes = data.Episodes || [];
-                                                this.mangas = data.Mangas || [];
-                                                this.rebuildEpisodesByKey();
-                                                this.loading = false;
-                                                localStorage.removeItem('waitTime');
-                                                
-                                                // Update episode time ago after data loads
-                                                this.updateEpisodeTimeAgo();
-                                            }
-                                            
-                                            resolve();
-                                        }, 300); // Delay to show 100% progress
-                                    }
-                                })
-                                .catch(error => {
-                                    clearInterval(this.progressInterval); // Stop progress animation
-                                    this.loadProgress = 0; // Reset progress
-                                    // Only set loading = false if this tab is the owner
-                                    if (this.isTabOwner) {
-                                        this.loading = false;
-                                    }
 
-                                    if (!this.error && this.isTabOwner) {
-                                        this.error = 'حدث خطأ أثناء محاولة تحميل البيانات. قد تكون هناك مشكلة مؤقتة في الاتصال أو الخادم. يُرجى التحقق من اتصالك بالإنترنت أو استخدام VPN والمحاولة مرة أخرى.';
+                                        if (!this.error && this.isTabOwner) {
+                                            this.error = 'حدث خطأ أثناء محاولة تحميل البيانات. قد تكون هناك مشكلة مؤقتة في الاتصال أو الخادم. يُرجى التحقق من اتصالك بالإنترنت أو استخدام VPN والمحاولة مرة أخرى.';
+                                        }
+                                        reject(error);
+                                    });
+                            };
+
+                            if (!force) {
+                                this.checkDataVersion().then(async remoteVersion => {
+                                    const localVersion = localStorage.getItem('data_version');
+                                    const localDate = localStorage.getItem('data_date');
+                                    
+                                    if (remoteVersion && 
+                                        remoteVersion.version === localVersion && 
+                                        remoteVersion.date === localDate) {
+                                        try {
+                                            const cachedData = await this.loadFromIDB('cached_data');
+                                            if (cachedData) {
+                                                const data = cachedData;
+                                                clearInterval(this.progressInterval);
+                                                this.loadProgress = 100;
+                                                
+                                                if (this.isTabOwner) {
+                                                    this.episodes = data.Episodes || [];
+                                                    this.mangas = data.Mangas || [];
+                                                    this.rebuildEpisodesByKey();
+                                                    this.loading = false;
+                                                    this.updateEpisodeTimeAgo();
+                                                }
+                                                resolve();
+                                                return;
+                                            }
+                                        } catch (e) {
+                                            console.warn('Cache parsing failed, fetching fresh data');
+                                        }
                                     }
-                                    reject(error);
+                                    performFetch(remoteVersion);
                                 });
+                            } else {
+                                performFetch(null);
+                            }
                         } else {
                             clearInterval(this.progressInterval); // Stop progress animation
                             this.loadProgress = 0; // Reset progress
@@ -11953,6 +12048,13 @@
             },
             
             async created() {
+                // Suppress "Uncaught (in promise): [object Event]" error
+                window.addEventListener('unhandledrejection', event => {
+                    if (event.reason instanceof Event) {
+                        event.preventDefault();
+                    }
+                });
+
                 // Initialize tab locking system FIRST
                 this.initTabLocking();
                 
@@ -11972,22 +12074,10 @@
             mounted() {
                 // 1. Clean URL and set Canonical to prevent Comnto 400 errors
                 // Remove Telegram's huge hash to fix "preload id must be UUID" and "page_url too big"
-                // Also remove long path segments like c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f/
-                const longPathSegment = 'c28sdcm1jv977n4u63yccbty376l23p0xc38n0b2l4qgrje4d2xwjou9g76xdglsprhbpo1f5dhil392v5xeileb94p8g3le9f';
-                const needsCleaning = window.location.hash.includes('tgWebAppData') || window.location.hash.includes('tgWebApp') || window.location.pathname.includes(longPathSegment);
-                
-                if (needsCleaning) {
+                if (window.location.hash.includes('tgWebAppData') || window.location.hash.includes('tgWebApp')) {
                     console.log('Full URL before cleaning:', window.location.href);
-                    // Clean the pathname by removing the long path segment
-                    let cleanPath = window.location.pathname;
-                    if (cleanPath.includes(longPathSegment)) {
-                        cleanPath = cleanPath.replace(new RegExp(`/${longPathSegment}(?:/|$)`), '/');
-                        if (cleanPath !== '/' && cleanPath.endsWith('/')) {
-                            cleanPath = cleanPath.slice(0, -1);
-                        }
-                    }
                     // Use replaceState to clean the URL without reloading
-                    const cleanUrl = window.location.origin + cleanPath + window.location.search;
+                    const cleanUrl = window.location.origin + window.location.pathname + window.location.search;
                     window.history.replaceState(null, null, cleanUrl);
                 }
 
