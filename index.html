@@ -8411,16 +8411,23 @@
 
                             if (!force) {
                                 this.checkDataVersion().then(async remoteVersion => {
-                                    const localVersion = localStorage.getItem('data_version');
-                                    const localDate = localStorage.getItem('data_date');
-                                    
-                                    if (remoteVersion && 
-                                        remoteVersion.version === localVersion && 
-                                        remoteVersion.date === localDate) {
-                                        try {
+                                    let cacheLoaded = false;
+                                    try {
+                                        const localVersion = localStorage.getItem('data_version');
+                                        const localDate = localStorage.getItem('data_date');
+                                        
+                                        if (remoteVersion && 
+                                            remoteVersion.version === localVersion && 
+                                            remoteVersion.date === localDate) {
+                                            
                                             const cachedData = await this.loadFromIDB('cached_data');
                                             if (cachedData) {
                                                 const data = cachedData;
+                                                // Validate data structure minimally
+                                                if (!data.Episodes && !data.Mangas) {
+                                                    throw new Error('Invalid cached data structure');
+                                                }
+
                                                 clearInterval(this.progressInterval);
                                                 this.loadProgress = 100;
                                                 
@@ -8432,13 +8439,21 @@
                                                     this.updateEpisodeTimeAgo();
                                                 }
                                                 resolve();
+                                                cacheLoaded = true;
                                                 return;
                                             }
-                                        } catch (e) {
-                                            console.warn('Cache parsing failed, fetching fresh data');
                                         }
+                                    } catch (e) {
+                                        console.warn('Cache load failed, falling back to fetch', e);
+                                        // Fallthrough to performFetch
                                     }
-                                    performFetch(remoteVersion);
+
+                                    if (!cacheLoaded) {
+                                        performFetch(remoteVersion);
+                                    }
+                                }).catch(e => {
+                                    console.warn('Version check error, falling back to fetch', e);
+                                    performFetch(null);
                                 });
                             } else {
                                 performFetch(null);
@@ -9944,7 +9959,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+						
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
