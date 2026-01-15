@@ -4040,7 +4040,7 @@
                     selectedManga: null, // Track the selected manga for file size view
                     movies: [], // Movies will be populated separately
                     mangas: [], // Declare mangas to avoid Vue render warn
-                    loading: true,
+                    loading: false,
                     loadProgress: 0,
                     inputSearchQuery: '',
                     searchDebounceTimer: null,
@@ -9960,7 +9960,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-
+		
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -11706,7 +11706,7 @@
                                             this.initInstantDB();
                                         }
                                         if (this.userJoined && this.episodes.length === 0) {
-                                            this.loadData(true);
+                                            this.loadData(false);
                                         }
                                         break;
                                         
@@ -11728,7 +11728,7 @@
                                                     this.initInstantDB();
                                                 }
                                                 if (this.userJoined && this.episodes.length === 0) {
-                                                    this.loadData(true);
+                                                    this.loadData(false);
                                                 }
                                             }
                                         }
@@ -11790,7 +11790,7 @@
                                                 this.initInstantDB();
                                             }
                                             if (this.userJoined && this.episodes.length === 0) {
-                                                this.loadData(true);
+                                                this.loadData(false);
                                             }
                                         } else {
                                             this.isTabOwner = false;
@@ -11810,7 +11810,7 @@
                                                     this.initInstantDB();
                                                 }
                                                 if (this.userJoined && this.episodes.length === 0) {
-                                                    this.loadData(true);
+                                                    this.loadData(false);
                                                 }
                                             }
                                         } else {
@@ -11880,7 +11880,7 @@
                                         this.initInstantDB();
                                     }
                                     if (this.userJoined && this.episodes.length === 0) {
-                                        this.loadData(true);
+                                        this.loadData(false);
                                     }
                                 }
 
@@ -11974,7 +11974,7 @@
                                 this.initInstantDB();
                             }
                             if (this.userJoined && this.episodes.length === 0) {
-                                this.loadData(true);
+                                this.loadData(false);
                             }
                         }
                     };
@@ -12079,7 +12079,7 @@
                 this.loadRelatedEpisodesData();
                 this.startDailyLimitRowIdResync();
                 // If the user is valid, immediately load data.
-                if (this.userJoined && this.isTabOwner) {
+                if (this.userJoined && this.isTabOwner && !this.loading) {
                     if (!this._db) {
                         this.initInstantDB();
                     }
