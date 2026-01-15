@@ -1703,7 +1703,7 @@
             <span>الدليل الشامل لمشاهدة المحقق كونان</span>
         </h1>
         <div v-if="loading" class="flex items-center justify-center w-full">
-            <div v-if="loadingFromCache" class="flex flex-col items-center" style="position: relative; top: 0;">
+            <div v-if="loadingFromCache" class="fixed inset-0 flex items-center justify-center z-50">
                 <div class="mt-4 text-center text-white text-sm font-semibold tracking-wider">
                     <span class="inline-flex items-center gap-2">
                         <span class="animate-spin inline-block h-12 w-12 rounded-full border-2 border-white/30 border-t-white"></span>
@@ -10008,7 +10008,7 @@
                         console.log("version:", webApp?.version);
                         console.log("platform:", webApp?.platform);
                         console.log("===============================");
-						
+
                         const response = await fetch('https://ccuid.mdccxxixix.workers.dev', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -12112,6 +12112,12 @@
             },
             
             async created() {
+                // Pre-mark cache landing to avoid initial flicker
+                try {
+                    const rawVer = localStorage.getItem('dcrdb-version-state');
+                    if (rawVer) this.loadingFromCache = true;
+                } catch (e) {}
+                
                 // Initialize tab locking system FIRST
                 this.initTabLocking();
                 
