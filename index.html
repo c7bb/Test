@@ -2365,27 +2365,35 @@
                     </tr>
                 </thead>
 
-                <div id="app" class="container mx-auto p-4 shadow-lg rounded"> <!-- removing bg-slate-700 -->
+                <div id="app" class="container mx-auto p-4 shadow-lg rounded">
                     <tbody>
-                        <tr v-for="episode in paginatedEpisodes" :key="episode.EpisodeNumber" :id="'ep-' + normalizeEpisodeIdentifier(episode.EpisodeNumber)" class="hover:bg-blue-100">
-                            <td :class="[getBackgroundColor(episode), 'border', 'border-gray-300', 'px-2', 'text-lg', 'font-bold', 'py-2', 'text-center']" v-tippy="getEpisodeTypeTooltip(episode)">
-                                {{ formatEpisodeNumber(episode.EpisodeNumber) }}
-                            </td>
-                            <!-- <td class="border border-gray-300 px-4 text-lg font-bold py-2 text-center cursor-pointer">{{ episode.EpisodeTitle }}</td> -->
-                            <td
-                                :class="[
-                                    'border border-gray-300 px-4 text-lg font-bold py-2 text-center cursor-pointer',
-                                    isJumpHighlighted(episode)
-                                        ? 'bg-yellow-300 text-black hover:bg-yellow-900 hover:text-white'
-                                        : 'hover:bg-yellow-900',
-                                    lastClickedEpisode === episode ? 'bg-blue-300 text-black hover:text-white' : ''
-                                ]"
-                                @click="selectEpisodeAndOpen(episode)"
-                            >
-                                {{ episode.EpisodeTitle }}
-                            </td>
-
-                        </tr>
+                        <template v-for="(episode, index) in paginatedEpisodes" :key="episode.EpisodeNumber">
+                            <tr :id="'ep-' + normalizeEpisodeIdentifier(episode.EpisodeNumber)" class="hover:bg-blue-100">
+                                <td :class="[getBackgroundColor(episode), 'border', 'border-gray-300', 'px-2', 'text-lg', 'font-bold', 'py-2', 'text-center']" v-tippy="getEpisodeTypeTooltip(episode)">
+                                    {{ formatEpisodeNumber(episode.EpisodeNumber) }}
+                                </td>
+                                <td
+                                    :class="[
+                                        'border border-gray-300 px-4 text-lg font-bold py-2 text-center cursor-pointer',
+                                        isJumpHighlighted(episode)
+                                            ? 'bg-yellow-300 text-black hover:bg-yellow-900 hover:text-white'
+                                            : 'hover:bg-yellow-900',
+                                        lastClickedEpisode === episode ? 'bg-blue-300 text-black hover:text-white' : ''
+                                    ]"
+                                    @click="selectEpisodeAndOpen(episode)"
+                                >
+                                    {{ episode.EpisodeTitle }}
+                                </td>
+                            </tr>
+                            <tr v-if="showEpisodeAds && episodeAdInterval > 0 && (index + 1) % episodeAdInterval === 0">
+                                <td class="border border-amber-500 bg-amber-700 text-white text-lg font-bold py-2 text-center">
+                                    إعلان
+                                </td>
+                                <td class="border border-amber-500 bg-amber-900 text-yellow-200 text-base font-bold py-2 text-center">
+                                    مساحة إعلانية مميزة لدعم الدليل والاستمرار في تطويره
+                                </td>
+                            </tr>
+                        </template>
                     </tbody>
             
                     <div v-if="showModal" class="fixed z-50 inset-0 overflow-y-auto bg-black bg-opacity-70 flex items-center justify-center">
@@ -3803,6 +3811,8 @@
                     ep: 1188,
                     mangaCh: 1156,
                     jumpCycleState: null,
+                    showEpisodeAds: true,
+                    episodeAdInterval: 3,
                     // Daily Limit Data
                     dailyDownloads: 0,
                     dailyReady: false,
